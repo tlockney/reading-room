@@ -18,7 +18,7 @@ import { join } from "jsr:@std/path@1";
 import { exists } from "jsr:@std/fs@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { build } from "./build.ts";
-import { ROOT } from "./render.ts";
+import { makeContext } from "./config.ts";
 
 export interface PublishConfig {
   cmd: string[];
@@ -41,12 +41,13 @@ export function resolveCmd(cmd: string[], out: string): string[] {
 
 if (import.meta.main) {
   const dryRun = Deno.args.includes("--dry-run");
-  const out = join(ROOT, ".publish");
-  const { docs } = await build({ outDir: out, sharedOnly: true });
+  const ctx = await makeContext();
+  const out = join(ctx.root, ".publish");
+  const { docs } = await build(ctx, { outDir: out, sharedOnly: true });
   if (docs === 0) {
     console.log("\n  Note: no docs are visibility:shared — the published site would be empty.");
   }
-  const cfgPath = join(ROOT, "publish.jsonc");
+  const cfgPath = join(ctx.root, "publish.jsonc");
   if (!(await exists(cfgPath))) {
     console.log(`\n  Built shared subset -> ${out}`);
     console.log(`  No publish.jsonc — create one to push, e.g.:`);

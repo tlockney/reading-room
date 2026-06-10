@@ -4,6 +4,7 @@
     "jsr:@std/assert@1": "1.0.19",
     "jsr:@std/cli@1": "1.0.30",
     "jsr:@std/cli@^1.0.30": "1.0.30",
+    "jsr:@std/encoding@1": "1.0.10",
     "jsr:@std/encoding@^1.0.10": "1.0.10",
     "jsr:@std/fmt@^1.0.10": "1.0.10",
     "jsr:@std/fs@1": "1.0.24",
@@ -59,7 +60,7 @@
       "integrity": "e343a9a80aea07c716b91be5c79df764144430ad2dd7c9121ed7443f08dc74f7",
       "dependencies": [
         "jsr:@std/cli@^1.0.30",
-        "jsr:@std/encoding",
+        "jsr:@std/encoding@^1.0.10",
         "jsr:@std/fmt",
         "jsr:@std/fs@^1.0.24",
         "jsr:@std/html@^1.0.7",

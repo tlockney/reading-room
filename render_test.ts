@@ -1,5 +1,10 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { injectEditorialBody, injectEditorialHead, injectFavicon, stripAdmin } from "./render.ts";
+import {
+  injectEditorialBody,
+  injectEditorialHead,
+  injectFavicon,
+  stripAdmin,
+} from "./src/render.ts";
 
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
 

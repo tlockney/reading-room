@@ -1,0 +1,19 @@
+{
+  // A Reading Room content repo. Engine: @tlockney/reading-room.
+  //
+  // This example runs the engine from the repo it lives in (../src/). A real
+  // content repo replaces each ../src/<entry>.ts with
+  // jsr:@tlockney/reading-room/<entry> and pins a version via deno.lock.
+  "tasks": {
+    // Serve on 127.0.0.1:8413 (PORT env or first CLI arg overrides; READONLY=1
+    // disables the management API).
+    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY ../src/serve.ts",
+    // Static build into ./docs + ./index.html.
+    "build": "deno run --allow-read --allow-write ../src/build.ts",
+    // Register (and place in _migrated/) a standalone editorial doc. The
+    // editorial-longform-html skill looks for this task.
+    "add-doc": "deno run --allow-read --allow-write ../src/add-doc.ts",
+    // Build the visibility:shared subset into .publish/ and run publish.jsonc's command.
+    "publish": "deno run --allow-read --allow-write --allow-run ../src/publish.ts"
+  }
+}

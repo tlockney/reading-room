@@ -19,8 +19,12 @@
  */
 import { emptyDir, ensureDir } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
-import { loadCorpus, renderIndex, ROOT, transformDoc } from "./render.ts";
+import { decodeBase64 } from "jsr:@std/encoding@1/base64";
+import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Topic } from "./render.ts";
+import { makeContext } from "./config.ts";
+import type { RoomContext } from "./config.ts";
+import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 
 /** The publish subset: only visibility:shared docs, then only non-empty topics. */
 export function filterShared(corpus: Topic[]): Topic[] {
@@ -30,14 +34,16 @@ export function filterShared(corpus: Topic[]): Topic[] {
 }
 
 export interface BuildOptions {
-  outDir?: string; // default ROOT — today's layout (./docs + ./index.html). <outDir>/docs is emptied.
+  outDir?: string; // default ctx.root — today's layout (<root>/docs + <root>/index.html). <outDir>/docs is emptied.
   sharedOnly?: boolean; // default false — everything
-  registryPath?: string; // default REGISTRY — tests inject a fixture
 }
 
-export async function build(opts: BuildOptions = {}): Promise<{ docs: number; topics: number }> {
-  const outDir = opts.outDir ?? ROOT;
-  let corpus = await loadCorpus(opts.registryPath);
+export async function build(
+  ctx: RoomContext,
+  opts: BuildOptions = {},
+): Promise<{ docs: number; topics: number }> {
+  const outDir = opts.outDir ?? ctx.root;
+  let corpus = await loadCorpus(ctx.registryPath);
   if (opts.sharedOnly) corpus = filterShared(corpus);
   const docsOut = join(outDir, "docs");
   console.log("Building Reading Room ->", outDir);
@@ -47,23 +53,23 @@ export async function build(opts: BuildOptions = {}): Promise<{ docs: number; to
     for (const d of t.docs) {
       const dir = join(docsOut, d.slug);
       await ensureDir(dir);
-      await Deno.writeTextFile(join(dir, "index.html"), await transformDoc(corpus, t, d));
+      await Deno.writeTextFile(join(dir, "index.html"), await transformDoc(ctx, corpus, t, d));
       console.log(`  doc  ${d.slug}/index.html`);
     }
   }
-  await Deno.writeTextFile(join(outDir, "index.html"), renderIndex(corpus));
-  if (outDir !== ROOT) {
-    // a standalone publish dir needs the site icons alongside it
-    for (const icon of ["favicon.svg", "apple-touch-icon.png"]) {
-      await Deno.copyFile(join(ROOT, icon), join(outDir, icon));
-    }
-  }
+  await Deno.writeTextFile(
+    join(outDir, "index.html"),
+    injectLocalSlots(renderIndex(ctx.site, corpus), await loadSlots(ctx.root)),
+  );
+  // site icons ship embedded in the engine; the output dir gets its own copies
+  await Deno.writeTextFile(join(outDir, "favicon.svg"), FAVICON_SVG);
+  await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TOUCH_ICON_B64));
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   console.log(`  index.html  (${total} docs, ${corpus.length} topics)`);
   return { docs: total, topics: corpus.length };
 }
 
 if (import.meta.main) {
-  await build();
+  await build(await makeContext());
   console.log("Done.");
 }

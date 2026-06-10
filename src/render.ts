@@ -9,32 +9,17 @@
  *
  * Source documents are never modified.
  */
-import { basename, dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { basename, join } from "jsr:@std/path@1";
 import { exists } from "jsr:@std/fs@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { escape } from "jsr:@std/html@1";
-
-export const ROOT = dirname(fromFileUrl(import.meta.url)); // reading-room/
-export const WORKSPACE = dirname(ROOT); // parent dir — holds sibling source repos
-
-// Site identity — shown on the index masthead and footer. Edit to taste.
-export const SITE = {
-  title: "The Reading Room",
-  eyebrow: "Reference Library",
-  lede: "Every long-form document, gathered and grouped. Browse by topic, " +
-    "or jump straight to what you came for.",
-  footer: ["Reference Library", "Local · Not for Distribution", "The Reading Room"],
-};
-export const DOCS_OUT = join(ROOT, "docs");
-export const MIGRATED = join(ROOT, "_migrated");
-export const REGISTRY = join(ROOT, "registry.jsonc");
-export const EDITORIAL = join(ROOT, "assets/editorial");
+import type { RoomContext, Site } from "./config.ts";
 
 // Shared zoom + theme + mobile bundle — the single source of truth, also
 // inlined verbatim into the editorial-longform-html skill template (a drift
-// test pins the two copies together). Read once at module load.
-const HEAD_PARTIAL = await Deno.readTextFile(join(EDITORIAL, "head.html"));
-const BODY_PARTIAL = await Deno.readTextFile(join(EDITORIAL, "body.html"));
+// test pins the two copies together). Embedded at codegen time (deno task gen)
+// so the published JSR package never reads package-relative files.
+import { EDITORIAL_BODY as BODY_PARTIAL, EDITORIAL_HEAD as HEAD_PARTIAL } from "./assets_gen.ts";
 
 // RR-only chrome (NOT shared with standalone skill docs): the favicon links
 // resolve only on the served site, so they never go into a portable doc.
@@ -65,7 +50,7 @@ export interface Topic {
 
 const e = (s: string): string => escape(s);
 
-export async function loadCorpus(path: string = REGISTRY): Promise<Topic[]> {
+export async function loadCorpus(path: string): Promise<Topic[]> {
   return parseJsonc(await Deno.readTextFile(path)) as unknown as Topic[];
 }
 
@@ -115,6 +100,58 @@ const EXISTING_ADMIN_RE = new RegExp(
 /** Strip any baked-in admin region from a source doc (idempotent). */
 export function stripAdmin(docHtml: string): string {
   return docHtml.replace(EXISTING_ADMIN_RE, "");
+}
+
+// Per-environment additive slots: a consumer's assets/head-extra.html and
+// assets/body-extra.html ride along on every page (index, served docs, static
+// builds) in their own marked regions. Additive only — the canonical editorial
+// bundle always injects regardless; there is no override mechanism.
+export interface LocalSlots {
+  head: string;
+  body: string;
+}
+
+const LOCAL_HEAD_START = "<!-- RR-LOCAL-HEAD:start -->";
+const LOCAL_HEAD_END = "<!-- RR-LOCAL-HEAD:end -->";
+const LOCAL_BODY_START = "<!-- RR-LOCAL-BODY:start -->";
+const LOCAL_BODY_END = "<!-- RR-LOCAL-BODY:end -->";
+const EXISTING_LOCAL_HEAD_RE = new RegExp(
+  reEscape(LOCAL_HEAD_START) + "[\\s\\S]*?" + reEscape(LOCAL_HEAD_END) + "\\n?",
+  "g",
+);
+const EXISTING_LOCAL_BODY_RE = new RegExp(
+  reEscape(LOCAL_BODY_START) + "[\\s\\S]*?" + reEscape(LOCAL_BODY_END) + "\\n?",
+  "g",
+);
+
+async function readOr(path: string, fallback: string): Promise<string> {
+  try {
+    return await Deno.readTextFile(path);
+  } catch {
+    return fallback;
+  }
+}
+
+/** Read a content root's slot fragments (absent files mean empty slots). */
+export async function loadSlots(root: string): Promise<LocalSlots> {
+  return {
+    head: await readOr(join(root, "assets/head-extra.html"), ""),
+    body: await readOr(join(root, "assets/body-extra.html"), ""),
+  };
+}
+
+/** Strip-then-inject both slot regions (idempotent, healing, empty = absent). */
+export function injectLocalSlots(html: string, slots: LocalSlots): string {
+  let out = html.replace(EXISTING_LOCAL_HEAD_RE, "").replace(EXISTING_LOCAL_BODY_RE, "");
+  if (slots.head && HEAD_END_RE.test(out)) {
+    const block = `${LOCAL_HEAD_START}\n${slots.head}\n${LOCAL_HEAD_END}`;
+    out = out.replace(HEAD_END_RE, (): string => block + "\n</head>");
+  }
+  if (slots.body && BODY_END_RE.test(out)) {
+    const block = `${LOCAL_BODY_START}\n${slots.body}\n${LOCAL_BODY_END}`;
+    out = out.replace(BODY_END_RE, (): string => block + "\n</body>");
+  }
+  return out;
 }
 
 const HREF_RE = /href="([^"]+)"/g;
@@ -178,21 +215,34 @@ function injectEditorialBody(docHtml: string): string {
 
 export { injectEditorialBody, injectEditorialHead, injectFavicon };
 
-/** Resolve a doc's source (editorial override in _migrated/ else the scattered
- * `src`), then inject breadcrumb + favicon + the shared editorial bundle. */
-export async function transformDoc(corpus: Topic[], topic: Topic, doc: Doc): Promise<string> {
-  const override = join(MIGRATED, `${doc.slug}.html`);
-  const src = (await exists(override)) ? override : join(WORKSPACE, doc.src);
+/** Resolve a doc's source (editorial override in <root>/_migrated/ else the
+ * scattered `src`), then inject breadcrumb + favicon + the shared editorial
+ * bundle. */
+export async function transformDoc(
+  ctx: RoomContext,
+  corpus: Topic[],
+  topic: Topic,
+  doc: Doc,
+): Promise<string> {
+  const override = join(ctx.migratedDir, `${doc.slug}.html`);
+  const src = (await exists(override)) ? override : join(ctx.workspace, doc.src);
   if (!(await exists(src))) throw new Error(`missing source: ${src}`);
   const body = rewriteLinks(await Deno.readTextFile(src), sourceBasenameToSlug(corpus));
   const withNav = injectNav(body, navSnippet(topic.id, topic.short, doc.title));
-  return injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav))));
+  return injectLocalSlots(
+    injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav)))),
+    await loadSlots(ctx.root),
+  );
 }
 
 /** Find + render a doc by slug; null if no such slug. */
-export async function transformDocBySlug(corpus: Topic[], slug: string): Promise<string | null> {
+export async function transformDocBySlug(
+  ctx: RoomContext,
+  corpus: Topic[],
+  slug: string,
+): Promise<string | null> {
   for (const t of corpus) {
-    for (const d of t.docs) if (d.slug === slug) return await transformDoc(corpus, t, d);
+    for (const d of t.docs) if (d.slug === slug) return await transformDoc(ctx, corpus, t, d);
   }
   return null;
 }
@@ -239,7 +289,7 @@ function minimapItem(t: Topic): string {
   }</span></a>`;
 }
 
-export function renderIndex(corpus: Topic[]): string {
+export function renderIndex(site: Site, corpus: Topic[]): string {
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   const reviewing = corpus.flatMap((t) => t.docs.filter((d) => d.review));
   const reviewChip = reviewing.length
@@ -254,7 +304,7 @@ export function renderIndex(corpus: Topic[]): string {
     ? reviewGroup(reviewing) + "\n\n" + corpus.map(group).join("\n\n")
     : corpus.map(group).join("\n\n");
   return injectEditorialBody(injectEditorialHead(injectFavicon(
-    INDEX_TEMPLATE
+    indexTemplate(site)
       .replaceAll("%%MINIMAP%%", () => reviewMini + corpus.map(minimapItem).join("\n"))
       .replaceAll("%%CHIPS%%", () => reviewChip + corpus.map(chip).join("\n"))
       .replaceAll("%%GROUPS%%", () => groups)
@@ -263,12 +313,13 @@ export function renderIndex(corpus: Topic[]): string {
   )));
 }
 
-const INDEX_TEMPLATE = `<!DOCTYPE html>
+function indexTemplate(site: Site): string {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${SITE.title}</title>
+<title>${site.title}</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -405,9 +456,9 @@ const INDEX_TEMPLATE = `<!DOCTYPE html>
 </nav>
 
 <div class="container">
-  <div class="eyebrow">${SITE.eyebrow}</div>
+  <div class="eyebrow">${site.eyebrow}</div>
   <h1>The Reading <em>Room</em></h1>
-  <p class="lede">${SITE.lede}</p>
+  <p class="lede">${site.lede}</p>
 
   <nav class="chips" aria-label="Topics">
 %%CHIPS%%
@@ -416,9 +467,10 @@ const INDEX_TEMPLATE = `<!DOCTYPE html>
 %%GROUPS%%
 
   <footer>
-${SITE.footer.map((s) => `    <span>${s}</span>`).join("\n")}
+${site.footer.map((s) => `    <span>${s}</span>`).join("\n")}
   </footer>
 </div>
 </body>
 </html>
 `;
+}

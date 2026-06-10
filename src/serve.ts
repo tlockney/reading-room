@@ -16,8 +16,10 @@
  *
  * (Run under launchd via ./agent.sh install for an always-on local agent.)
  */
-import { loadCorpus, REGISTRY, renderIndex, ROOT, transformDoc } from "./render.ts";
+import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
+import { makeContext } from "./config.ts";
+import type { RoomContext } from "./config.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
 import {
@@ -30,7 +32,10 @@ import {
 } from "./comments.ts";
 import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
-import { join } from "jsr:@std/path@1";
+import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
+import { decodeBase64 } from "jsr:@std/encoding@1/base64";
+
+const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
 const DOC_RE = /^\/docs\/([A-Za-z0-9_-]+)\/?$/; // canonical: /docs/<slug> (S3 also serves /docs/<slug>/)
 const DOC_HTML_RE = /^\/docs\/([A-Za-z0-9._-]+)\.html$/; // legacy: redirect to extensionless
@@ -40,8 +45,7 @@ const API_COMMENT_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments\/([A-Za-z0-9-]+
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
 
 export interface ServeOptions {
-  registryPath: string;
-  commentsDir: string;
+  ctx: RoomContext;
   readonly: boolean;
 }
 
@@ -66,14 +70,10 @@ function json(data: unknown, status = 200): Response {
 function jsonError(message: string, status: number): Response {
   return json({ error: message }, status);
 }
-async function asset(name: string, type: string): Promise<Response> {
-  try {
-    return new Response(await Deno.readFile(join(ROOT, name)), {
-      headers: { "content-type": type, "cache-control": "max-age=3600" },
-    });
-  } catch {
-    return notice("Not found.", 404);
-  }
+function asset(body: string | Uint8Array<ArrayBuffer>, type: string): Response {
+  return new Response(body, {
+    headers: { "content-type": type, "cache-control": "max-age=3600" },
+  });
 }
 
 function findDoc(corpus: Topic[], slug: string): { topic: Topic; doc: Doc } | null {
@@ -128,13 +128,13 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
         const patch = parsePatch(raw);
         if (typeof patch === "string") return jsonError(patch, 400);
-        const registry = await Deno.readTextFile(opts.registryPath);
-        await writeAtomic(opts.registryPath, setDocField(registry, slug, patch));
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
+        await writeAtomic(opts.ctx.registryPath, setDocField(registry, slug, patch));
         return json({ ok: true, slug, ...patch });
       }
       if (req.method === "DELETE") {
-        const registry = await Deno.readTextFile(opts.registryPath);
-        await writeAtomic(opts.registryPath, removeDoc(registry, slug));
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
+        await writeAtomic(opts.ctx.registryPath, removeDoc(registry, slug));
         return json({
           ok: true,
           removed: slug,
@@ -148,15 +148,15 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
     const comments = path.match(API_COMMENTS_RE);
     if (comments) {
       const slug = comments[1];
-      if (req.method === "GET") return json(await loadComments(opts.commentsDir, slug));
+      if (req.method === "GET") return json(await loadComments(opts.ctx.commentsDir, slug));
       if (req.method === "POST") {
-        const registry = await Deno.readTextFile(opts.registryPath);
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
         if (!slugExists(registry, slug)) return jsonError(`unknown slug: ${slug}`, 404);
         const raw = await readJson(req);
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
         const input = parseCommentInput(raw);
         if (typeof input === "string") return jsonError(input, 400);
-        return json(await addComment(opts.commentsDir, slug, input), 201);
+        return json(await addComment(opts.ctx.commentsDir, slug, input), 201);
       }
       return jsonError("method not allowed", 405);
     }
@@ -171,7 +171,7 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
           return jsonError('body must be {"reviewed": boolean}', 400);
         }
         const updated = await setCommentReviewed(
-          opts.commentsDir,
+          opts.ctx.commentsDir,
           comment[1],
           comment[2],
           o.reviewed,
@@ -179,7 +179,7 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
         return updated ? json(updated) : jsonError("no such comment", 404);
       }
       if (req.method === "DELETE") {
-        const ok = await deleteComment(opts.commentsDir, comment[1], comment[2]);
+        const ok = await deleteComment(opts.ctx.commentsDir, comment[1], comment[2]);
         return ok ? json({ ok: true }) : jsonError("no such comment", 404);
       }
       return jsonError("method not allowed", 405);
@@ -205,27 +205,25 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
         ? jsonError("malformed path encoding", 400)
         : notice("Bad request.", 400);
     }
-    if (path === "/favicon.svg") return asset("favicon.svg", "image/svg+xml");
-    if (path === "/apple-touch-icon.png") return asset("apple-touch-icon.png", "image/png");
+    if (path === "/favicon.svg") return asset(FAVICON_SVG, "image/svg+xml");
+    if (path === "/apple-touch-icon.png") return asset(APPLE_TOUCH_ICON, "image/png");
     const adminAsset = path.match(ADMIN_ASSET_RE);
     if (adminAsset) {
+      const body = ADMIN_ASSETS[adminAsset[1]];
+      if (body === undefined) return notice("Not found.", 404);
       const type = adminAsset[1].endsWith(".css")
         ? "text/css; charset=utf-8"
         : "text/javascript; charset=utf-8";
-      try {
-        return new Response(await Deno.readFile(join(ROOT, "assets/admin", adminAsset[1])), {
-          headers: { "content-type": type, "cache-control": "no-cache" },
-        });
-      } catch {
-        return notice("Not found.", 404);
-      }
+      return new Response(body, {
+        headers: { "content-type": type, "cache-control": "no-cache" },
+      });
     }
     if (path === "/index.html") return redirect("/");
     const legacy = path.match(DOC_HTML_RE);
     if (legacy) return redirect(`/docs/${legacy[1]}`);
     if (path.startsWith("/api/")) return api(req, path, opts);
     try {
-      const corpus = await loadCorpus(opts.registryPath); // re-read per request → no restart needed
+      const corpus = await loadCorpus(opts.ctx.registryPath); // re-read per request → no restart needed
       if (path === "/") {
         const docs: Record<string, { review: boolean; visibility: "private" | "shared" }> = {};
         for (const t of corpus) {
@@ -234,13 +232,17 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
           }
         }
         const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
-        return page(injectAdmin(renderIndex(corpus), ctx));
+        const index = injectLocalSlots(
+          renderIndex(opts.ctx.site, corpus),
+          await loadSlots(opts.ctx.root),
+        );
+        return page(injectAdmin(index, ctx));
       }
       const m = path.match(DOC_RE);
       if (m) {
         const found = findDoc(corpus, m[1]);
         if (!found) return notice(`No such document: <b>${esc(m[1])}</b>`, 404);
-        const html = await transformDoc(corpus, found.topic, found.doc);
+        const html = await transformDoc(opts.ctx, corpus, found.topic, found.doc);
         const ctx: AdminContext = {
           page: "doc",
           readonly: opts.readonly,
@@ -264,11 +266,8 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 if (import.meta.main) {
   const port = Number(Deno.args[0] ?? Deno.env.get("PORT") ?? 8413);
   const readonly = Deno.env.get("READONLY") === "1";
-  const handler = makeHandler({
-    registryPath: REGISTRY,
-    commentsDir: join(ROOT, "comments"),
-    readonly,
-  });
+  const ctx = await makeContext();
+  const handler = makeHandler({ ctx, readonly });
 
   console.log(`\n  Reading Room — rendered live on http://127.0.0.1:${port}/ (localhost only).`);
   console.log(`  Expose over your tailnet (HTTPS):  tailscale serve --bg ${port}`);
@@ -280,7 +279,7 @@ if (import.meta.main) {
   // Watch the registry for console feedback; freshness comes from the per-request re-read.
   (async () => {
     try {
-      for await (const ev of Deno.watchFs(REGISTRY)) {
+      for await (const ev of Deno.watchFs(ctx.registryPath)) {
         if (ev.kind === "modify" || ev.kind === "create") {
           console.log("  ↻ registry.jsonc changed — reflected on next request");
         }
