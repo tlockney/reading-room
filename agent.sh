@@ -30,7 +30,7 @@ write_plist() {
   <key>ProgramArguments</key>
   <array>
     <string>$DENO</string><string>run</string>
-    <string>--allow-read</string><string>--allow-net</string><string>--allow-env=PORT</string>
+    <string>--allow-read</string><string>--allow-write</string><string>--allow-net</string><string>--allow-env=PORT,READONLY</string>
     <string>$RR/serve.ts</string><string>$PORT</string>
   </array>
   <key>WorkingDirectory</key><string>$RR</string>
