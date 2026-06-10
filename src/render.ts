@@ -9,25 +9,11 @@
  *
  * Source documents are never modified.
  */
-import { basename, dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { basename, join } from "jsr:@std/path@1";
 import { exists } from "jsr:@std/fs@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { escape } from "jsr:@std/html@1";
-
-export const ROOT = dirname(dirname(fromFileUrl(import.meta.url))); // repo root (src/..)
-export const WORKSPACE = dirname(ROOT); // parent dir — holds sibling source repos
-
-// Site identity — shown on the index masthead and footer. Edit to taste.
-export const SITE = {
-  title: "The Reading Room",
-  eyebrow: "Reference Library",
-  lede: "Every long-form document, gathered and grouped. Browse by topic, " +
-    "or jump straight to what you came for.",
-  footer: ["Reference Library", "Local · Not for Distribution", "The Reading Room"],
-};
-export const DOCS_OUT = join(ROOT, "docs");
-export const MIGRATED = join(ROOT, "_migrated");
-export const REGISTRY = join(ROOT, "registry.jsonc");
+import type { RoomContext, Site } from "./config.ts";
 
 // Shared zoom + theme + mobile bundle — the single source of truth, also
 // inlined verbatim into the editorial-longform-html skill template (a drift
@@ -64,7 +50,7 @@ export interface Topic {
 
 const e = (s: string): string => escape(s);
 
-export async function loadCorpus(path: string = REGISTRY): Promise<Topic[]> {
+export async function loadCorpus(path: string): Promise<Topic[]> {
   return parseJsonc(await Deno.readTextFile(path)) as unknown as Topic[];
 }
 
@@ -177,11 +163,17 @@ function injectEditorialBody(docHtml: string): string {
 
 export { injectEditorialBody, injectEditorialHead, injectFavicon };
 
-/** Resolve a doc's source (editorial override in _migrated/ else the scattered
- * `src`), then inject breadcrumb + favicon + the shared editorial bundle. */
-export async function transformDoc(corpus: Topic[], topic: Topic, doc: Doc): Promise<string> {
-  const override = join(MIGRATED, `${doc.slug}.html`);
-  const src = (await exists(override)) ? override : join(WORKSPACE, doc.src);
+/** Resolve a doc's source (editorial override in <root>/_migrated/ else the
+ * scattered `src`), then inject breadcrumb + favicon + the shared editorial
+ * bundle. */
+export async function transformDoc(
+  ctx: RoomContext,
+  corpus: Topic[],
+  topic: Topic,
+  doc: Doc,
+): Promise<string> {
+  const override = join(ctx.migratedDir, `${doc.slug}.html`);
+  const src = (await exists(override)) ? override : join(ctx.workspace, doc.src);
   if (!(await exists(src))) throw new Error(`missing source: ${src}`);
   const body = rewriteLinks(await Deno.readTextFile(src), sourceBasenameToSlug(corpus));
   const withNav = injectNav(body, navSnippet(topic.id, topic.short, doc.title));
@@ -189,9 +181,13 @@ export async function transformDoc(corpus: Topic[], topic: Topic, doc: Doc): Pro
 }
 
 /** Find + render a doc by slug; null if no such slug. */
-export async function transformDocBySlug(corpus: Topic[], slug: string): Promise<string | null> {
+export async function transformDocBySlug(
+  ctx: RoomContext,
+  corpus: Topic[],
+  slug: string,
+): Promise<string | null> {
   for (const t of corpus) {
-    for (const d of t.docs) if (d.slug === slug) return await transformDoc(corpus, t, d);
+    for (const d of t.docs) if (d.slug === slug) return await transformDoc(ctx, corpus, t, d);
   }
   return null;
 }
@@ -238,7 +234,7 @@ function minimapItem(t: Topic): string {
   }</span></a>`;
 }
 
-export function renderIndex(corpus: Topic[]): string {
+export function renderIndex(site: Site, corpus: Topic[]): string {
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   const reviewing = corpus.flatMap((t) => t.docs.filter((d) => d.review));
   const reviewChip = reviewing.length
@@ -253,7 +249,7 @@ export function renderIndex(corpus: Topic[]): string {
     ? reviewGroup(reviewing) + "\n\n" + corpus.map(group).join("\n\n")
     : corpus.map(group).join("\n\n");
   return injectEditorialBody(injectEditorialHead(injectFavicon(
-    INDEX_TEMPLATE
+    indexTemplate(site)
       .replaceAll("%%MINIMAP%%", () => reviewMini + corpus.map(minimapItem).join("\n"))
       .replaceAll("%%CHIPS%%", () => reviewChip + corpus.map(chip).join("\n"))
       .replaceAll("%%GROUPS%%", () => groups)
@@ -262,12 +258,13 @@ export function renderIndex(corpus: Topic[]): string {
   )));
 }
 
-const INDEX_TEMPLATE = `<!DOCTYPE html>
+function indexTemplate(site: Site): string {
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${SITE.title}</title>
+<title>${site.title}</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -404,9 +401,9 @@ const INDEX_TEMPLATE = `<!DOCTYPE html>
 </nav>
 
 <div class="container">
-  <div class="eyebrow">${SITE.eyebrow}</div>
+  <div class="eyebrow">${site.eyebrow}</div>
   <h1>The Reading <em>Room</em></h1>
-  <p class="lede">${SITE.lede}</p>
+  <p class="lede">${site.lede}</p>
 
   <nav class="chips" aria-label="Topics">
 %%CHIPS%%
@@ -415,9 +412,10 @@ const INDEX_TEMPLATE = `<!DOCTYPE html>
 %%GROUPS%%
 
   <footer>
-${SITE.footer.map((s) => `    <span>${s}</span>`).join("\n")}
+${site.footer.map((s) => `    <span>${s}</span>`).join("\n")}
   </footer>
 </div>
 </body>
 </html>
 `;
+}

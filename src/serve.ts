@@ -16,8 +16,10 @@
  *
  * (Run under launchd via ./agent.sh install for an always-on local agent.)
  */
-import { loadCorpus, REGISTRY, renderIndex, ROOT, transformDoc } from "./render.ts";
+import { loadCorpus, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
+import { makeContext } from "./config.ts";
+import type { RoomContext } from "./config.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
 import {
@@ -44,8 +46,7 @@ const API_COMMENT_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments\/([A-Za-z0-9-]+
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
 
 export interface ServeOptions {
-  registryPath: string;
-  commentsDir: string;
+  ctx: RoomContext;
   readonly: boolean;
 }
 
@@ -128,13 +129,13 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
         const patch = parsePatch(raw);
         if (typeof patch === "string") return jsonError(patch, 400);
-        const registry = await Deno.readTextFile(opts.registryPath);
-        await writeAtomic(opts.registryPath, setDocField(registry, slug, patch));
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
+        await writeAtomic(opts.ctx.registryPath, setDocField(registry, slug, patch));
         return json({ ok: true, slug, ...patch });
       }
       if (req.method === "DELETE") {
-        const registry = await Deno.readTextFile(opts.registryPath);
-        await writeAtomic(opts.registryPath, removeDoc(registry, slug));
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
+        await writeAtomic(opts.ctx.registryPath, removeDoc(registry, slug));
         return json({
           ok: true,
           removed: slug,
@@ -148,15 +149,15 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
     const comments = path.match(API_COMMENTS_RE);
     if (comments) {
       const slug = comments[1];
-      if (req.method === "GET") return json(await loadComments(opts.commentsDir, slug));
+      if (req.method === "GET") return json(await loadComments(opts.ctx.commentsDir, slug));
       if (req.method === "POST") {
-        const registry = await Deno.readTextFile(opts.registryPath);
+        const registry = await Deno.readTextFile(opts.ctx.registryPath);
         if (!slugExists(registry, slug)) return jsonError(`unknown slug: ${slug}`, 404);
         const raw = await readJson(req);
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
         const input = parseCommentInput(raw);
         if (typeof input === "string") return jsonError(input, 400);
-        return json(await addComment(opts.commentsDir, slug, input), 201);
+        return json(await addComment(opts.ctx.commentsDir, slug, input), 201);
       }
       return jsonError("method not allowed", 405);
     }
@@ -171,7 +172,7 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
           return jsonError('body must be {"reviewed": boolean}', 400);
         }
         const updated = await setCommentReviewed(
-          opts.commentsDir,
+          opts.ctx.commentsDir,
           comment[1],
           comment[2],
           o.reviewed,
@@ -179,7 +180,7 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
         return updated ? json(updated) : jsonError("no such comment", 404);
       }
       if (req.method === "DELETE") {
-        const ok = await deleteComment(opts.commentsDir, comment[1], comment[2]);
+        const ok = await deleteComment(opts.ctx.commentsDir, comment[1], comment[2]);
         return ok ? json({ ok: true }) : jsonError("no such comment", 404);
       }
       return jsonError("method not allowed", 405);
@@ -223,7 +224,7 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
     if (legacy) return redirect(`/docs/${legacy[1]}`);
     if (path.startsWith("/api/")) return api(req, path, opts);
     try {
-      const corpus = await loadCorpus(opts.registryPath); // re-read per request → no restart needed
+      const corpus = await loadCorpus(opts.ctx.registryPath); // re-read per request → no restart needed
       if (path === "/") {
         const docs: Record<string, { review: boolean; visibility: "private" | "shared" }> = {};
         for (const t of corpus) {
@@ -232,13 +233,13 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
           }
         }
         const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
-        return page(injectAdmin(renderIndex(corpus), ctx));
+        return page(injectAdmin(renderIndex(opts.ctx.site, corpus), ctx));
       }
       const m = path.match(DOC_RE);
       if (m) {
         const found = findDoc(corpus, m[1]);
         if (!found) return notice(`No such document: <b>${esc(m[1])}</b>`, 404);
-        const html = await transformDoc(corpus, found.topic, found.doc);
+        const html = await transformDoc(opts.ctx, corpus, found.topic, found.doc);
         const ctx: AdminContext = {
           page: "doc",
           readonly: opts.readonly,
@@ -262,11 +263,8 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 if (import.meta.main) {
   const port = Number(Deno.args[0] ?? Deno.env.get("PORT") ?? 8413);
   const readonly = Deno.env.get("READONLY") === "1";
-  const handler = makeHandler({
-    registryPath: REGISTRY,
-    commentsDir: join(ROOT, "comments"),
-    readonly,
-  });
+  const ctx = await makeContext();
+  const handler = makeHandler({ ctx, readonly });
 
   console.log(`\n  Reading Room — rendered live on http://127.0.0.1:${port}/ (localhost only).`);
   console.log(`  Expose over your tailnet (HTTPS):  tailscale serve --bg ${port}`);
@@ -278,7 +276,7 @@ if (import.meta.main) {
   // Watch the registry for console feedback; freshness comes from the per-request re-read.
   (async () => {
     try {
-      for await (const ev of Deno.watchFs(REGISTRY)) {
+      for await (const ev of Deno.watchFs(ctx.registryPath)) {
         if (ev.kind === "modify" || ev.kind === "create") {
           console.log("  ↻ registry.jsonc changed — reflected on next request");
         }

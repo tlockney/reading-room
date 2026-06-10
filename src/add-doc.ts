@@ -16,7 +16,7 @@
  * management API) and are re-exported here for back-compat.
  */
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
-import { basename, dirname, fromFileUrl, join } from "jsr:@std/path@1";
+import { basename, join } from "jsr:@std/path@1";
 import { copy, exists } from "jsr:@std/fs@1";
 import { insertDoc, insertTopic } from "./registry-edit.ts";
 import type { DocEntry } from "./registry-edit.ts";
@@ -26,7 +26,7 @@ export type { DocEntry, TopicEntry } from "./registry-edit.ts";
 
 // --- CLI shell (only when run directly) ------------------------------------
 if (import.meta.main) {
-  const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
+  const ROOT = Deno.cwd(); // the content repo this doc is being filed into
   const REGISTRY_PATH = join(ROOT, "registry.jsonc");
   const MIGRATED = join(ROOT, "_migrated");
   const a = parseArgs(Deno.args, {

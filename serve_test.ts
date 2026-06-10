@@ -2,6 +2,7 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
 import { makeHandler } from "./src/serve.ts";
+import { makeContext } from "./src/config.ts";
 
 const FIXTURE = `// fixture registry
 [
@@ -22,11 +23,11 @@ async function fixture(readonly = false) {
   const dir = await Deno.makeTempDir();
   const registryPath = join(dir, "registry.jsonc");
   await Deno.writeTextFile(registryPath, FIXTURE);
-  const commentsDir = join(dir, "comments");
+  const ctx = await makeContext(dir);
   return {
     registryPath,
-    commentsDir,
-    handler: makeHandler({ registryPath, commentsDir, readonly }),
+    commentsDir: ctx.commentsDir,
+    handler: makeHandler({ ctx, readonly }),
   };
 }
 

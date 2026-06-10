@@ -1,7 +1,9 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
 import { type AdminContext, injectAdmin } from "./src/admin.ts";
-import { loadCorpus, renderIndex } from "./src/render.ts";
+import { renderIndex } from "./src/render.ts";
+import type { Topic } from "./src/render.ts";
+import { DEFAULT_SITE } from "./src/config.ts";
 
 const ROOT = dirname(fromFileUrl(import.meta.url));
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
@@ -42,9 +44,24 @@ Deno.test("script payload cannot break out of its <script> tag", () => {
 
 // --- the publish-purity guards ----------------------------------------------
 
-Deno.test("static render path carries no admin layer", async () => {
-  const corpus = await loadCorpus();
-  assertEquals(renderIndex(corpus).includes("RR-ADMIN"), false);
+Deno.test("static render path carries no admin layer", () => {
+  const corpus: Topic[] = [{
+    num: "§ 01",
+    id: "t",
+    name: "T",
+    short: "T",
+    docs: [{
+      slug: "a",
+      title: "A",
+      kind: "k",
+      desc: "d",
+      footLeft: "l",
+      footRight: "r",
+      src: "a.html",
+      review: true,
+    }],
+  }];
+  assertEquals(renderIndex(DEFAULT_SITE, corpus).includes("RR-ADMIN"), false);
 });
 
 Deno.test("the static build path's import closure never touches admin.ts or comments.ts", async () => {
