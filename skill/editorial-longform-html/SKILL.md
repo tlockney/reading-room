@@ -1,6 +1,6 @@
 ---
 name: editorial-longform-html
-description: Author long-form reference documents as standalone HTML in the editorial-print aesthetic — ecru paper background, Fraunces display + Source Serif body + JetBrains Mono labels, forest/copper accents, numbered sections, mono eyebrows. The style leans technical but is not engineering-only — use it for any substantive long-form internal document that wants the gravitas of a published handbook: architecture writeups, library/framework guides, system internals, postmortems, design records, RFCs, runbooks, ADRs AND product strategy memos, product requirements / PRDs, roadmap rationale, process playbooks, operational handbooks, policy or governance documents, retrospectives, org-design proposals, vendor evaluations, and similar. Use both when converting from markdown AND when authoring HTML directly to take advantage of inline SVG diagrams, hand-drawn topology figures, interactive Mermaid, hover states, side-by-side code/diagram layouts, or any visual technique that markdown can't express. Trigger on phrases like "make an HTML version", "render this as a doc", "publish this writeup", "convert to HTML", "write this directly in HTML", "reference doc", "playbook", "handbook page", "a doc with diagrams", or whenever the user supplies substantive technical/product/process content and asks for a polished HTML output — assume this style is the default for that class of document unless the user names a different one. Do NOT use for customer-facing marketing pages, status dashboards, quick READMEs, ephemeral status updates, or anything where the editorial tone would feel wrong.
+description: Author long-form reference documents as standalone HTML in the editorial-print aesthetic — ecru paper background, Fraunces display + Source Serif body + JetBrains Mono labels, forest/copper accents, numbered sections, mono eyebrows. The style leans technical but is not engineering-only — use it for any substantive long-form internal document that wants the gravitas of a published handbook: architecture writeups, library/framework guides, system internals, postmortems, design records, RFCs, runbooks, ADRs AND product strategy memos, product requirements / PRDs, roadmap rationale, process playbooks, operational handbooks, policy or governance documents, retrospectives, org-design proposals, vendor evaluations, and similar. Use both when converting from markdown AND when authoring HTML directly to take advantage of inline SVG diagrams, hand-drawn topology figures, interactive Mermaid, hover states, side-by-side code/diagram layouts, or any visual technique that markdown can't express. Trigger on phrases like "make an HTML version", "render this as a doc", "publish this writeup", "convert to HTML", "write this directly in HTML", "reference doc", "playbook", "handbook page", "a doc with diagrams", or whenever the user supplies substantive technical/product/process content and asks for a polished HTML output — assume this style is the default for that class of document unless the user names a different one. Do NOT use for customer-facing marketing pages, status dashboards, quick READMEs, ephemeral status updates, or anything where the editorial tone would feel wrong. ALSO trigger on any request to add, file, or register a document into the Reading Room library — "add this to the reading room", "file this in the library", "put this doc in the reading room", "register this in the reading room" — whether the document is already in the editorial style or still needs to be authored or converted from another source (markdown, notes, a plan, a writeup); the skill covers both paths.
 ---
 
 # Editorial long-form HTML
@@ -248,6 +248,23 @@ ships alongside (the repository containing this skill directory). The
 doc itself doesn't change: the Reading Room's `render.ts` strips the
 baked-in `EDITORIAL-*` regions and re-injects the library's current
 bundle on serve, so there's never a double zoom or double toggle.
+### Two entry paths
+
+When the request is "add this to the Reading Room", decide which case
+you're in before touching anything:
+
+- **The document is already editorial.** It was authored with this
+  skill (or carries the template's structure and the `EDITORIAL-*`
+  blocks): skip straight to the `add-doc` helper below. Don't
+  re-author, restyle, or "improve" it on the way in.
+- **The document doesn't exist yet, or lives in another format** —
+  markdown, a plan, meeting notes, a writeup: author the editorial
+  HTML from that source first, following everything above (copy the
+  template, fill the TODOs, pick components deliberately), then file
+  the result in with `add-doc`. The conversion is a full authoring
+  pass, not a wrapper — don't paste markdown into the template and
+  call it done.
+
 
 **If a Reading Room checkout exists**, file the doc in with its
 helper rather than hand-editing the registry:
