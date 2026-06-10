@@ -1,8 +1,21 @@
 {
-  // Reading Room — local tooling (Deno).
-  //
-  // No build step: `deno task ...` fetches + caches deps on first run. The
-  // site structure lives in registry.jsonc, not in code.
+  // Reading Room — an editorial document library engine, published to JSR as
+  // @tlockney/reading-room. Content repos consume the entry points below via
+  // jsr: specifiers; this repo's own content doubles as the dev environment
+  // until the content split.
+  "name": "@tlockney/reading-room",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./serve": "./src/serve.ts",
+    "./build": "./src/build.ts",
+    "./publish": "./src/publish.ts",
+    "./add-doc": "./src/add-doc.ts"
+  },
+  "publish": {
+    "include": ["src/", "README.md", "LICENSE"]
+  },
   "tasks": {
     // Regenerate src/assets_gen.ts after editing assets/ (pinned by assets_gen_test.ts).
     "gen": "deno run --allow-read --allow-write scripts/gen-assets.ts",
