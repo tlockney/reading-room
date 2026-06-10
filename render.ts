@@ -65,8 +65,8 @@ export interface Topic {
 
 const e = (s: string): string => escape(s);
 
-export async function loadCorpus(): Promise<Topic[]> {
-  return parseJsonc(await Deno.readTextFile(REGISTRY)) as unknown as Topic[];
+export async function loadCorpus(path: string = REGISTRY): Promise<Topic[]> {
+  return parseJsonc(await Deno.readTextFile(path)) as unknown as Topic[];
 }
 
 // --- Back-to-index breadcrumb injected into each doc copy -------------------
@@ -100,6 +100,23 @@ const EXISTING_FAVICON_RE = new RegExp(
   reEscape(FAVICON_START) + "[\\s\\S]*?" + reEscape(FAVICON_END) + "\\n?",
   "g",
 );
+
+// RR-ADMIN: the serve-only management layer's region markers. render.ts only
+// STRIPS this region — healing docs saved from a served page (e.g. a curl of
+// /docs/<slug> dropped into _migrated/) so the static build can never carry
+// management chrome. Injection lives in admin.ts, which serve.ts alone imports.
+export const ADMIN_START = "<!-- RR-ADMIN:start -->";
+export const ADMIN_END = "<!-- RR-ADMIN:end -->";
+const EXISTING_ADMIN_RE = new RegExp(
+  reEscape(ADMIN_START) + "[\\s\\S]*?" + reEscape(ADMIN_END) + "\\n?",
+  "g",
+);
+
+/** Strip any baked-in admin region from a source doc (idempotent). */
+export function stripAdmin(docHtml: string): string {
+  return docHtml.replace(EXISTING_ADMIN_RE, "");
+}
+
 const HREF_RE = /href="([^"]+)"/g;
 
 function sourceBasenameToSlug(corpus: Topic[]): Map<string, string> {
@@ -169,7 +186,7 @@ export async function transformDoc(corpus: Topic[], topic: Topic, doc: Doc): Pro
   if (!(await exists(src))) throw new Error(`missing source: ${src}`);
   const body = rewriteLinks(await Deno.readTextFile(src), sourceBasenameToSlug(corpus));
   const withNav = injectNav(body, navSnippet(topic.id, topic.short, doc.title));
-  return injectEditorialBody(injectEditorialHead(injectFavicon(withNav)));
+  return injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav))));
 }
 
 /** Find + render a doc by slug; null if no such slug. */
