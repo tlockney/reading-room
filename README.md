@@ -85,10 +85,14 @@ carries any of this):
 
 ## Annotations
 
-Select a passage on any doc page → **§ annotate** → write a note. Notes are
-anchored to the text (quote + context, W3C-annotation style) and shown as
-copper `§` marks in the margin; click one to read, jump, or delete. If a doc
-is re-authored and a quote disappears (or becomes ambiguous), the note
+Select a passage on any doc page → **§ annotate** → write a note. Only the
+document's content is annotatable — masthead, minimap/TOC, and footer are
+not. Notes are anchored to the text (quote + context, W3C-annotation style)
+and shown as copper `§` marks in a consistent gutter right of the column;
+click one to read, jump, or delete. Click the `§ n` counter to lay every
+note out in the margin at once — overlapping anchors stack downward — and
+click it again to return to marks. If a doc is re-authored and a quote
+disappears (or becomes ambiguous), the note
 survives as "unanchored" in the `§ n` list. Storage is `comments/<slug>.json`
 sidecars — source HTML is never modified, and annotations never appear in the
 static build. Creating annotations is selection-driven and desktop-first;

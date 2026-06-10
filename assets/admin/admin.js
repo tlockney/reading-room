@@ -8,6 +8,7 @@
  */
 // deno-lint-ignore-file no-window no-window-prefix -- browser-only module; `window` is real here
 import { describeRange, findAnchor } from "./anchor.js";
+import { stackTops } from "./layout.js";
 
 const ctx = window.__RR;
 if (ctx && ctx.page === "index") initIndex(ctx);
@@ -165,12 +166,14 @@ function initDoc(ctx) {
 
   const notesBtn = el("button", "", "§ …");
   notesBtn.type = "button";
-  notesBtn.title = "Annotations";
+  notesBtn.title = "Annotations — show all in the margin";
   cluster.appendChild(notesBtn);
 
   // --- text extraction shared by anchoring + selection capture
-  const SKIP =
-    "[data-library-nav],[data-rradmin],.edtheme,.edzoom-overlay,.edzoom-controls,script,style,noscript";
+  // Structural chrome (masthead, minimap/toc navs, page footer) is not
+  // annotatable and stays out of the anchoring corpus — only content counts.
+  const SKIP = "[data-library-nav],[data-rradmin],.edtheme,.edzoom-overlay,.edzoom-controls," +
+    "header,footer,nav,aside,script,style,noscript";
   function collectText() {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
@@ -225,6 +228,41 @@ function initDoc(ctx) {
   let anchored = new Map(); // id → Range
   let markLayer = null;
   let panel = null;
+  let showAll = false; // § n toggles every annotation laid out as margin cards
+  const SHOWALL_KEY = `rradmin-showall:${ctx.doc.slug}`;
+  try {
+    showAll = sessionStorage.getItem(SHOWALL_KEY) === "1";
+  } catch (_) { /* storage unavailable */ }
+
+  /** Left edge for the annotation gutter (document coords): just right of the
+   * content column, derived from the breadcrumb bar's inner column, which
+   * shares the page's max-width geometry. Per-block right edges are wrong for
+   * indented blocks (code, blockquotes) — the gutter must be column-constant.
+   * Null when the bar is missing (fall back to per-block placement). */
+  function gutterLeft() {
+    const inner = document.querySelector("[data-library-nav] > div");
+    if (!inner) return null;
+    const r = inner.getBoundingClientRect();
+    const pad = parseFloat(getComputedStyle(inner).paddingRight) || 0;
+    return Math.min(
+      r.right - pad + 14,
+      document.documentElement.clientWidth - 34,
+    ) + window.scrollX;
+  }
+
+  /** Card width that fits right of the gutter, or null when too narrow. */
+  function cardWidth(gutter) {
+    const room = document.documentElement.clientWidth - (gutter - window.scrollX) - 12;
+    return room >= 180 ? Math.min(room, 320) : null;
+  }
+
+  function setShowAll(next) {
+    showAll = next;
+    try {
+      sessionStorage.setItem(SHOWALL_KEY, next ? "1" : "0");
+    } catch (_) { /* storage unavailable */ }
+    renderMarks();
+  }
 
   function clearHighlight() {
     if (window.CSS && CSS.highlights) CSS.highlights.delete("rradmin");
@@ -263,13 +301,17 @@ function initDoc(ctx) {
     document.body.appendChild(markLayer);
     anchored = new Map();
 
+    const gutter = gutterLeft();
     const { text, spans } = collectText();
     const hits = [];
+    const orphans = [];
     for (const c of comments) {
       const hit = findAnchor(text, c);
-      if (!hit) continue;
-      const range = rangeFromOffsets(spans, hit.start, hit.end);
-      if (!range) continue;
+      const range = hit && rangeFromOffsets(spans, hit.start, hit.end);
+      if (!range) {
+        orphans.push(c);
+        continue;
+      }
       anchored.set(c.id, range);
       const rect = range.getBoundingClientRect();
       const blockEl = range.startContainer.parentElement;
@@ -278,13 +320,23 @@ function initDoc(ctx) {
         c,
         range,
         top: rect.top + window.scrollY,
-        left: Math.min(
+        left: gutter ?? Math.min(
           block.right + 10 + window.scrollX,
           document.documentElement.clientWidth - 30,
         ),
       });
     }
     hits.sort((a, b) => a.top - b.top);
+    notesBtn.textContent = `§ ${comments.length}`;
+    notesBtn.classList.toggle("rradmin-on", showAll);
+    if (showAll && gutter !== null && cardWidth(gutter) !== null) {
+      renderCards(hits, orphans, gutter);
+    } else {
+      renderDots(hits);
+    }
+  }
+
+  function renderDots(hits) {
     let prevTop = -Infinity;
     for (const h of hits) {
       const top = h.top - prevTop < 20 ? prevTop + 20 : h.top;
@@ -301,7 +353,66 @@ function initDoc(ctx) {
       });
       markLayer.appendChild(mark);
     }
-    notesBtn.textContent = `§ ${comments.length}`;
+  }
+
+  /** Show-all mode: every annotation as a margin card beside its anchor.
+   * Orphans pin to the top of the stack; stackTops pushes overlapping cards
+   * down so nearby anchors never collide. */
+  function renderCards(hits, orphans, gutter) {
+    const width = cardWidth(gutter);
+    // flow position, not getBoundingClientRect — the nav is sticky, so its
+    // rect follows the scroll; orphan cards must pin to the document top
+    const nav = document.querySelector("[data-library-nav]");
+    const contentTop = (nav ? nav.offsetTop + nav.offsetHeight : 0) + 16;
+    const entries = [
+      ...orphans.map((c) => ({ c, range: null, top: contentTop })),
+      ...hits,
+    ];
+    const cards = entries.map((h) => {
+      const card = el("div", "rradmin-card");
+      card.style.left = `${gutter}px`;
+      card.style.width = `${width}px`;
+      const eyebrow = el("p", "rradmin-eyebrow");
+      eyebrow.append(
+        el("span", "", h.range ? h.c.created.slice(0, 10).replaceAll("-", "·") : "unanchored"),
+      );
+      if (!ctx.readonly) {
+        const del = el("button", "rradmin-del", "×");
+        del.type = "button";
+        del.title = "Delete annotation";
+        del.addEventListener("click", () => {
+          api("DELETE", `/api/docs/${ctx.doc.slug}/comments/${h.c.id}`)
+            .then(() => refresh())
+            .then(() => toast("annotation removed"))
+            .catch((err) => toast(`failed: ${err.message}`));
+        });
+        eyebrow.append(del);
+      }
+      const quote = el("p", "rradmin-quote", h.c.quote);
+      const note = el("p", "rradmin-note", h.c.note);
+      card.append(eyebrow, quote, note);
+      if (h.range) {
+        card.addEventListener("mouseenter", () => highlight(h.range));
+        card.addEventListener("mouseleave", clearHighlight);
+        quote.title = "Scroll to passage";
+        quote.addEventListener("click", () => {
+          const target = h.range.startContainer.parentElement;
+          if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+          highlight(h.range);
+        });
+      }
+      markLayer.appendChild(card);
+      return card;
+    });
+    // measure after insertion, then stack: at the anchor, or pushed below the
+    // previous card when they would overlap
+    const tops = stackTops(
+      entries.map((h, i) => ({ anchor: h.top, height: cards[i].offsetHeight })),
+      10,
+    );
+    cards.forEach((card, i) => {
+      card.style.top = `${tops[i]}px`;
+    });
   }
 
   function openNotePanel(c, x, y) {
@@ -392,8 +503,16 @@ function initDoc(ctx) {
 
   notesBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (panel) closePanel();
-    else openListPanel();
+    const gutter = gutterLeft();
+    if (gutter !== null && cardWidth(gutter) !== null) {
+      // wide enough for margin cards: § n toggles show-all
+      closePanel();
+      setShowAll(!showAll);
+    } else if (panel) {
+      closePanel();
+    } else {
+      openListPanel(); // narrow viewport: the list panel is the overview
+    }
   });
 
   // --- creating annotations from a selection
