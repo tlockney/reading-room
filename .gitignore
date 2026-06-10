@@ -6,3 +6,6 @@
 # LaunchAgent logs (agent.sh)
 .agent.out.log
 .agent.err.log
+
+# Remote-publish staging (deno task publish)
+/.publish/
