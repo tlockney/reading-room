@@ -26,7 +26,7 @@ export type { DocEntry, TopicEntry } from "./registry-edit.ts";
 
 // --- CLI shell (only when run directly) ------------------------------------
 if (import.meta.main) {
-  const ROOT = dirname(fromFileUrl(import.meta.url));
+  const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
   const REGISTRY_PATH = join(ROOT, "registry.jsonc");
   const MIGRATED = join(ROOT, "_migrated");
   const a = parseArgs(Deno.args, {

@@ -1,16 +1,28 @@
 # Reading Room Engine Extraction Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn this repo into the publishable `@tlockney/reading-room` JSR engine: modules under `src/`, root resolved from `Deno.cwd()`, `SITE` loaded from `site.jsonc`, assets embedded via codegen, additive head/body slots, JSR metadata + publish workflow, and an `example/` consumer proving the shape.
+**Goal:** Turn this repo into the publishable `@tlockney/reading-room` JSR engine: modules under
+`src/`, root resolved from `Deno.cwd()`, `SITE` loaded from `site.jsonc`, assets embedded via
+codegen, additive head/body slots, JSR metadata + publish workflow, and an `example/` consumer
+proving the shape.
 
-**Architecture:** Per `_specs/2026-06-10-reading-room-packaging-design.md`. A `RoomContext` (root + derived paths + site config) is created from `Deno.cwd()` by entry points and threaded through `render`/`build`/`serve`/`publish`/`add-doc`. Partials and the admin bundle become generated string constants (`src/assets_gen.ts`) so JSR modules never read package-relative files. Consumer customization is two additive slot regions injected idempotently like the editorial bundle.
+**Architecture:** Per `_specs/2026-06-10-reading-room-packaging-design.md`. A `RoomContext` (root +
+derived paths + site config) is created from `Deno.cwd()` by entry points and threaded through
+`render`/`build`/`serve`/`publish`/`add-doc`. Partials and the admin bundle become generated string
+constants (`src/assets_gen.ts`) so JSR modules never read package-relative files. Consumer
+customization is two additive slot regions injected idempotently like the editorial bundle.
 
-**Tech Stack:** Deno (TypeScript, strict), `jsr:@std/*@1`, Deno test runner, JSR publishing (`deno publish`), GitHub Actions OIDC.
+**Tech Stack:** Deno (TypeScript, strict), `jsr:@std/*@1`, Deno test runner, JSR publishing
+(`deno publish`), GitHub Actions OIDC.
 
-**Working directory:** `~/src/personal/reading-room-package-extraction` (worktree, branch `package-extraction`).
+**Working directory:** `~/src/personal/reading-room-package-extraction` (worktree, branch
+`package-extraction`).
 
-**Verify between tasks:** `deno task test` must pass at every commit. `deno fmt --check` and `deno lint` before each commit.
+**Verify between tasks:** `deno task test` must pass at every commit. `deno fmt --check` and
+`deno lint` before each commit.
 
 ---
 
@@ -19,7 +31,9 @@
 Pure relocation; no behavior change. Tests stay at repo root.
 
 **Files:**
-- Move: `render.ts`, `serve.ts`, `build.ts`, `publish.ts`, `add-doc.ts`, `admin.ts`, `comments.ts`, `registry-edit.ts` → `src/`
+
+- Move: `render.ts`, `serve.ts`, `build.ts`, `publish.ts`, `add-doc.ts`, `admin.ts`, `comments.ts`,
+  `registry-edit.ts` → `src/`
 - Modify: every `*_test.ts` at root; `deno.jsonc` tasks
 
 - [ ] **Step 1: git mv the modules**
@@ -31,9 +45,11 @@ git mv render.ts serve.ts build.ts publish.ts admin.ts comments.ts registry-edit
 
 - [ ] **Step 2: Fix intra-src imports**
 
-Imports between the moved files are relative (`./render.ts` etc.) and still resolve within `src/`. No edits needed inside `src/` except `src/render.ts`'s `ROOT`:
+Imports between the moved files are relative (`./render.ts` etc.) and still resolve within `src/`.
+No edits needed inside `src/` except `src/render.ts`'s `ROOT`:
 
-In `src/render.ts` line 17, `ROOT` currently resolves to the module dir, which is now `src/`. Temporary shim until Task 4 removes it entirely:
+In `src/render.ts` line 17, `ROOT` currently resolves to the module dir, which is now `src/`.
+Temporary shim until Task 4 removes it entirely:
 
 ```ts
 export const ROOT = dirname(dirname(fromFileUrl(import.meta.url))); // repo root (src/..)
@@ -47,7 +63,9 @@ const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
 
 - [ ] **Step 3: Update test imports and deno.jsonc tasks**
 
-In every root `*_test.ts`, change `from "./<mod>.ts"` → `from "./src/<mod>.ts"` (modules only — `partials_test.ts`/`drift_test.ts`/`admin_test.ts` compute their own `ROOT` from `import.meta.url` at repo root, which is unchanged).
+In every root `*_test.ts`, change `from "./<mod>.ts"` → `from "./src/<mod>.ts"` (modules only —
+`partials_test.ts`/`drift_test.ts`/`admin_test.ts` compute their own `ROOT` from `import.meta.url`
+at repo root, which is unchanged).
 
 In `deno.jsonc`, point tasks at `src/`:
 
@@ -71,8 +89,10 @@ git add -A && git commit -m "refactor: move engine modules under src/"
 ### Task 2: Asset embedding codegen
 
 **Files:**
+
 - Create: `scripts/gen-assets.ts`, `src/assets_gen.ts` (generated), `assets_gen_test.ts`
-- Modify: `src/render.ts` (partials), `src/serve.ts` (admin assets + icons), `src/build.ts` (icons), `deno.jsonc` (gen task)
+- Modify: `src/render.ts` (partials), `src/serve.ts` (admin assets + icons), `src/build.ts` (icons),
+  `deno.jsonc` (gen task)
 
 - [ ] **Step 1: Write the generator with an exported pure core**
 
@@ -93,7 +113,8 @@ const REPO = dirname(dirname(fromFileUrl(import.meta.url)));
 
 export async function generate(root: string = REPO): Promise<string> {
   const text = (p: string): Promise<string> => Deno.readTextFile(join(root, p));
-  const bin = async (p: string): Promise<string> => encodeBase64(await Deno.readFile(join(root, p)));
+  const bin = async (p: string): Promise<string> =>
+    encodeBase64(await Deno.readFile(join(root, p)));
   const admin: Record<string, string> = {};
   for (const name of ["admin.css", "admin.js", "anchor.js", "layout.js"]) {
     admin[name] = await text(`assets/admin/${name}`);
@@ -145,7 +166,8 @@ Run: `deno task gen && deno test --allow-read assets_gen_test.ts` → PASS.
 
 - [ ] **Step 5: Consume embedded partials in render.ts**
 
-In `src/render.ts` delete the `EDITORIAL` const and the two `Deno.readTextFile` partial loads; instead:
+In `src/render.ts` delete the `EDITORIAL` const and the two `Deno.readTextFile` partial loads;
+instead:
 
 ```ts
 import { EDITORIAL_BODY as BODY_PARTIAL, EDITORIAL_HEAD as HEAD_PARTIAL } from "./assets_gen.ts";
@@ -195,7 +217,8 @@ Drop the now-unused `asset()` helper and `join` import if unused.
 
 - [ ] **Step 7: Write icons from embedded constants in build.ts**
 
-In `src/build.ts`, replace the icon `copyFile` loop (and make it unconditional — consumers don't carry icon files):
+In `src/build.ts`, replace the icon `copyFile` loop (and make it unconditional — consumers don't
+carry icon files):
 
 ```ts
 import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
@@ -207,7 +230,8 @@ await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TO
 
 - [ ] **Step 8: Verify + commit**
 
-Run: `deno task test && deno fmt && deno lint` → clean. Manual spot-check: `deno task serve` then `curl -s localhost:8413/assets/admin/admin.css | head -3` and `curl -sI localhost:8413/favicon.svg`.
+Run: `deno task test && deno fmt && deno lint` → clean. Manual spot-check: `deno task serve` then
+`curl -s localhost:8413/assets/admin/admin.css | head -3` and `curl -sI localhost:8413/favicon.svg`.
 
 ```bash
 git add -A && git commit -m "feat: embed partials, admin bundle, and icons via assets codegen"
@@ -216,6 +240,7 @@ git add -A && git commit -m "feat: embed partials, admin bundle, and icons via a
 ### Task 3: `site.jsonc` config (`src/config.ts`)
 
 **Files:**
+
 - Create: `src/config.ts`, `config_test.ts`
 - Modify: `src/render.ts` (SITE const → parameter)
 
@@ -349,28 +374,43 @@ git add src/config.ts config_test.ts && git commit -m "feat: site.jsonc config w
 
 ### Task 4: Thread `RoomContext` through render/serve/build/publish/add-doc
 
-The big one. After this task the engine has no `import.meta.url`-derived paths left (outside the gen script and root-level tests).
+The big one. After this task the engine has no `import.meta.url`-derived paths left (outside the gen
+script and root-level tests).
 
 **Files:**
+
 - Modify: `src/render.ts`, `src/serve.ts`, `src/build.ts`, `src/publish.ts`, `src/add-doc.ts`
 - Modify: `render_test.ts`, `build_test.ts`, `serve_test.ts`, `admin_test.ts` (call-site updates)
 
 - [ ] **Step 1: render.ts — delete root constants, parameterize**
 
-Delete `ROOT`, `WORKSPACE`, `SITE`, `DOCS_OUT`, `MIGRATED`, `REGISTRY` exports. Import `Site` + `RoomContext` types from `./config.ts`. New signatures (bodies unchanged except path lookups go through `ctx`):
+Delete `ROOT`, `WORKSPACE`, `SITE`, `DOCS_OUT`, `MIGRATED`, `REGISTRY` exports. Import `Site` +
+`RoomContext` types from `./config.ts`. New signatures (bodies unchanged except path lookups go
+through `ctx`):
 
 ```ts
-export async function loadCorpus(path: string): Promise<Topic[]>;  // path now required
-export async function transformDoc(ctx: RoomContext, corpus: Topic[], topic: Topic, doc: Doc): Promise<string>;
+export async function loadCorpus(path: string): Promise<Topic[]>; // path now required
+export async function transformDoc(
+  ctx: RoomContext,
+  corpus: Topic[],
+  topic: Topic,
+  doc: Doc,
+): Promise<string>;
 //   override = join(ctx.migratedDir, `${doc.slug}.html`);  src fallback = join(ctx.workspace, doc.src)
-export async function transformDocBySlug(ctx: RoomContext, corpus: Topic[], slug: string): Promise<string | null>;
+export async function transformDocBySlug(
+  ctx: RoomContext,
+  corpus: Topic[],
+  slug: string,
+): Promise<string | null>;
 export function renderIndex(site: Site, corpus: Topic[]): string;
 ```
 
 `INDEX_TEMPLATE` becomes a function (template literal moves inside, `SITE.x` → `site.x`):
 
 ```ts
-function indexTemplate(site: Site): string { return `<!DOCTYPE html> ...`; }
+function indexTemplate(site: Site): string {
+  return `<!DOCTYPE html> ...`;
+}
 ```
 
 `renderIndex` calls `indexTemplate(site)` instead of the const.
@@ -382,10 +422,14 @@ export interface BuildOptions {
   outDir?: string; // default ctx.root — today's layout (<root>/docs + <root>/index.html)
   sharedOnly?: boolean;
 }
-export async function build(ctx: RoomContext, opts: BuildOptions = {}): Promise<{ docs: number; topics: number }>;
+export async function build(
+  ctx: RoomContext,
+  opts: BuildOptions = {},
+): Promise<{ docs: number; topics: number }>;
 ```
 
-Internally: `loadCorpus(ctx.registryPath)`, `renderIndex(ctx.site, corpus)`, `transformDoc(ctx, ...)`. The `registryPath` option is gone (ctx carries it). Main block:
+Internally: `loadCorpus(ctx.registryPath)`, `renderIndex(ctx.site, corpus)`,
+`transformDoc(ctx, ...)`. The `registryPath` option is gone (ctx carries it). Main block:
 
 ```ts
 if (import.meta.main) {
@@ -406,7 +450,9 @@ export interface ServeOptions {
 }
 ```
 
-All `opts.registryPath` → `opts.ctx.registryPath`, `opts.commentsDir` → `opts.ctx.commentsDir`. The index route renders `renderIndex(opts.ctx.site, corpus)`; the doc route `transformDoc(opts.ctx, ...)`. Startup block:
+All `opts.registryPath` → `opts.ctx.registryPath`, `opts.commentsDir` → `opts.ctx.commentsDir`. The
+index route renders `renderIndex(opts.ctx.site, corpus)`; the doc route
+`transformDoc(opts.ctx, ...)`. Startup block:
 
 ```ts
 if (import.meta.main) {
@@ -419,13 +465,18 @@ if (import.meta.main) {
 
 - [ ] **Step 4: publish.ts and add-doc.ts — cwd context**
 
-`publish.ts`: drop `ROOT` import; `const ctx = await makeContext();` then `out = join(ctx.root, ".publish")`, `cfgPath = join(ctx.root, "publish.jsonc")`, `build(ctx, { outDir: out, sharedOnly: true })`.
+`publish.ts`: drop `ROOT` import; `const ctx = await makeContext();` then
+`out = join(ctx.root, ".publish")`, `cfgPath = join(ctx.root, "publish.jsonc")`,
+`build(ctx, { outDir: out, sharedOnly: true })`.
 
-`add-doc.ts` main block: `const root = Deno.cwd();` replaces the module-dir `ROOT`; `REGISTRY_PATH`/`MIGRATED` derive from it; the entry's `src` value stays `` `${basename(root)}/_migrated/${slug}.html` ``.
+`add-doc.ts` main block: `const root = Deno.cwd();` replaces the module-dir `ROOT`;
+`REGISTRY_PATH`/`MIGRATED` derive from it; the entry's `src` value stays
+`` `${basename(root)}/_migrated/${slug}.html` ``.
 
 - [ ] **Step 5: Update tests to fixture roots**
 
-- `render_test.ts`: `renderIndex(...)` call sites (if any) gain `DEFAULT_SITE` as first arg; pure injector tests unchanged.
+- `render_test.ts`: `renderIndex(...)` call sites (if any) gain `DEFAULT_SITE` as first arg; pure
+  injector tests unchanged.
 - `build_test.ts`: build a full temp root instead of writing into the repo's `_migrated/`:
 
 ```ts
@@ -441,12 +492,17 @@ const res = await build(ctx, { outDir: out, sharedOnly: true });
 ```
 
 Add an assertion that `out/favicon.svg` exists (icons now written from embedded constants).
-- `serve_test.ts`: `fixture()` returns `makeHandler({ ctx: await makeContext(dir), readonly })` — the temp dir already holds `registry.jsonc`; `commentsDir` lands at `<dir>/comments` exactly as before.
-- `admin_test.ts`: the import-closure purity check reads `src/*.ts` files — update any hardcoded module paths (`build.ts` → `src/build.ts` etc.).
+
+- `serve_test.ts`: `fixture()` returns `makeHandler({ ctx: await makeContext(dir), readonly })` —
+  the temp dir already holds `registry.jsonc`; `commentsDir` lands at `<dir>/comments` exactly as
+  before.
+- `admin_test.ts`: the import-closure purity check reads `src/*.ts` files — update any hardcoded
+  module paths (`build.ts` → `src/build.ts` etc.).
 
 - [ ] **Step 6: Verify + commit**
 
-Run: `deno task test && deno fmt && deno lint` → clean. Manual: `deno task serve` from repo root (repo still carries its own content) — index renders, a doc page renders, annotation popover loads.
+Run: `deno task test && deno fmt && deno lint` → clean. Manual: `deno task serve` from repo root
+(repo still carries its own content) — index renders, a doc page renders, annotation popover loads.
 
 ```bash
 git add -A && git commit -m "refactor: thread RoomContext; engine operates on cwd, not module dir"
@@ -455,8 +511,10 @@ git add -A && git commit -m "refactor: thread RoomContext; engine operates on cw
 ### Task 5: Additive local slots
 
 **Files:**
+
 - Create: `slots_test.ts`
-- Modify: `src/render.ts` (slot loading + injection), `src/serve.ts` + `src/build.ts` (pass slots), `build_test.ts` (slot in static output)
+- Modify: `src/render.ts` (slot loading + injection), `src/serve.ts` + `src/build.ts` (pass slots),
+  `build_test.ts` (slot in static output)
 
 - [ ] **Step 1: Write failing tests**
 
@@ -484,8 +542,16 @@ Deno.test("loadSlots: reads assets/head-extra.html and body-extra.html", async (
 
 Deno.test("injectLocalSlots: wraps content in markers before </head> and </body>", () => {
   const out = injectLocalSlots(PAGE, { head: "<style>.x{}</style>", body: "<script>1</script>" });
-  assert(out.includes("<!-- RR-LOCAL-HEAD:start -->\n<style>.x{}</style>\n<!-- RR-LOCAL-HEAD:end -->\n</head>"));
-  assert(out.includes("<!-- RR-LOCAL-BODY:start -->\n<script>1</script>\n<!-- RR-LOCAL-BODY:end -->\n</body>"));
+  assert(
+    out.includes(
+      "<!-- RR-LOCAL-HEAD:start -->\n<style>.x{}</style>\n<!-- RR-LOCAL-HEAD:end -->\n</head>",
+    ),
+  );
+  assert(
+    out.includes(
+      "<!-- RR-LOCAL-BODY:start -->\n<script>1</script>\n<!-- RR-LOCAL-BODY:end -->\n</body>",
+    ),
+  );
 });
 
 Deno.test("injectLocalSlots: idempotent and healing — stale regions are replaced", () => {
@@ -556,7 +622,8 @@ export function injectLocalSlots(html: string, slots: LocalSlots): string {
 }
 ```
 
-Apply in the two page producers (slots re-read per render so edits show on refresh, same as everything else):
+Apply in the two page producers (slots re-read per render so edits show on refresh, same as
+everything else):
 
 - `transformDoc(...)` final return becomes:
 
@@ -568,13 +635,16 @@ return injectLocalSlots(
 );
 ```
 
-- `renderIndex(site, corpus)` stays pure/sync; the callers compose slots. In `src/serve.ts` index route and `src/build.ts` index write:
+- `renderIndex(site, corpus)` stays pure/sync; the callers compose slots. In `src/serve.ts` index
+  route and `src/build.ts` index write:
 
 ```ts
-injectLocalSlots(renderIndex(ctx.site, corpus), await loadSlots(ctx.root))
+injectLocalSlots(renderIndex(ctx.site, corpus), await loadSlots(ctx.root));
 ```
 
-- [ ] **Step 3: Extend build_test** — write `assets/head-extra.html` (`<style>/*local*/</style>`) into the fixture root; assert built doc page and index both contain `RR-LOCAL-HEAD` and the style; assert built output still contains no `RR-ADMIN`.
+- [ ] **Step 3: Extend build_test** — write `assets/head-extra.html` (`<style>/*local*/</style>`)
+      into the fixture root; assert built doc page and index both contain `RR-LOCAL-HEAD` and the
+      style; assert built output still contains no `RR-ADMIN`.
 
 - [ ] **Step 4: Verify + commit**
 
@@ -587,6 +657,7 @@ git add -A && git commit -m "feat: additive head/body slots from consumer assets
 ### Task 6: Package metadata, `mod.ts`, publish dry-run
 
 **Files:**
+
 - Create: `src/mod.ts`, `LICENSE`
 - Modify: `deno.jsonc`
 
@@ -637,7 +708,8 @@ export type { PublishConfig } from "./publish.ts";
 export { EDITORIAL_BODY, EDITORIAL_HEAD } from "./assets_gen.ts";
 ```
 
-(Adjust the named exports to exactly what each module exports — compile errors will flag any mismatch.)
+(Adjust the named exports to exactly what each module exports — compile errors will flag any
+mismatch.)
 
 - [ ] **Step 2: JSR metadata in `deno.jsonc`**
 
@@ -665,7 +737,9 @@ Add at top level:
 
 Run: `deno publish --dry-run --allow-dirty`
 
-Expected complaints: JSR's no-slow-types rule needs explicit types on exported APIs. Most functions already have return types; fix any it names (typical: `parseJsonc(...) as unknown as Topic[]` is fine; missing return annotations are not). Iterate until dry-run passes.
+Expected complaints: JSR's no-slow-types rule needs explicit types on exported APIs. Most functions
+already have return types; fix any it names (typical: `parseJsonc(...) as unknown as Topic[]` is
+fine; missing return annotations are not). Iterate until dry-run passes.
 
 - [ ] **Step 5: Verify + commit**
 
@@ -678,6 +752,7 @@ git add -A && git commit -m "feat: JSR package metadata, mod.ts surface, MIT lic
 ### Task 7: GitHub Actions publish workflow
 
 **Files:**
+
 - Create: `.github/workflows/publish.yml`, `.github/workflows/ci.yml`
 
 - [ ] **Step 1: CI workflow** (`.github/workflows/ci.yml`):
@@ -733,7 +808,10 @@ git add .github && git commit -m "ci: test + JSR publish workflows"
 ### Task 8: `example/` consumer + integration test
 
 **Files:**
-- Create: `example/deno.jsonc`, `example/site.jsonc`, `example/registry.jsonc`, `example/_migrated/welcome.html`, `example/assets/head-extra.html`, `example/agent.sh` (template), `example_test.ts`
+
+- Create: `example/deno.jsonc`, `example/site.jsonc`, `example/registry.jsonc`,
+  `example/_migrated/welcome.html`, `example/assets/head-extra.html`, `example/agent.sh` (template),
+  `example_test.ts`
 - Modify: `.gitignore` (example build output), `README.md`
 
 - [ ] **Step 1: Example content repo**
@@ -761,10 +839,16 @@ git add .github && git commit -m "ci: test + JSR publish workflows"
     "name": "Getting Started",
     "short": "Start",
     "docs": [
-      { "slug": "welcome", "title": "Welcome",
-        "kind": "Guide", "desc": "What this example shows.",
-        "footLeft": "Guide", "footRight": "Example",
-        "src": "example/_migrated/welcome.html", "visibility": "shared" }
+      {
+        "slug": "welcome",
+        "title": "Welcome",
+        "kind": "Guide",
+        "desc": "What this example shows.",
+        "footLeft": "Guide",
+        "footRight": "Example",
+        "src": "example/_migrated/welcome.html",
+        "visibility": "shared"
+      }
     ]
   }
 ]
@@ -775,18 +859,27 @@ git add .github && git commit -m "ci: test + JSR publish workflows"
 ```html
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="utf-8"><title>Welcome</title></head>
-<body><h1>Welcome</h1><p>A minimal Reading Room document.</p></body>
+  <head>
+    <meta charset="utf-8">
+    <title>Welcome</title>
+  </head>
+  <body>
+    <h1>Welcome</h1>
+    <p>A minimal Reading Room document.</p>
+  </body>
 </html>
 ```
 
 `example/assets/head-extra.html`:
 
 ```html
-<style>/* local customization rides along via the RR-LOCAL-HEAD slot */</style>
+<style>
+  /* local customization rides along via the RR-LOCAL-HEAD slot */
+</style>
 ```
 
-`example/deno.jsonc` — what a real consumer pins (path import until the first JSR publish; switch the comment around after):
+`example/deno.jsonc` — what a real consumer pins (path import until the first JSR publish; switch
+the comment around after):
 
 ```jsonc
 {
@@ -827,13 +920,21 @@ Deno.test("example consumer builds with site config and slots applied", async ()
 });
 ```
 
-- [ ] **Step 3: README** — rewrite around the engine/consumer split: what the package is, consumer repo layout (from the spec), `site.jsonc` fields, slots, publish config, and a "developing the engine" section (gen task, tests, example/). Keep the existing manage/annotations/publish documentation, updated for packaged tasks.
+- [ ] **Step 3: README** — rewrite around the engine/consumer split: what the package is, consumer
+      repo layout (from the spec), `site.jsonc` fields, slots, publish config, and a "developing the
+      engine" section (gen task, tests, example/). Keep the existing manage/annotations/publish
+      documentation, updated for packaged tasks.
 
-- [ ] **Step 4: agent.sh** — move to `example/agent.sh` as the consumer template: replace the hardcoded `src/serve.ts` invocation with `deno task serve` style args (`ProgramArguments`: deno, `run`, permissions…, `jsr:@tlockney/reading-room/serve`) and keep the env-overridable `DENO`/`TS` lookups. The engine repo itself keeps a copy at root only while it still doubles as the personal library (removed at content-split time).
+- [ ] **Step 4: agent.sh** — move to `example/agent.sh` as the consumer template: replace the
+      hardcoded `src/serve.ts` invocation with `deno task serve` style args (`ProgramArguments`:
+      deno, `run`, permissions…, `jsr:@tlockney/reading-room/serve`) and keep the env-overridable
+      `DENO`/`TS` lookups. The engine repo itself keeps a copy at root only while it still doubles
+      as the personal library (removed at content-split time).
 
 - [ ] **Step 5: Verify + commit**
 
-Run: `deno task test && deno fmt && deno lint` → clean. Manual: `cd example && deno task serve` → index shows "Example Reading Room", welcome doc renders, manage mode works; Ctrl-C.
+Run: `deno task test && deno fmt && deno lint` → clean. Manual: `cd example && deno task serve` →
+index shows "Example Reading Room", welcome doc renders, manage mode works; Ctrl-C.
 
 ```bash
 git add -A && git commit -m "feat: example consumer repo + integration test; README for the package split"
@@ -843,9 +944,13 @@ git add -A && git commit -m "feat: example consumer repo + integration test; REA
 
 - [ ] **Step 1: Full suite + dry-run**
 
-Run from repo root: `deno task test && deno fmt --check && deno lint && deno publish --dry-run --allow-dirty` → all clean.
+Run from repo root:
+`deno task test && deno fmt --check && deno lint && deno publish --dry-run --allow-dirty` → all
+clean.
 
-- [ ] **Step 2: Engine-as-own-consumer smoke** (repo still carries the personal content until the split): `deno task serve` from repo root — index renders with the *default* site identity, doc pages render, annotations load, `deno task publish --dry-run` prints the right command.
+- [ ] **Step 2: Engine-as-own-consumer smoke** (repo still carries the personal content until the
+      split): `deno task serve` from repo root — index renders with the _default_ site identity, doc
+      pages render, annotations load, `deno task publish --dry-run` prints the right command.
 
 - [ ] **Step 3: Commit any stragglers; push branch**
 
@@ -857,6 +962,11 @@ git push -u origin package-extraction
 
 ## Out of scope for this plan (post-publish, per spec migration order)
 
-1. First JSR release: `git tag v0.1.0 && git push --tags` after PR merge — needs the JSR scope `@tlockney` linked to the GitHub repo (one-time manual step on jsr.io).
-2. Content split: move `registry.jsonc`, `_migrated/`, `comments/`, `site.jsonc`, `publish.jsonc`, `agent.sh` to a new private content repo shaped like `example/`.
-3. Work repo conversion (`metron/reading-room`): delete engine files, add consumer `deno.jsonc` + `site.jsonc` with the Metron strings, pin the published version, keep its drift test pointing at `~/.claude/skills/...` comparing against the package's exported `EDITORIAL_HEAD`/`EDITORIAL_BODY`.
+1. First JSR release: `git tag v0.1.0 && git push --tags` after PR merge — needs the JSR scope
+   `@tlockney` linked to the GitHub repo (one-time manual step on jsr.io).
+2. Content split: move `registry.jsonc`, `_migrated/`, `comments/`, `site.jsonc`, `publish.jsonc`,
+   `agent.sh` to a new private content repo shaped like `example/`.
+3. Work repo conversion (`metron/reading-room`): delete engine files, add consumer `deno.jsonc` +
+   `site.jsonc` with the Metron strings, pin the published version, keep its drift test pointing at
+   `~/.claude/skills/...` comparing against the package's exported
+   `EDITORIAL_HEAD`/`EDITORIAL_BODY`.

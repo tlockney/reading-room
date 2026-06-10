@@ -1,12 +1,22 @@
 # Interactive Reading Room Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the Reading Room manageable from the browser — review/visibility toggles, non-destructive removal, anchored marginalia comments — plus a configurable static publish of the `visibility:shared` subset, with zero management chrome in published output.
+**Goal:** Make the Reading Room manageable from the browser — review/visibility toggles,
+non-destructive removal, anchored marginalia comments — plus a configurable static publish of the
+`visibility:shared` subset, with zero management chrome in published output.
 
-**Architecture:** The pure render core (`render.ts`) and static builder (`build.ts`) keep their current render path. All interactivity is added in the dynamic server: `serve.ts` gains `/api/` routes and a post-render `injectAdmin()` step that appends an admin bundle (`assets/admin/`) served only by it. Registry mutations are pure string surgery (new `registry-edit.ts`, extracted from `add-doc.ts`) so `registry.jsonc` comments/formatting survive. Comments live in sidecar JSON (`comments/<slug>.json`); source HTML is never modified.
+**Architecture:** The pure render core (`render.ts`) and static builder (`build.ts`) keep their
+current render path. All interactivity is added in the dynamic server: `serve.ts` gains `/api/`
+routes and a post-render `injectAdmin()` step that appends an admin bundle (`assets/admin/`) served
+only by it. Registry mutations are pure string surgery (new `registry-edit.ts`, extracted from
+`add-doc.ts`) so `registry.jsonc` comments/formatting survive. Comments live in sidecar JSON
+(`comments/<slug>.json`); source HTML is never modified.
 
-**Tech Stack:** Deno (no build step, jsr:@std only — all deps already in `deno.lock`), vanilla ES-module browser JS, JSON sidecar files.
+**Tech Stack:** Deno (no build step, jsr:@std only — all deps already in `deno.lock`), vanilla
+ES-module browser JS, JSON sidecar files.
 
 **Spec:** `_specs/2026-06-10-interactive-reading-room-design.md`
 
@@ -14,46 +24,51 @@
 
 ## File structure
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `registry-edit.ts` | create | Pure string surgery on registry text: `insertDoc`/`insertTopic` (moved from add-doc.ts), `setDocField`, `removeDoc`, `slugExists`, `UnknownSlugError` |
-| `registry-edit_test.ts` | create | Surgery tests (comment preservation, first/middle/last/only removal, idempotency) |
-| `add-doc.ts` | modify | Keep CLI; import + re-export surgery functions from `registry-edit.ts` |
-| `comments.ts` | create | Sidecar comment store (load/add/delete, input validation, `writeAtomic`) |
-| `comments_test.ts` | create | Store CRUD + validation tests |
-| `assets/admin/anchor.js` | create | Pure text-quote anchoring (JSDoc-typed JS; imported by browser AND Deno tests) |
-| `anchor_test.ts` | create | Anchor resolution preference order + context capture |
-| `admin.ts` | create | Server-only `injectAdmin(html, ctx)` — admin bundle + page-context payload |
-| `admin_test.ts` | create | Injector output + no-admin-in-publish guard tests |
-| `serve.ts` | modify | `makeHandler(opts)` (testable), `/api/` routes, admin asset serving, READONLY, `import.meta.main` startup |
-| `serve_test.ts` | create | Handler-level API tests against a temp-dir fixture |
-| `render.ts` | modify | `loadCorpus(path = REGISTRY)` — one-line parametrization only |
-| `assets/admin/admin.css` | create | Admin layer styling (theme-variable driven) |
-| `assets/admin/admin.js` | create | Browser admin layer: manage mode, breadcrumb cluster, marginalia |
-| `build.ts` | modify | Exported `build(opts)` + `filterShared`; CLI behavior unchanged |
-| `build_test.ts` | create | `filterShared` tests |
-| `publish.ts` | create | Shared-subset build → configured command (`publish.jsonc`, `{out}` substitution) |
-| `publish_test.ts` | create | `parsePublishConfig` + `resolveCmd` tests |
-| `deno.jsonc` | modify | `publish` task; serve/test permission updates |
-| `.gitignore` | modify | Ignore `.publish/` |
-| `README.md` | modify | Document manage mode, annotations, publish |
+| File                     | Status | Responsibility                                                                                                                                        |
+| ------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registry-edit.ts`       | create | Pure string surgery on registry text: `insertDoc`/`insertTopic` (moved from add-doc.ts), `setDocField`, `removeDoc`, `slugExists`, `UnknownSlugError` |
+| `registry-edit_test.ts`  | create | Surgery tests (comment preservation, first/middle/last/only removal, idempotency)                                                                     |
+| `add-doc.ts`             | modify | Keep CLI; import + re-export surgery functions from `registry-edit.ts`                                                                                |
+| `comments.ts`            | create | Sidecar comment store (load/add/delete, input validation, `writeAtomic`)                                                                              |
+| `comments_test.ts`       | create | Store CRUD + validation tests                                                                                                                         |
+| `assets/admin/anchor.js` | create | Pure text-quote anchoring (JSDoc-typed JS; imported by browser AND Deno tests)                                                                        |
+| `anchor_test.ts`         | create | Anchor resolution preference order + context capture                                                                                                  |
+| `admin.ts`               | create | Server-only `injectAdmin(html, ctx)` — admin bundle + page-context payload                                                                            |
+| `admin_test.ts`          | create | Injector output + no-admin-in-publish guard tests                                                                                                     |
+| `serve.ts`               | modify | `makeHandler(opts)` (testable), `/api/` routes, admin asset serving, READONLY, `import.meta.main` startup                                             |
+| `serve_test.ts`          | create | Handler-level API tests against a temp-dir fixture                                                                                                    |
+| `render.ts`              | modify | `loadCorpus(path = REGISTRY)` — one-line parametrization only                                                                                         |
+| `assets/admin/admin.css` | create | Admin layer styling (theme-variable driven)                                                                                                           |
+| `assets/admin/admin.js`  | create | Browser admin layer: manage mode, breadcrumb cluster, marginalia                                                                                      |
+| `build.ts`               | modify | Exported `build(opts)` + `filterShared`; CLI behavior unchanged                                                                                       |
+| `build_test.ts`          | create | `filterShared` tests                                                                                                                                  |
+| `publish.ts`             | create | Shared-subset build → configured command (`publish.jsonc`, `{out}` substitution)                                                                      |
+| `publish_test.ts`        | create | `parsePublishConfig` + `resolveCmd` tests                                                                                                             |
+| `deno.jsonc`             | modify | `publish` task; serve/test permission updates                                                                                                         |
+| `.gitignore`             | modify | Ignore `.publish/`                                                                                                                                    |
+| `README.md`              | modify | Document manage mode, annotations, publish                                                                                                            |
 
-Do NOT touch: `registry.jsonc` (avoid conflicts with uncommitted user edits on main), `assets/editorial/*`, `skill/`, `agent.sh`, `_migrated/*` (the three untracked HTML files copied into this worktree stay untracked — never `git add` them).
+Do NOT touch: `registry.jsonc` (avoid conflicts with uncommitted user edits on main),
+`assets/editorial/*`, `skill/`, `agent.sh`, `_migrated/*` (the three untracked HTML files copied
+into this worktree stay untracked — never `git add` them).
 
-Conventions: match repo style — `//`-comment headers explaining the file's role, `jsr:@std/*@1` imports, 100-char fmt width, lowercase-prefix commit subjects ("serve: …"). Never use `any` (use `unknown` + narrowing). Before each commit run `deno fmt <changed .ts files>` and `deno lint`.
+Conventions: match repo style — `//`-comment headers explaining the file's role, `jsr:@std/*@1`
+imports, 100-char fmt width, lowercase-prefix commit subjects ("serve: …"). Never use `any` (use
+`unknown` + narrowing). Before each commit run `deno fmt <changed .ts files>` and `deno lint`.
 
 ---
 
 ### Task 1: `registry-edit.ts` — extract surgery, add `setDocField` / `removeDoc`
 
 **Files:**
+
 - Create: `registry-edit.ts`, `registry-edit_test.ts`
 - Modify: `add-doc.ts` (imports + re-exports; delete moved code)
 
 - [ ] **Step 1.0: Baseline — confirm the suite passes before touching anything**
 
-Run: `deno task test`
-Expected: all existing tests PASS (render, partials, add-doc, drift). If not, STOP and report.
+Run: `deno task test` Expected: all existing tests PASS (render, partials, add-doc, drift). If not,
+STOP and report.
 
 - [ ] **Step 1.1: Write the failing tests**
 
@@ -140,7 +155,11 @@ Deno.test("setDocField applies review and visibility together", () => {
 Deno.test("setDocField leaves every other entry byte-identical", () => {
   const out = setDocField(REGISTRY, "beta", { visibility: "private" });
   // the alpha and gamma lines are untouched text
-  assert(out.includes(`"slug": "alpha", "title": "Alpha", "kind": "Guide", "desc": "first [tricky] {chars}"`));
+  assert(
+    out.includes(
+      `"slug": "alpha", "title": "Alpha", "kind": "Guide", "desc": "first [tricky] {chars}"`,
+    ),
+  );
   assert(out.includes(`"slug": "gamma", "title": "Gamma", "kind": "Essay", "desc": "third"`));
 });
 
@@ -180,8 +199,8 @@ Deno.test("surgery tolerates brackets and braces inside string values", () => {
 
 - [ ] **Step 1.2: Run the tests to verify they fail**
 
-Run: `deno test --allow-read registry-edit_test.ts`
-Expected: FAIL — `Module not found ... registry-edit.ts`
+Run: `deno test --allow-read registry-edit_test.ts` Expected: FAIL —
+`Module not found ... registry-edit.ts`
 
 - [ ] **Step 1.3: Create `registry-edit.ts`**
 
@@ -371,11 +390,15 @@ export function insertTopic(registry: string, topic: TopicEntry): string {
 }
 ```
 
-Note: `matchingClose` gained string-awareness and explicit open/close chars vs. the add-doc.ts original — `insertDoc`/`insertTopic` behavior is otherwise identical, and their existing tests pin that.
+Note: `matchingClose` gained string-awareness and explicit open/close chars vs. the add-doc.ts
+original — `insertDoc`/`insertTopic` behavior is otherwise identical, and their existing tests pin
+that.
 
 - [ ] **Step 1.4: Slim `add-doc.ts` to CLI + re-exports**
 
-Replace everything in `add-doc.ts` from the first `export interface DocEntry` line through the end of `insertTopic` (i.e. everything between the imports and the `// --- CLI shell` comment) with imports/re-exports, and drop the now-unused imports. The top of the file becomes:
+Replace everything in `add-doc.ts` from the first `export interface DocEntry` line through the end
+of `insertTopic` (i.e. everything between the imports and the `// --- CLI shell` comment) with
+imports/re-exports, and drop the now-unused imports. The top of the file becomes:
 
 ```typescript
 #!/usr/bin/env -S deno run --allow-read --allow-write
@@ -409,8 +432,8 @@ The `// --- CLI shell (only when run directly) ---` block stays exactly as it is
 
 - [ ] **Step 1.5: Run the full suite**
 
-Run: `deno task test`
-Expected: ALL PASS — new registry-edit tests AND the existing `add-doc_test.ts` (which still imports from `./add-doc.ts`).
+Run: `deno task test` Expected: ALL PASS — new registry-edit tests AND the existing
+`add-doc_test.ts` (which still imports from `./add-doc.ts`).
 
 - [ ] **Step 1.6: Format, lint, commit**
 
@@ -425,6 +448,7 @@ git commit -m "registry-edit: extract pure surgery; add setDocField/removeDoc"
 ### Task 2: `comments.ts` — sidecar comment store
 
 **Files:**
+
 - Create: `comments.ts`, `comments_test.ts`
 - Modify: `deno.jsonc` (test task needs `--allow-write` for temp dirs)
 
@@ -433,8 +457,8 @@ git commit -m "registry-edit: extract pure surgery; add setDocField/removeDoc"
 In `deno.jsonc`, change the test task line to:
 
 ```jsonc
-    // Run the test suite (render injection, registry surgery, comments, skill drift).
-    "test": "deno test --allow-read --allow-write --allow-env",
+// Run the test suite (render injection, registry surgery, comments, skill drift).
+"test": "deno test --allow-read --allow-write --allow-env",
 ```
 
 - [ ] **Step 2.2: Write the failing tests**
@@ -446,7 +470,12 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import { addComment, deleteComment, loadComments, parseCommentInput } from "./comments.ts";
 
-const INPUT = { quote: "the loop is the expensive part", prefix: "punchline: ", suffix: ".", note: "verify this claim" };
+const INPUT = {
+  quote: "the loop is the expensive part",
+  prefix: "punchline: ",
+  suffix: ".",
+  note: "verify this claim",
+};
 
 Deno.test("loadComments returns [] when no sidecar exists", async () => {
   const dir = await Deno.makeTempDir();
@@ -499,8 +528,8 @@ Deno.test("parseCommentInput rejects bad shapes with a reason", () => {
 
 - [ ] **Step 2.3: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write comments_test.ts`
-Expected: FAIL — `Module not found ... comments.ts`
+Run: `deno test --allow-read --allow-write comments_test.ts` Expected: FAIL —
+`Module not found ... comments.ts`
 
 - [ ] **Step 2.4: Create `comments.ts`**
 
@@ -587,8 +616,7 @@ export async function deleteComment(dir: string, slug: string, id: string): Prom
 
 - [ ] **Step 2.5: Run the full suite**
 
-Run: `deno task test`
-Expected: ALL PASS.
+Run: `deno task test` Expected: ALL PASS.
 
 - [ ] **Step 2.6: Format, lint, commit**
 
@@ -603,9 +631,11 @@ git commit -m "comments: sidecar store with text-quote anchoring fields"
 ### Task 3: `assets/admin/anchor.js` — pure anchoring
 
 **Files:**
+
 - Create: `assets/admin/anchor.js`, `anchor_test.ts`
 
-This is plain JS with JSDoc types because the SAME file is imported by the browser (`admin.js`) and by the Deno test — no duplication, no drift.
+This is plain JS with JSDoc types because the SAME file is imported by the browser (`admin.js`) and
+by the Deno test — no duplication, no drift.
 
 - [ ] **Step 3.1: Write the failing tests**
 
@@ -615,7 +645,8 @@ Create `anchor_test.ts`:
 import { assertEquals } from "jsr:@std/assert@1";
 import { describeRange, findAnchor } from "./assets/admin/anchor.js";
 
-const TEXT = "The loop is the expensive part. The loop is also the fun part. End of the loop story.";
+const TEXT =
+  "The loop is the expensive part. The loop is also the fun part. End of the loop story.";
 
 Deno.test("findAnchor prefers prefix+quote+suffix", () => {
   // "The loop is" appears twice; context picks the second
@@ -662,8 +693,7 @@ Deno.test("describeRange → findAnchor round-trips", () => {
 
 - [ ] **Step 3.2: Run tests to verify they fail**
 
-Run: `deno test --allow-read anchor_test.ts`
-Expected: FAIL — module not found.
+Run: `deno test --allow-read anchor_test.ts` Expected: FAIL — module not found.
 
 - [ ] **Step 3.3: Create `assets/admin/anchor.js`**
 
@@ -721,8 +751,7 @@ export function describeRange(text, start, end, ctx = 32) {
 
 - [ ] **Step 3.4: Run the full suite**
 
-Run: `deno task test`
-Expected: ALL PASS.
+Run: `deno task test` Expected: ALL PASS.
 
 - [ ] **Step 3.5: Format, lint, commit**
 
@@ -737,6 +766,7 @@ git commit -m "admin: pure text-quote anchor resolution, shared browser/test"
 ### Task 4: `serve.ts` — testable handler + management API
 
 **Files:**
+
 - Modify: `serve.ts` (full rework below), `render.ts` (one line), `deno.jsonc` (serve task perms)
 - Create: `serve_test.ts`
 
@@ -752,7 +782,8 @@ export async function loadCorpus(path: string = REGISTRY): Promise<Topic[]> {
 
 - [ ] **Step 4.2: Write the failing handler tests**
 
-Create `serve_test.ts`. Note the fixture registry needs no source HTML files — the API routes and the index render never read doc sources.
+Create `serve_test.ts`. Note the fixture registry needs no source HTML files — the API routes and
+the index render never read doc sources.
 
 ```typescript
 import { assert, assertEquals } from "jsr:@std/assert@1";
@@ -780,12 +811,20 @@ async function fixture(readonly = false) {
   const registryPath = join(dir, "registry.jsonc");
   await Deno.writeTextFile(registryPath, FIXTURE);
   const commentsDir = join(dir, "comments");
-  return { registryPath, commentsDir, handler: makeHandler({ registryPath, commentsDir, readonly }) };
+  return {
+    registryPath,
+    commentsDir,
+    handler: makeHandler({ registryPath, commentsDir, readonly }),
+  };
 }
 
 const req = (path: string, init?: RequestInit) => new Request(`http://x${path}`, init);
 const jsonReq = (path: string, method: string, body: unknown) =>
-  req(path, { method, body: JSON.stringify(body), headers: { "content-type": "application/json" } });
+  req(path, {
+    method,
+    body: JSON.stringify(body),
+    headers: { "content-type": "application/json" },
+  });
 
 Deno.test("PATCH review:true updates the registry text", async () => {
   const f = await fixture();
@@ -800,7 +839,9 @@ Deno.test("PATCH visibility flips the field", async () => {
   const f = await fixture();
   const res = await f.handler(jsonReq("/api/docs/alpha", "PATCH", { visibility: "shared" }));
   assertEquals(res.status, 200);
-  interface T { docs: Array<{ slug: string; visibility: string }> }
+  interface T {
+    docs: Array<{ slug: string; visibility: string }>;
+  }
   const corpus = parseJsonc(await Deno.readTextFile(f.registryPath)) as unknown as T[];
   assertEquals(corpus[0].docs.find((d) => d.slug === "alpha")!.visibility, "shared");
 });
@@ -808,7 +849,10 @@ Deno.test("PATCH visibility flips the field", async () => {
 Deno.test("PATCH unknown slug → 404; bad bodies → 400", async () => {
   const f = await fixture();
   assertEquals((await f.handler(jsonReq("/api/docs/nope", "PATCH", { review: true }))).status, 404);
-  assertEquals((await f.handler(jsonReq("/api/docs/alpha", "PATCH", { review: "yes" }))).status, 400);
+  assertEquals(
+    (await f.handler(jsonReq("/api/docs/alpha", "PATCH", { review: "yes" }))).status,
+    400,
+  );
   assertEquals((await f.handler(jsonReq("/api/docs/alpha", "PATCH", { bogus: 1 }))).status, 400);
   assertEquals((await f.handler(jsonReq("/api/docs/alpha", "PATCH", {}))).status, 400);
   assertEquals(
@@ -823,7 +867,9 @@ Deno.test("DELETE deregisters; registry stays valid jsonc", async () => {
   assertEquals(res.status, 200);
   const body = await res.json() as { note: string };
   assert(body.note.includes("_migrated"));
-  interface T { docs: Array<{ slug: string }> }
+  interface T {
+    docs: Array<{ slug: string }>;
+  }
   const corpus = parseJsonc(await Deno.readTextFile(f.registryPath)) as unknown as T[];
   assertEquals(corpus[0].docs.map((d) => d.slug), ["beta"]);
 });
@@ -861,10 +907,20 @@ Deno.test("comments: POST to an unregistered slug → 404; bad input → 400", a
 
 Deno.test("READONLY blocks mutations but not reads", async () => {
   const f = await fixture(true);
-  assertEquals((await f.handler(jsonReq("/api/docs/alpha", "PATCH", { review: true }))).status, 403);
+  assertEquals(
+    (await f.handler(jsonReq("/api/docs/alpha", "PATCH", { review: true }))).status,
+    403,
+  );
   assertEquals((await f.handler(req("/api/docs/alpha", { method: "DELETE" }))).status, 403);
   assertEquals(
-    (await f.handler(jsonReq("/api/docs/alpha/comments", "POST", { quote: "q", prefix: "", suffix: "", note: "n" }))).status,
+    (await f.handler(
+      jsonReq("/api/docs/alpha/comments", "POST", {
+        quote: "q",
+        prefix: "",
+        suffix: "",
+        note: "n",
+      }),
+    )).status,
     403,
   );
   assertEquals((await f.handler(req("/api/docs/alpha/comments"))).status, 200);
@@ -888,12 +944,13 @@ Deno.test("GET / renders the index from the configured registry", async () => {
 
 - [ ] **Step 4.3: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write --allow-env serve_test.ts`
-Expected: FAIL — `makeHandler` is not exported (and serve.ts starts a server on import — the rework removes that).
+Run: `deno test --allow-read --allow-write --allow-env serve_test.ts` Expected: FAIL — `makeHandler`
+is not exported (and serve.ts starts a server on import — the rework removes that).
 
 - [ ] **Step 4.4: Rework `serve.ts`**
 
-Replace the whole file (the admin injection import/call lands in Task 5 — note the `TODO(admin)` markers are *placeholders for Task 5, not for the engineer to skip*; Task 5 removes them):
+Replace the whole file (the admin injection import/call lands in Task 5 — note the `TODO(admin)`
+markers are _placeholders for Task 5, not for the engineer to skip_; Task 5 removes them):
 
 ```typescript
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY
@@ -1132,16 +1189,15 @@ if (import.meta.main) {
 - [ ] **Step 4.5: Update the serve task permissions in `deno.jsonc`**
 
 ```jsonc
-    // Serve locally on 127.0.0.1 (expose via `tailscale serve`). PORT env or
-    // first CLI arg overrides the default 8413. READONLY=1 disables the
-    // management API (view-only). Needs write access for registry/comments.
-    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY serve.ts",
+// Serve locally on 127.0.0.1 (expose via `tailscale serve`). PORT env or
+// first CLI arg overrides the default 8413. READONLY=1 disables the
+// management API (view-only). Needs write access for registry/comments.
+"serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY serve.ts",
 ```
 
 - [ ] **Step 4.6: Run the full suite**
 
-Run: `deno task test`
-Expected: ALL PASS.
+Run: `deno task test` Expected: ALL PASS.
 
 - [ ] **Step 4.7: Smoke-run the server**
 
@@ -1171,6 +1227,7 @@ git commit -m "serve: management api (review/visibility/remove/comments), testab
 ### Task 5: `admin.ts` injector + admin asset route + guard tests
 
 **Files:**
+
 - Create: `admin.ts`, `admin_test.ts`
 - Modify: `serve.ts` (wire `injectAdmin` + serve `/assets/admin/*`)
 
@@ -1246,8 +1303,8 @@ Deno.test("the standalone skill template carries no admin layer", async () => {
 
 - [ ] **Step 5.2: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write --allow-env admin_test.ts`
-Expected: FAIL — module `admin.ts` not found.
+Run: `deno test --allow-read --allow-write --allow-env admin_test.ts` Expected: FAIL — module
+`admin.ts` not found.
 
 - [ ] **Step 5.3: Create `admin.ts`**
 
@@ -1305,57 +1362,58 @@ Add the asset route regex next to the others:
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
 ```
 
-In `makeHandler`'s returned function, after the `apple-touch-icon.png` line, add (no-cache so bundle edits show on refresh, like everything else on this server):
+In `makeHandler`'s returned function, after the `apple-touch-icon.png` line, add (no-cache so bundle
+edits show on refresh, like everything else on this server):
 
 ```typescript
-    const adminAsset = path.match(ADMIN_ASSET_RE);
-    if (adminAsset) {
-      const type = adminAsset[1].endsWith(".css")
-        ? "text/css; charset=utf-8"
-        : "text/javascript; charset=utf-8";
-      try {
-        return new Response(await Deno.readFile(join(ROOT, "assets/admin", adminAsset[1])), {
-          headers: { "content-type": type, "cache-control": "no-cache" },
-        });
-      } catch {
-        return notice("Not found.", 404);
-      }
-    }
+const adminAsset = path.match(ADMIN_ASSET_RE);
+if (adminAsset) {
+  const type = adminAsset[1].endsWith(".css")
+    ? "text/css; charset=utf-8"
+    : "text/javascript; charset=utf-8";
+  try {
+    return new Response(await Deno.readFile(join(ROOT, "assets/admin", adminAsset[1])), {
+      headers: { "content-type": type, "cache-control": "no-cache" },
+    });
+  } catch {
+    return notice("Not found.", 404);
+  }
+}
 ```
 
 Replace the two `TODO(admin)` returns:
 
 ```typescript
-      if (path === "/") {
-        const docs: Record<string, { review: boolean; visibility: string }> = {};
-        for (const t of corpus) {
-          for (const d of t.docs) {
-            docs[d.slug] = { review: d.review === true, visibility: d.visibility ?? "private" };
-          }
-        }
-        const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
-        return page(injectAdmin(renderIndex(corpus), ctx));
-      }
+if (path === "/") {
+  const docs: Record<string, { review: boolean; visibility: string }> = {};
+  for (const t of corpus) {
+    for (const d of t.docs) {
+      docs[d.slug] = { review: d.review === true, visibility: d.visibility ?? "private" };
+    }
+  }
+  const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
+  return page(injectAdmin(renderIndex(corpus), ctx));
+}
 ```
 
 ```typescript
-        const html = await transformDoc(corpus, found.topic, found.doc);
-        const ctx: AdminContext = {
-          page: "doc",
-          readonly: opts.readonly,
-          doc: {
-            slug: found.doc.slug,
-            review: found.doc.review === true,
-            visibility: found.doc.visibility ?? "private",
-          },
-        };
-        return page(injectAdmin(html, ctx));
+const html = await transformDoc(corpus, found.topic, found.doc);
+const ctx: AdminContext = {
+  page: "doc",
+  readonly: opts.readonly,
+  doc: {
+    slug: found.doc.slug,
+    review: found.doc.review === true,
+    visibility: found.doc.visibility ?? "private",
+  },
+};
+return page(injectAdmin(html, ctx));
 ```
 
 - [ ] **Step 5.5: Run the full suite**
 
-Run: `deno task test`
-Expected: ALL PASS (including the Task 4 serve tests — they assert content the injection doesn't disturb).
+Run: `deno task test` Expected: ALL PASS (including the Task 4 serve tests — they assert content the
+injection doesn't disturb).
 
 - [ ] **Step 5.6: Format, lint, commit**
 
@@ -1370,9 +1428,11 @@ git commit -m "admin: server-injected context + bundle routes, publish-purity gu
 ### Task 6: the browser admin layer (`admin.css` + `admin.js`)
 
 **Files:**
+
 - Create: `assets/admin/admin.css`, `assets/admin/admin.js`
 
-Browser-only code — no Deno unit tests (the testable core, anchoring, lives in `anchor.js` and is already covered). Verified by the smoke script in Step 6.4 and end-to-end in Task 8.
+Browser-only code — no Deno unit tests (the testable core, anchoring, lives in `anchor.js` and is
+already covered). Verified by the smoke script in Step 6.4 and end-to-end in Task 8.
 
 - [ ] **Step 6.1: Create `assets/admin/admin.css`**
 
@@ -1381,123 +1441,289 @@ Browser-only code — no Deno unit tests (the testable core, anchoring, lives in
    Colors ride the editorial CSS variables, so the espresso theme
    (:root[data-theme="dark"]) restyles all of this for free. */
 
-.rradmin-manage{
-  position:fixed;bottom:18px;left:18px;z-index:1100;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
-  text-transform:uppercase;color:var(--copper,#a85a1a);background:var(--bg-soft,#ece4d2);
-  border:1px solid var(--rule-strong,#8a7e5e);border-radius:2px;padding:6px 11px;cursor:pointer;
+.rradmin-manage {
+  position: fixed;
+  bottom: 18px;
+  left: 18px;
+  z-index: 1100;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--copper, #a85a1a);
+  background: var(--bg-soft, #ece4d2);
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  padding: 6px 11px;
+  cursor: pointer;
 }
-.rradmin-manage:hover{color:var(--copper-soft,#c87a2f);border-color:var(--copper,#a85a1a);}
-.rradmin-manage[aria-pressed="true"]{
-  color:var(--bg,#f3ecdd);background:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);
+.rradmin-manage:hover {
+  color: var(--copper-soft, #c87a2f);
+  border-color: var(--copper, #a85a1a);
 }
-
-.rradmin-controls{
-  display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:10px;
-  border-top:1px dashed var(--rule,#c9bfa3);
-}
-.rradmin-controls button{
-  appearance:none;background:transparent;border:1px solid var(--rule-strong,#8a7e5e);
-  border-radius:2px;color:var(--ink-soft,#3a3a36);
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;letter-spacing:0.14em;
-  text-transform:uppercase;padding:4px 9px;cursor:pointer;
-}
-.rradmin-controls button:hover{color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);}
-.rradmin-controls button.rradmin-on{
-  color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);background:rgba(168,90,26,0.07);
-}
-.rradmin-controls button.rradmin-armed{color:#8a3030;border-color:#8a3030;background:rgba(138,48,48,0.07);}
-
-.rradmin-cluster{
-  margin-left:auto;display:flex;align-items:center;gap:10px;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.15em;
-  text-transform:uppercase;
-}
-.rradmin-cluster button{
-  appearance:none;background:transparent;border:1px solid var(--rule-strong,#8a7e5e);
-  border-radius:2px;color:var(--ink-mute,#6b6357);font:inherit;letter-spacing:inherit;
-  text-transform:inherit;padding:3px 8px;cursor:pointer;
-}
-.rradmin-cluster button:hover{color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);}
-.rradmin-cluster button.rradmin-on{
-  color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);background:rgba(168,90,26,0.07);
+.rradmin-manage[aria-pressed="true"] {
+  color: var(--bg, #f3ecdd);
+  background: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
 }
 
-.rradmin-mark{
-  position:absolute;z-index:55;appearance:none;background:transparent;border:none;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;
-  color:var(--copper,#a85a1a);opacity:0.65;cursor:pointer;padding:2px 6px;
+.rradmin-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--rule, #c9bfa3);
 }
-.rradmin-mark:hover{opacity:1;}
-
-.rradmin-fab{
-  position:absolute;z-index:1150;appearance:none;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9.5px;letter-spacing:0.16em;
-  text-transform:uppercase;color:var(--copper,#a85a1a);background:var(--bg-soft,#ece4d2);
-  border:1px solid var(--copper,#a85a1a);border-radius:2px;padding:5px 10px;cursor:pointer;
+.rradmin-controls button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  color: var(--ink-soft, #3a3a36);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
 }
-.rradmin-fab:hover{color:var(--bg,#f3ecdd);background:var(--copper,#a85a1a);}
-
-.rradmin-panel{
-  position:absolute;z-index:1200;width:min(340px,86vw);
-  background:var(--bg-soft,#ece4d2);border:1px solid var(--rule-strong,#8a7e5e);
-  border-radius:2px;padding:14px 16px;box-shadow:0 6px 24px rgba(31,58,50,0.18);
-  font-family:"Source Serif 4",Georgia,serif;font-size:14.5px;line-height:1.55;
-  color:var(--ink-soft,#3a3a36);
+.rradmin-controls button:hover {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
 }
-.rradmin-panel .rradmin-eyebrow{
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;letter-spacing:0.2em;
-  text-transform:uppercase;color:var(--copper,#a85a1a);margin:0 0 8px;
-  display:flex;justify-content:space-between;gap:8px;align-items:baseline;
+.rradmin-controls button.rradmin-on {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+  background: rgba(168, 90, 26, 0.07);
 }
-.rradmin-panel .rradmin-quote{
-  font-style:italic;color:var(--ink-mute,#6b6357);border-left:2px solid var(--rule,#c9bfa3);
-  padding-left:10px;margin:0 0 10px;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
-}
-.rradmin-panel textarea{
-  width:100%;box-sizing:border-box;min-height:72px;resize:vertical;
-  font-family:"Source Serif 4",Georgia,serif;font-size:14.5px;line-height:1.5;
-  color:var(--ink,#000);background:var(--bg,#f3ecdd);
-  border:1px solid var(--rule,#c9bfa3);border-radius:2px;padding:8px 10px;
-}
-.rradmin-panel textarea:focus{outline:none;border-color:var(--copper,#a85a1a);}
-.rradmin-panel .rradmin-row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px;}
-.rradmin-panel .rradmin-row button{
-  appearance:none;background:transparent;border:1px solid var(--rule-strong,#8a7e5e);
-  border-radius:2px;color:var(--ink-soft,#3a3a36);
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;letter-spacing:0.14em;
-  text-transform:uppercase;padding:4px 9px;cursor:pointer;
-}
-.rradmin-panel .rradmin-row button:hover{color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);}
-.rradmin-panel .rradmin-row button.rradmin-primary{color:var(--copper,#a85a1a);border-color:var(--copper,#a85a1a);}
-.rradmin-panel .rradmin-list{list-style:none;margin:0;padding:0;max-height:50vh;overflow:auto;}
-.rradmin-panel .rradmin-list li{
-  padding:8px 0;border-top:1px dashed var(--rule,#c9bfa3);
-  display:flex;gap:10px;align-items:baseline;justify-content:space-between;
-}
-.rradmin-panel .rradmin-list li:first-child{border-top:none;}
-.rradmin-panel .rradmin-list .rradmin-jump{cursor:pointer;flex:1;}
-.rradmin-panel .rradmin-list .rradmin-jump:hover{color:var(--copper,#a85a1a);}
-.rradmin-panel .rradmin-list .rradmin-orphan{
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:8.5px;letter-spacing:0.14em;
-  text-transform:uppercase;color:var(--ink-mute,#6b6357);
+.rradmin-controls button.rradmin-armed {
+  color: #8a3030;
+  border-color: #8a3030;
+  background: rgba(138, 48, 48, 0.07);
 }
 
-.rradmin-toast{
-  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1300;
-  font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
-  text-transform:uppercase;color:var(--copper,#a85a1a);background:var(--bg-soft,#ece4d2);
-  border:1px solid var(--rule-strong,#8a7e5e);border-radius:2px;padding:6px 12px;
-  opacity:0;transition:opacity .25s;pointer-events:none;
+.rradmin-cluster {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
-.rradmin-toast.rradmin-show{opacity:1;}
+.rradmin-cluster button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  color: var(--ink-mute, #6b6357);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+.rradmin-cluster button:hover {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+}
+.rradmin-cluster button.rradmin-on {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+  background: rgba(168, 90, 26, 0.07);
+}
 
-::highlight(rradmin){background:rgba(168,90,26,0.20);}
+.rradmin-mark {
+  position: absolute;
+  z-index: 55;
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--copper, #a85a1a);
+  opacity: 0.65;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.rradmin-mark:hover {
+  opacity: 1;
+}
 
-@media print{
-  .rradmin-manage,.rradmin-controls,.rradmin-cluster,.rradmin-mark,
-  .rradmin-panel,.rradmin-fab,.rradmin-toast{display:none !important;}
+.rradmin-fab {
+  position: absolute;
+  z-index: 1150;
+  appearance: none;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--copper, #a85a1a);
+  background: var(--bg-soft, #ece4d2);
+  border: 1px solid var(--copper, #a85a1a);
+  border-radius: 2px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.rradmin-fab:hover {
+  color: var(--bg, #f3ecdd);
+  background: var(--copper, #a85a1a);
+}
+
+.rradmin-panel {
+  position: absolute;
+  z-index: 1200;
+  width: min(340px, 86vw);
+  background: var(--bg-soft, #ece4d2);
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  padding: 14px 16px;
+  box-shadow: 0 6px 24px rgba(31, 58, 50, 0.18);
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-soft, #3a3a36);
+}
+.rradmin-panel .rradmin-eyebrow {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--copper, #a85a1a);
+  margin: 0 0 8px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.rradmin-panel .rradmin-quote {
+  font-style: italic;
+  color: var(--ink-mute, #6b6357);
+  border-left: 2px solid var(--rule, #c9bfa3);
+  padding-left: 10px;
+  margin: 0 0 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rradmin-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  resize: vertical;
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink, #000);
+  background: var(--bg, #f3ecdd);
+  border: 1px solid var(--rule, #c9bfa3);
+  border-radius: 2px;
+  padding: 8px 10px;
+}
+.rradmin-panel textarea:focus {
+  outline: none;
+  border-color: var(--copper, #a85a1a);
+}
+.rradmin-panel .rradmin-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+.rradmin-panel .rradmin-row button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  color: var(--ink-soft, #3a3a36);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.rradmin-panel .rradmin-row button:hover {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+}
+.rradmin-panel .rradmin-row button.rradmin-primary {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+}
+.rradmin-panel .rradmin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.rradmin-panel .rradmin-list li {
+  padding: 8px 0;
+  border-top: 1px dashed var(--rule, #c9bfa3);
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.rradmin-panel .rradmin-list li:first-child {
+  border-top: none;
+}
+.rradmin-panel .rradmin-list .rradmin-jump {
+  cursor: pointer;
+  flex: 1;
+}
+.rradmin-panel .rradmin-list .rradmin-jump:hover {
+  color: var(--copper, #a85a1a);
+}
+.rradmin-panel .rradmin-list .rradmin-orphan {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-mute, #6b6357);
+}
+
+.rradmin-toast {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1300;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--copper, #a85a1a);
+  background: var(--bg-soft, #ece4d2);
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  padding: 6px 12px;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+}
+.rradmin-toast.rradmin-show {
+  opacity: 1;
+}
+
+::highlight(rradmin) {
+  background: rgba(168, 90, 26, 0.20);
+}
+
+@media print {
+  .rradmin-manage,
+  .rradmin-controls,
+  .rradmin-cluster,
+  .rradmin-mark,
+  .rradmin-panel,
+  .rradmin-fab,
+  .rradmin-toast {
+    display: none !important;
+  }
 }
 ```
 
@@ -1605,10 +1831,16 @@ function initIndex(ctx) {
       e.stopPropagation();
     });
 
-    const review = el("button", state.review ? "rradmin-on" : "", `review · ${state.review ? "on" : "off"}`);
+    const review = el(
+      "button",
+      state.review ? "rradmin-on" : "",
+      `review · ${state.review ? "on" : "off"}`,
+    );
     review.type = "button";
-    review.addEventListener("click", () =>
-      run(api("PATCH", `/api/docs/${slug}`, { review: !state.review })));
+    review.addEventListener(
+      "click",
+      () => run(api("PATCH", `/api/docs/${slug}`, { review: !state.review })),
+    );
 
     const vis = el("button", state.visibility === "shared" ? "rradmin-on" : "", state.visibility);
     vis.type = "button";
@@ -1660,8 +1892,10 @@ function initDoc(ctx) {
     );
     chip.type = "button";
     chip.title = ctx.doc.review ? "Promote out of review" : "Pin to For Review";
-    chip.addEventListener("click", () =>
-      run(api("PATCH", `/api/docs/${ctx.doc.slug}`, { review: !ctx.doc.review })));
+    chip.addEventListener(
+      "click",
+      () => run(api("PATCH", `/api/docs/${ctx.doc.slug}`, { review: !ctx.doc.review })),
+    );
     cluster.appendChild(chip);
   }
 
@@ -1671,7 +1905,8 @@ function initDoc(ctx) {
   cluster.appendChild(notesBtn);
 
   // --- text extraction shared by anchoring + selection capture
-  const SKIP = "[data-library-nav],[data-rradmin],.edtheme,.edzoom-overlay,.edzoom-controls,script,style,noscript";
+  const SKIP =
+    "[data-library-nav],[data-rradmin],.edtheme,.edzoom-overlay,.edzoom-controls,script,style,noscript";
   function collectText() {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode(n) {
@@ -1739,7 +1974,9 @@ function initDoc(ctx) {
     build(panel);
     document.body.appendChild(panel);
     const w = panel.offsetWidth;
-    panel.style.left = `${Math.max(8, Math.min(x, document.documentElement.clientWidth - w - 8))}px`;
+    panel.style.left = `${
+      Math.max(8, Math.min(x, document.documentElement.clientWidth - w - 8))
+    }px`;
     panel.style.top = `${y}px`;
   }
 
@@ -1778,7 +2015,9 @@ function initDoc(ctx) {
       mark.type = "button";
       mark.title = c.note.slice(0, 80);
       mark.style.top = `${top - 2}px`;
-      mark.style.left = `${Math.min(block.right + 10 + window.scrollX, document.documentElement.clientWidth - 30)}px`;
+      mark.style.left = `${
+        Math.min(block.right + 10 + window.scrollX, document.documentElement.clientWidth - 30)
+      }px`;
       mark.addEventListener("click", (e) => {
         e.stopPropagation();
         highlight(range);
@@ -1831,7 +2070,11 @@ function initDoc(ctx) {
         const list = el("ul", "rradmin-list");
         for (const c of comments) {
           const li = el("li", "");
-          const jump = el("span", "rradmin-jump", c.note.length > 70 ? c.note.slice(0, 70) + "…" : c.note);
+          const jump = el(
+            "span",
+            "rradmin-jump",
+            c.note.length > 70 ? c.note.slice(0, 70) + "…" : c.note,
+          );
           const range = anchored.get(c.id);
           if (range) {
             jump.addEventListener("click", () => {
@@ -1921,7 +2164,9 @@ function initDoc(ctx) {
       openComposer(desc, rect);
     });
     fab.style.top = `${rect.bottom + window.scrollY + 8}px`;
-    fab.style.left = `${Math.min(rect.right + window.scrollX - 40, document.documentElement.clientWidth - 130)}px`;
+    fab.style.left = `${
+      Math.min(rect.right + window.scrollX - 40, document.documentElement.clientWidth - 130)
+    }px`;
     document.body.appendChild(fab);
   }
 
@@ -2021,6 +2266,7 @@ git commit -m "admin: manage mode, review chip, anchored marginalia ui"
 ### Task 7: build filter + publish
 
 **Files:**
+
 - Modify: `build.ts`, `deno.jsonc`, `.gitignore`
 - Create: `publish.ts`, `build_test.ts`, `publish_test.ts`
 
@@ -2045,7 +2291,13 @@ const doc = (slug: string, visibility?: "private" | "shared") => ({
 });
 
 const CORPUS: Topic[] = [
-  { num: "§ 01", id: "a", name: "A", short: "A", docs: [doc("one", "shared"), doc("two", "private")] },
+  {
+    num: "§ 01",
+    id: "a",
+    name: "A",
+    short: "A",
+    docs: [doc("one", "shared"), doc("two", "private")],
+  },
   { num: "§ 02", id: "b", name: "B", short: "B", docs: [doc("three", "private")] },
   { num: "§ 03", id: "c", name: "C", short: "C", docs: [doc("four")] }, // visibility absent → private
 ];
@@ -2097,8 +2349,8 @@ Deno.test("parsePublishConfig rejects bad shapes with a reason", () => {
 
 - [ ] **Step 7.2: Run tests to verify they fail**
 
-Run: `deno test --allow-read build_test.ts publish_test.ts`
-Expected: FAIL — `filterShared` not exported / `publish.ts` not found.
+Run: `deno test --allow-read build_test.ts publish_test.ts` Expected: FAIL — `filterShared` not
+exported / `publish.ts` not found.
 
 - [ ] **Step 7.3: Rework `build.ts`**
 
@@ -2254,9 +2506,9 @@ if (import.meta.main) {
 After the `add-doc` task line:
 
 ```jsonc
-    // Build the visibility:shared subset into .publish/ and run the command
-    // configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
-    "publish": "deno run --allow-read --allow-write --allow-run publish.ts",
+// Build the visibility:shared subset into .publish/ and run the command
+// configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
+"publish": "deno run --allow-read --allow-write --allow-run publish.ts",
 ```
 
 - [ ] **Step 7.6: Ignore `.publish/` in `.gitignore`**
@@ -2264,7 +2516,6 @@ After the `add-doc` task line:
 Append:
 
 ```gitignore
-
 # Remote-publish staging (deno task publish)
 /.publish/
 ```
@@ -2293,6 +2544,7 @@ git commit -m "build/publish: shared-subset static publish via configurable comm
 ### Task 8: README + end-to-end verification
 
 **Files:**
+
 - Modify: `README.md`
 
 - [ ] **Step 8.1: Update `README.md`**
@@ -2300,7 +2552,7 @@ git commit -m "build/publish: shared-subset static publish via configurable comm
 1. In the `## Use it` code block, after the `deno task build` line, add:
 
 ```text
-    deno task publish            # build the shared subset + run publish.jsonc's command
+deno task publish            # build the shared subset + run publish.jsonc's command
 ```
 
 2. After the `## Add or change a document` section, insert two new sections:
@@ -2308,48 +2560,45 @@ git commit -m "build/publish: shared-subset static publish via configurable comm
 ```markdown
 ## Manage from the browser
 
-The live server is also the management surface (the static publish never
-carries any of this):
+The live server is also the management surface (the static publish never carries any of this):
 
-- **Index → § Manage** (bottom-left) reveals per-card controls: toggle
-  `review`, flip `private`/`shared`, or `remove` (two-step confirm). Removal
-  only deregisters the doc — the `_migrated/` copy stays on disk.
-- **Doc pages** get a breadcrumb cluster: the review chip ("mark for review" /
-  "in review — promote") and a `§ n` annotation count.
-- Set `READONLY=1` to serve a view-only instance (mutation routes return 403,
-  management UI hidden) — handy if an exposure should be look-don't-touch.
+- **Index → § Manage** (bottom-left) reveals per-card controls: toggle `review`, flip
+  `private`/`shared`, or `remove` (two-step confirm). Removal only deregisters the doc — the
+  `_migrated/` copy stays on disk.
+- **Doc pages** get a breadcrumb cluster: the review chip ("mark for review" / "in review —
+  promote") and a `§ n` annotation count.
+- Set `READONLY=1` to serve a view-only instance (mutation routes return 403, management UI hidden)
+  — handy if an exposure should be look-don't-touch.
 
 ## Annotations
 
-Select a passage on any doc page → **§ annotate** → write a note. Notes are
-anchored to the text (quote + context, W3C-annotation style) and shown as
-copper `§` marks in the margin; click one to read, jump, or delete. If a doc
-is re-authored and a quote disappears, the note survives as "unanchored" in
-the `§ n` list. Storage is `comments/<slug>.json` sidecars — source HTML is
-never modified, and annotations never appear in the static build.
+Select a passage on any doc page → **§ annotate** → write a note. Notes are anchored to the text
+(quote + context, W3C-annotation style) and shown as copper `§` marks in the margin; click one to
+read, jump, or delete. If a doc is re-authored and a quote disappears, the note survives as
+"unanchored" in the `§ n` list. Storage is `comments/<slug>.json` sidecars — source HTML is never
+modified, and annotations never appear in the static build.
 ```
 
 3. Replace the `## Remote sharing` section body's first paragraph with:
 
 ```markdown
-`deno task publish` builds the **`visibility: shared` subset** into
-`.publish/` and, if `publish.jsonc` exists, hands it to your command:
+`deno task publish` builds the **`visibility: shared` subset** into `.publish/` and, if
+`publish.jsonc` exists, hands it to your command:
 
     { "cmd": ["aws", "s3", "sync", "{out}", "s3://my-bucket", "--delete"] }
 
-`{out}` is replaced with the absolute `.publish/` path; use `--dry-run` to
-preview. No config → it builds and tells you where the files are. Put the
-result behind whatever auth your setup provides.
+`{out}` is replaced with the absolute `.publish/` path; use `--dry-run` to preview. No config → it
+builds and tells you where the files are. Put the result behind whatever auth your setup provides.
 ```
 
 4. In the `## Layout` list, add after the `build.ts` line:
 
 ```markdown
-- `publish.ts`      — build the shared subset to `.publish/` + run the configured push command.
+- `publish.ts` — build the shared subset to `.publish/` + run the configured push command.
 - `registry-edit.ts` — pure registry string surgery (used by add-doc and the management API).
 - `comments.ts`, `comments/` — annotation store: one JSON sidecar per doc slug.
-- `admin.ts`, `assets/admin/` — the serve-only management layer (manage mode,
-                       review chip, marginalia). Never part of static output.
+- `admin.ts`, `assets/admin/` — the serve-only management layer (manage mode, review chip,
+  marginalia). Never part of static output.
 ```
 
 - [ ] **Step 8.2: Full suite + fmt check**
@@ -2388,7 +2637,9 @@ curl -s -o /dev/null -w "%{http_code}\n" -X PATCH http://127.0.0.1:8498/api/docs
 kill %1
 ```
 
-Then verify in a real browser (claude-in-chrome if available, else report curl-level results): load `http://127.0.0.1:8499/`, toggle § Manage, check controls render in both themes; open the doc, select text, create + delete an annotation.
+Then verify in a real browser (claude-in-chrome if available, else report curl-level results): load
+`http://127.0.0.1:8499/`, toggle § Manage, check controls render in both themes; open the doc,
+select text, create + delete an annotation.
 
 - [ ] **Step 8.4: Final tidy + commit**
 
@@ -2402,6 +2653,14 @@ git commit -m "docs: manage mode, annotations, and publish workflow"
 
 ## Plan self-review (done at authoring time)
 
-- **Spec coverage:** registry-edit (spec §architecture) → Task 1; comments store (§architecture, §API) → Task 2; anchoring (§marginalia) → Tasks 3/6; API + READONLY + atomic writes (§API) → Task 4; injection + purity guards (§architecture, §testing) → Task 5; index/doc UI + marginalia (§UI) → Task 6; publish + filter + `.gitignore` (§publish) → Task 7; README + e2e (§testing) → Task 8. Non-goals respected (no upload, no comment editing, no auth, no framework).
-- **Type consistency:** `DocPatch`/`UnknownSlugError` defined Task 1, consumed Task 4; `CommentInput`/`writeAtomic` defined Task 2, consumed Task 4; `AdminContext` defined Task 5, consumed Task 5's serve wiring; `build()/filterShared` defined Task 7, consumed by publish.ts Task 7.
-- **Placeholders:** the two `TODO(admin)` comments in Task 4 are deliberate seams that Task 5 removes (its Step 5.4 replaces those exact lines); no other TODO/TBD remains.
+- **Spec coverage:** registry-edit (spec §architecture) → Task 1; comments store (§architecture,
+  §API) → Task 2; anchoring (§marginalia) → Tasks 3/6; API + READONLY + atomic writes (§API) → Task
+  4; injection + purity guards (§architecture, §testing) → Task 5; index/doc UI + marginalia (§UI) →
+  Task 6; publish + filter + `.gitignore` (§publish) → Task 7; README + e2e (§testing) → Task 8.
+  Non-goals respected (no upload, no comment editing, no auth, no framework).
+- **Type consistency:** `DocPatch`/`UnknownSlugError` defined Task 1, consumed Task 4;
+  `CommentInput`/`writeAtomic` defined Task 2, consumed Task 4; `AdminContext` defined Task 5,
+  consumed Task 5's serve wiring; `build()/filterShared` defined Task 7, consumed by publish.ts
+  Task 7.
+- **Placeholders:** the two `TODO(admin)` comments in Task 4 are deliberate seams that Task 5
+  removes (its Step 5.4 replaces those exact lines); no other TODO/TBD remains.

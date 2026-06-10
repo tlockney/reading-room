@@ -4,21 +4,39 @@
   // No build step: `deno task ...` fetches + caches deps on first run. The
   // site structure lives in registry.jsonc, not in code.
   "tasks": {
+    // Regenerate src/assets_gen.ts after editing assets/ (pinned by assets_gen_test.ts).
+    "gen": "deno run --allow-read --allow-write scripts/gen-assets.ts",
     // Rebuild index.html + docs/ from registry.jsonc.
-    "build": "deno run --allow-read --allow-write build.ts",
+    "build": "deno run --allow-read --allow-write src/build.ts",
     // Serve locally on 127.0.0.1 (expose via `tailscale serve`). PORT env or
     // first CLI arg overrides the default 8413. READONLY=1 disables the
     // management API (view-only). Needs write access for registry/comments.
-    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY serve.ts",
+    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY src/serve.ts",
     // Register (and place in _migrated/) a standalone editorial doc. The
     // editorial-longform-html skill looks for this task. See add-doc.ts.
-    "add-doc": "deno run --allow-read --allow-write add-doc.ts",
+    "add-doc": "deno run --allow-read --allow-write src/add-doc.ts",
     // Build the visibility:shared subset into .publish/ and run the command
     // configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
-    "publish": "deno run --allow-read --allow-write --allow-run publish.ts",
+    "publish": "deno run --allow-read --allow-write --allow-run src/publish.ts",
     // Run the test suite (render injection, registry surgery, comments, skill drift).
     "test": "deno test --allow-read --allow-write --allow-env"
   },
-  "fmt": { "lineWidth": 100 },
+  // fmt must never touch byte-pinned content: the editorial partials and skill
+  // template (drift tests compare them verbatim), generated assets_gen.ts (pin
+  // test), registry.jsonc (string surgery preserves hand-formatting), source
+  // documents, and build output.
+  "fmt": {
+    "lineWidth": 100,
+    "exclude": [
+      "assets/",
+      "skill/",
+      "_migrated/",
+      "_work/",
+      "docs/",
+      "src/assets_gen.ts",
+      "registry.jsonc",
+      "favicon.svg"
+    ]
+  },
   "lint": { "rules": { "tags": ["recommended"] } }
 }

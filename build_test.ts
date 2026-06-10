@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
-import { build, filterShared } from "./build.ts";
-import { MIGRATED } from "./render.ts";
-import type { Topic } from "./render.ts";
+import { build, filterShared } from "./src/build.ts";
+import { MIGRATED } from "./src/render.ts";
+import type { Topic } from "./src/render.ts";
 
 const doc = (slug: string, visibility?: "private" | "shared") => ({
   slug,

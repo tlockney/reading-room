@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { parsePublishConfig, resolveCmd } from "./publish.ts";
+import { parsePublishConfig, resolveCmd } from "./src/publish.ts";
 
 Deno.test("resolveCmd substitutes {out} wherever it appears", () => {
   assertEquals(

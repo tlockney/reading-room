@@ -30,7 +30,11 @@ import {
 } from "./comments.ts";
 import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
+import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
+import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 import { join } from "jsr:@std/path@1";
+
+const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
 const DOC_RE = /^\/docs\/([A-Za-z0-9_-]+)\/?$/; // canonical: /docs/<slug> (S3 also serves /docs/<slug>/)
 const DOC_HTML_RE = /^\/docs\/([A-Za-z0-9._-]+)\.html$/; // legacy: redirect to extensionless
@@ -66,14 +70,10 @@ function json(data: unknown, status = 200): Response {
 function jsonError(message: string, status: number): Response {
   return json({ error: message }, status);
 }
-async function asset(name: string, type: string): Promise<Response> {
-  try {
-    return new Response(await Deno.readFile(join(ROOT, name)), {
-      headers: { "content-type": type, "cache-control": "max-age=3600" },
-    });
-  } catch {
-    return notice("Not found.", 404);
-  }
+function asset(body: string | Uint8Array<ArrayBuffer>, type: string): Response {
+  return new Response(body, {
+    headers: { "content-type": type, "cache-control": "max-age=3600" },
+  });
 }
 
 function findDoc(corpus: Topic[], slug: string): { topic: Topic; doc: Doc } | null {
@@ -205,20 +205,18 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
         ? jsonError("malformed path encoding", 400)
         : notice("Bad request.", 400);
     }
-    if (path === "/favicon.svg") return asset("favicon.svg", "image/svg+xml");
-    if (path === "/apple-touch-icon.png") return asset("apple-touch-icon.png", "image/png");
+    if (path === "/favicon.svg") return asset(FAVICON_SVG, "image/svg+xml");
+    if (path === "/apple-touch-icon.png") return asset(APPLE_TOUCH_ICON, "image/png");
     const adminAsset = path.match(ADMIN_ASSET_RE);
     if (adminAsset) {
+      const body = ADMIN_ASSETS[adminAsset[1]];
+      if (body === undefined) return notice("Not found.", 404);
       const type = adminAsset[1].endsWith(".css")
         ? "text/css; charset=utf-8"
         : "text/javascript; charset=utf-8";
-      try {
-        return new Response(await Deno.readFile(join(ROOT, "assets/admin", adminAsset[1])), {
-          headers: { "content-type": type, "cache-control": "no-cache" },
-        });
-      } catch {
-        return notice("Not found.", 404);
-      }
+      return new Response(body, {
+        headers: { "content-type": type, "cache-control": "no-cache" },
+      });
     }
     if (path === "/index.html") return redirect("/");
     const legacy = path.match(DOC_HTML_RE);

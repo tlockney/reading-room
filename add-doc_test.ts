@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
-import { type DocEntry, insertDoc, insertTopic, slugExists } from "./add-doc.ts";
+import { type DocEntry, insertDoc, insertTopic, slugExists } from "./src/add-doc.ts";
 
 const REGISTRY = `// header comment — must survive
 [

@@ -6,7 +6,7 @@ import {
   loadComments,
   parseCommentInput,
   setCommentReviewed,
-} from "./comments.ts";
+} from "./src/comments.ts";
 
 const INPUT = {
   quote: "the loop is the expensive part",

@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
-import { type AdminContext, injectAdmin } from "./admin.ts";
-import { loadCorpus, renderIndex } from "./render.ts";
+import { type AdminContext, injectAdmin } from "./src/admin.ts";
+import { loadCorpus, renderIndex } from "./src/render.ts";
 
 const ROOT = dirname(fromFileUrl(import.meta.url));
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
@@ -54,7 +54,7 @@ Deno.test("the static build path's import closure never touches admin.ts or comm
     const name = queue.pop()!;
     if (seen.has(name)) continue;
     seen.add(name);
-    const src = await Deno.readTextFile(join(ROOT, name));
+    const src = await Deno.readTextFile(join(ROOT, "src", name));
     for (const m of src.matchAll(/from\s+"\.\/([A-Za-z0-9_./-]+\.ts)"/g)) {
       queue.push(m[1]);
     }

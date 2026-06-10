@@ -14,7 +14,7 @@ import { exists } from "jsr:@std/fs@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { escape } from "jsr:@std/html@1";
 
-export const ROOT = dirname(fromFileUrl(import.meta.url)); // reading-room/
+export const ROOT = dirname(dirname(fromFileUrl(import.meta.url))); // repo root (src/..)
 export const WORKSPACE = dirname(ROOT); // parent dir — holds sibling source repos
 
 // Site identity — shown on the index masthead and footer. Edit to taste.
@@ -28,13 +28,12 @@ export const SITE = {
 export const DOCS_OUT = join(ROOT, "docs");
 export const MIGRATED = join(ROOT, "_migrated");
 export const REGISTRY = join(ROOT, "registry.jsonc");
-export const EDITORIAL = join(ROOT, "assets/editorial");
 
 // Shared zoom + theme + mobile bundle — the single source of truth, also
 // inlined verbatim into the editorial-longform-html skill template (a drift
-// test pins the two copies together). Read once at module load.
-const HEAD_PARTIAL = await Deno.readTextFile(join(EDITORIAL, "head.html"));
-const BODY_PARTIAL = await Deno.readTextFile(join(EDITORIAL, "body.html"));
+// test pins the two copies together). Embedded at codegen time (deno task gen)
+// so the published JSR package never reads package-relative files.
+import { EDITORIAL_BODY as BODY_PARTIAL, EDITORIAL_HEAD as HEAD_PARTIAL } from "./assets_gen.ts";
 
 // RR-only chrome (NOT shared with standalone skill docs): the favicon links
 // resolve only on the served site, so they never go into a portable doc.

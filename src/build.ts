@@ -19,8 +19,10 @@
  */
 import { emptyDir, ensureDir } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
+import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 import { loadCorpus, renderIndex, ROOT, transformDoc } from "./render.ts";
 import type { Topic } from "./render.ts";
+import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 
 /** The publish subset: only visibility:shared docs, then only non-empty topics. */
 export function filterShared(corpus: Topic[]): Topic[] {
@@ -52,12 +54,9 @@ export async function build(opts: BuildOptions = {}): Promise<{ docs: number; to
     }
   }
   await Deno.writeTextFile(join(outDir, "index.html"), renderIndex(corpus));
-  if (outDir !== ROOT) {
-    // a standalone publish dir needs the site icons alongside it
-    for (const icon of ["favicon.svg", "apple-touch-icon.png"]) {
-      await Deno.copyFile(join(ROOT, icon), join(outDir, icon));
-    }
-  }
+  // site icons ship embedded in the engine; the output dir gets its own copies
+  await Deno.writeTextFile(join(outDir, "favicon.svg"), FAVICON_SVG);
+  await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TOUCH_ICON_B64));
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   console.log(`  index.html  (${total} docs, ${corpus.length} topics)`);
   return { docs: total, topics: corpus.length };

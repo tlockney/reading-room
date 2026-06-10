@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
-import { removeDoc, setDocField, UnknownSlugError } from "./registry-edit.ts";
+import { removeDoc, setDocField, UnknownSlugError } from "./src/registry-edit.ts";
 
 // Three docs across two topics; header comment and hand-formatting must survive.
 const REGISTRY = `// header comment — must survive
