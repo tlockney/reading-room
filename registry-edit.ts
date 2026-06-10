@@ -9,7 +9,9 @@
  * Scanning is string-literal-aware (brackets/braces inside quoted values are
  * skipped) but not comment-aware: a bracket inside a // comment placed inside
  * a docs array would confuse it. Registry comments live at the top of the
- * file, outside any array, so this stays out of harm's way.
+ * file, outside any array, so this stays out of harm's way. Likewise, a
+ * commented-out entry carrying a live slug would be matched instead of the
+ * real one.
  */
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 
@@ -39,7 +41,12 @@ export interface DocPatch {
   visibility?: "private" | "shared";
 }
 
-export class UnknownSlugError extends Error {}
+export class UnknownSlugError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnknownSlugError";
+  }
+}
 
 interface RawTopic {
   id: string;
