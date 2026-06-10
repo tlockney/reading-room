@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { injectEditorialBody, injectEditorialHead, injectFavicon } from "./render.ts";
+import { injectEditorialBody, injectEditorialHead, injectFavicon, stripAdmin } from "./render.ts";
 
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
 
@@ -43,4 +43,15 @@ Deno.test("injectFavicon is RR-only and idempotent", () => {
   assert(once.includes("favicon.svg"));
   const twice = injectFavicon(once);
   assertEquals(twice, once);
+});
+
+Deno.test("a baked-in admin block is stripped (and stripping is idempotent)", () => {
+  const stale = MINIMAL.replace(
+    "<p>hi</p>",
+    `<p>hi</p>\n<!-- RR-ADMIN:start -->\n<script>window.__RR = {};</script>\n<!-- RR-ADMIN:end -->`,
+  );
+  const out = stripAdmin(stale);
+  assertEquals(out.includes("RR-ADMIN"), false);
+  assertEquals(out.includes("window.__RR"), false);
+  assertEquals(stripAdmin(out), out);
 });

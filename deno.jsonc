@@ -7,13 +7,17 @@
     // Rebuild index.html + docs/ from registry.jsonc.
     "build": "deno run --allow-read --allow-write build.ts",
     // Serve locally on 127.0.0.1 (expose via `tailscale serve`). PORT env or
-    // first CLI arg overrides the default 8413.
-    "serve": "deno run --allow-read --allow-net --allow-env=PORT serve.ts",
+    // first CLI arg overrides the default 8413. READONLY=1 disables the
+    // management API (view-only). Needs write access for registry/comments.
+    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY serve.ts",
     // Register (and place in _migrated/) a standalone editorial doc. The
     // editorial-longform-html skill looks for this task. See add-doc.ts.
     "add-doc": "deno run --allow-read --allow-write add-doc.ts",
-    // Run the test suite (render injection, registry insertion, skill drift).
-    "test": "deno test --allow-read --allow-env"
+    // Build the visibility:shared subset into .publish/ and run the command
+    // configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
+    "publish": "deno run --allow-read --allow-write --allow-run publish.ts",
+    // Run the test suite (render injection, registry surgery, comments, skill drift).
+    "test": "deno test --allow-read --allow-write --allow-env"
   },
   "fmt": { "lineWidth": 100 },
   "lint": { "rules": { "tags": ["recommended"] } }

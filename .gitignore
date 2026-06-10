@@ -9,3 +9,6 @@
 
 # Scratch space for importing docs (raw html, defuddled md, assembled editorial)
 /_work/
+
+# Remote-publish staging (deno task publish)
+/.publish/
