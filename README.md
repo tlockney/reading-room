@@ -1,19 +1,49 @@
 # Reading Room
 
-A local, editorially-styled library of long-form documents, plus the **editorial-longform-html**
-authoring skill that produces them. The site structure lives in **`registry.jsonc`**. Tooling is
-Deno — no build step.
+An editorial document library **engine**, published to JSR as
+[`@tlockney/reading-room`](https://jsr.io/@tlockney/reading-room), plus the
+**editorial-longform-html** authoring skill that produces the documents it serves. Tooling is Deno —
+no build step.
 
-Two halves, one visual language:
+The engine serves, builds, publishes, and annotates a registry of long-form HTML documents. Each
+_environment_ (a personal library, a work library, …) is a small private **content repo** that pins
+the engine and holds only its own content and identity; features land once here and every
+environment picks them up with a version bump.
 
-- **The library** (this directory) — registers standalone HTML docs and serves them with shared
-  navigation, click-to-zoom figures, and a light/espresso theme toggle.
+Three pieces, one visual language:
+
+- **The engine** (`src/`) — rendering core, live server with management API, static builder, remote
+  publisher.
 - **The skill** (`skill/editorial-longform-html/`) — a Claude Code skill for authoring documents in
   the editorial-print aesthetic: cream paper, Fraunces + Source Serif + JetBrains Mono,
   forest/copper accents, numbered sections. Install it by copying (or symlinking) the directory into
   `~/.claude/skills/`:
 
       ln -s "$(pwd)/skill/editorial-longform-html" ~/.claude/skills/
+
+- **The content** — `registry.jsonc` + `_migrated/` + `comments/`. This repo carries its own content
+  (it is its own first consumer); other environments keep theirs in their own repos.
+
+## A content repo
+
+The complete consumer shape (see `example/` for a working one):
+
+    deno.jsonc          # tasks pinning jsr:@tlockney/reading-room/<entry>
+    site.jsonc          # site identity (title, eyebrow, lede, footer) — optional
+    registry.jsonc      # the corpus: topics → docs
+    _migrated/          # the documents
+    comments/           # annotation sidecars (created on first annotation)
+    assets/head-extra.html   # optional: local <head> additions (CSS, fonts…)
+    assets/body-extra.html   # optional: local <body> additions
+    publish.jsonc       # optional: remote-publish command
+    agent.sh            # optional: launchd + tailscale wrapper (macOS)
+
+Tasks delegate to the packaged entry points, which operate on the **current directory**:
+
+    "serve":   "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY jsr:@tlockney/reading-room/serve",
+    "build":   "deno run --allow-read --allow-write jsr:@tlockney/reading-room/build",
+    "add-doc": "deno run --allow-read --allow-write jsr:@tlockney/reading-room/add-doc",
+    "publish": "deno run --allow-read --allow-write --allow-run jsr:@tlockney/reading-room/publish"
 
 ## Use it
 
@@ -22,7 +52,6 @@ Two halves, one visual language:
 
     deno task build              # write STATIC files (only needed to publish)
     deno task publish            # build the shared subset + run publish.jsonc's command
-    deno task test               # render injection, registry insertion, skill drift
 
 `deno task serve` renders every page on the fly from `registry.jsonc` and the source docs, bound to
 **localhost only**. Editing the registry or any doc shows up on the next refresh — no rebuild, no
@@ -54,7 +83,7 @@ Author a doc with the skill (start from
       --foot-left "2026·06·07" --foot-right "repo-or-source"
 
 Or edit `registry.jsonc` (topics → docs) by hand and refresh — that's it. Each doc points at a `src`
-HTML (relative to this repo's parent directory, so docs can live in sibling repos); if
+HTML (relative to the content repo's parent directory, so docs can live in sibling repos); if
 `_migrated/<slug>.html` exists it's used instead. Flags:
 
 - `visibility`: `private` | `shared` — `deno task publish` ships only the `shared` subset; the local
@@ -93,34 +122,51 @@ works anywhere.
 A warm "espresso" dark theme is injected into every page. The toggle (bottom-right) persists your
 choice and defaults to your system setting.
 
-## Customize
+## Customize an environment
 
-Site title, masthead eyebrow, lede, and footer live in the `SITE` constant at the top of `render.ts`
-— edit to taste.
+- **Identity** — `site.jsonc` in the content repo sets the `<title>`, masthead eyebrow, lede, and
+  footer lines. Every field is optional; absent file means the generic defaults.
+- **Local additions** — `assets/head-extra.html` and `assets/body-extra.html` are injected into
+  every page (served _and_ built) inside `RR-LOCAL-HEAD` / `RR-LOCAL-BODY` marked regions:
+  idempotent, healing, and **additive only**. The canonical editorial bundle always injects
+  regardless — there is no override mechanism, so the skill-drift guarantee holds in every
+  environment.
 
-## Layout
+## Engine development (this repo)
 
-- `registry.jsonc` — **the site structure** (topics + docs). Edit this.
-- `render.ts` — shared rendering core (index + per-doc transform: nav, zoom, theme, link rewrite).
-  Used by both serve and build.
-- `serve.ts` — local server (127.0.0.1:8413); renders **dynamically** per request.
-- `build.ts` — writes the **same** output to static files, for publish.
-- `publish.ts` — build the shared subset to `.publish/` + run the configured push command.
-- `registry-edit.ts` — pure registry string surgery (used by add-doc and the management API).
-- `comments.ts`, `comments/` — annotation store: one JSON sidecar per doc slug.
-- `admin.ts`, `assets/admin/` — the serve-only management layer (manage mode, review chip,
-  marginalia). Never part of static output.
-- `add-doc.ts` — register (and place in `_migrated/`) a standalone doc.
-- `agent.sh` — install/manage the LaunchAgent + Tailscale HTTPS exposure (macOS).
-- `assets/editorial/` — the canonical zoom + theme + mobile bundle, injected into every served page
-  (and inlined in the skill template; `drift_test.ts` pins the two together).
-- `favicon.svg`, `apple-touch-icon.png` — site icons (copper § on forest); served at `/`, linked
-  into every page, part of publish.
-- `deno.jsonc` — tasks (`serve`, `build`, `publish`, `add-doc`, `test`).
-- `_migrated/` — editorial HTML copies / hand-authored docs (NOT wiped).
+    deno task test               # full suite: render, surgery, comments, API, purity, drift
+    deno task gen                # regenerate src/assets_gen.ts after editing assets/
+
+Layout:
+
+- `src/render.ts` — shared rendering core (index + per-doc transform: nav, zoom, theme, link
+  rewrite, local slots). Used by both serve and build.
+- `src/serve.ts` — local server (127.0.0.1:8413); renders **dynamically** per request; carries the
+  management API (`/api/docs/…`).
+- `src/build.ts` — writes the **same** output to static files, for publish.
+- `src/publish.ts` — build the shared subset to `.publish/` + run the configured push command.
+- `src/add-doc.ts` — register (and place in `_migrated/`) a standalone doc.
+- `src/registry-edit.ts` — pure registry string surgery (used by add-doc and the management API).
+- `src/comments.ts` — annotation store: one JSON sidecar per doc slug.
+- `src/admin.ts` — the serve-only management layer injection. Never part of static output.
+- `src/config.ts` — `site.jsonc` loading + the `RoomContext` (content root, derived paths).
+- `src/assets_gen.ts` — GENERATED (`deno task gen`): the editorial partials, admin bundle, and site
+  icons embedded as strings so the package never reads package-relative files.
+- `src/mod.ts` — the library surface (also exports `EDITORIAL_HEAD`/`EDITORIAL_BODY` for
+  content-repo drift tests).
+- `assets/editorial/` — the canonical zoom + theme + mobile bundle **source** (inlined in the skill
+  template; `drift_test.ts` pins the two together).
+- `assets/admin/` — the management UI bundle source (manage mode, review chip, marginalia).
+- `scripts/gen-assets.ts` — the embedding codegen (`assets_gen_test.ts` pins output ↔ source).
+- `example/` — a minimal consumer content repo, exercised by `example_test.ts`.
+- `skill/editorial-longform-html/` — the authoring skill (template + style guide).
+- `registry.jsonc`, `_migrated/`, `comments/` — this repo's own content (it is its own first
+  consumer; `deno task …` here operates on the repo root).
 - `docs/`, `index.html` — generated by `deno task build` (publish artifact); the live server does
   not use them. Wiped each build.
-- `skill/editorial-longform-html/` — the authoring skill (template + style guide).
+
+Releasing: bump `version` in `deno.jsonc`, tag `v<version>`, push the tag — the `publish` workflow
+tests and runs `deno publish` (JSR OIDC, no token).
 
 ## Remote sharing
 

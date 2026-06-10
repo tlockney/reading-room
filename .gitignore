@@ -12,3 +12,9 @@
 
 # Remote-publish staging (deno task publish)
 /.publish/
+
+# Example consumer build output (example_test.ts builds to a temp dir, but
+# running deno task build inside example/ writes here)
+/example/docs/
+/example/index.html
+/example/.publish/

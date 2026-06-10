@@ -1,0 +1,21 @@
+// Example corpus — one topic, one doc.
+[
+  {
+    "num": "§ 01",
+    "id": "getting-started",
+    "name": "Getting Started",
+    "short": "Start",
+    "docs": [
+      {
+        "slug": "welcome",
+        "title": "Welcome",
+        "kind": "Guide",
+        "desc": "What this example shows.",
+        "footLeft": "Guide",
+        "footRight": "Example",
+        "src": "example/_migrated/welcome.html",
+        "visibility": "shared"
+      }
+    ]
+  }
+]

@@ -1,0 +1,7 @@
+{
+  // Site identity — every field optional; defaults are the generic Reading Room.
+  "title": "Example Reading Room",
+  "eyebrow": "Example Library",
+  "lede": "A minimal consumer of @tlockney/reading-room.",
+  "footer": ["Example Library", "Local Only", "The Reading Room"]
+}
