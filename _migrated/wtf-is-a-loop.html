@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WTF Is a Loop? · Agentic Loops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Floating mini-map TOC */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section { page-break-inside: avoid; }
+  }
+</style>
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+
+  <header class="masthead">
+    <div class="eyebrow">Essay · Agentic Loops</div>
+    <h1><a href="#" class="title-link">WTF Is a <em>Loop?</em></a></h1>
+    <p class="lede">The most repeated sentence in AI coding this week is six words long, and almost nobody saying it can define it. The answer is real, it has a five-year lineage, and the punchline is that the loop — not the model — is now the expensive part.</p>
+    <div class="meta">
+      <span><strong>Author</strong> · Matt Van Horn</span>
+      <span><strong>Source</strong> · x.com</span>
+      <span><strong>Saved</strong> · 2026·06·08</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#chokehold">The tweet with the timeline in a chokehold</a></li>
+      <li><a href="#what-it-is">What a loop actually is</a></li>
+      <li><a href="#spectrum">The spectrum: ReAct to orchestration</a></li>
+      <li><a href="#cron">"It's just a cron job with a hat on"</a></li>
+      <li><a href="#building-one">What it looks like when you build one</a></li>
+      <li><a href="#expensive">The loop is now the expensive part</a></li>
+      <li><a href="#skills">It's not loops. It's skills.</a></li>
+      <li><a href="#patterns">Key patterns</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#chokehold">Chokehold</a></li>
+      <li><a href="#what-it-is">What it is</a></li>
+      <li><a href="#spectrum">The spectrum</a></li>
+      <li><a href="#cron">Cron with a hat</a></li>
+      <li><a href="#building-one">Building one</a></li>
+      <li><a href="#expensive">The expensive part</a></li>
+      <li><a href="#skills">It's skills</a></li>
+      <li><a href="#patterns">Key patterns</a></li>
+    </ol>
+  </nav>
+
+  <section id="chokehold">
+    <h2><a href="#chokehold" class="heading-link"><span class="num">§ 01</span>The tweet with the timeline in a chokehold</a></h2>
+    <p class="lead-para">One tweet had the entire AI-coding timeline obsessed this week. Peter Steinberger posted it on June 7, it cleared 2.2 million views, and the replies turned into a brawl over what it actually meant.</p>
+
+    <p class="tldr">"Here's your monthly reminder that you shouldn't be prompting coding agents anymore. You should be designing loops that prompt your agents." — @steipete, June 7, 2026</p>
+
+    <p>That's the sentence everyone is quoting. The most telling reply came from Varadh Jain, who asked the only question that mattered — what does this look like in practice? — and the answer that became the whole mood was Matthew Berman's: <em>"nobody knows but him and boris."</em></p>
+
+    <p>That's the real story: a six-word phrase hit two million views while the people boosting it argued in the replies about what it meant. The loudest idea in AI coding is one most people repeating it can't explain. One camp shouted that prompt engineering is dead. The other — the one with hands on a keyboard — was more careful:</p>
+
+    <div class="note">
+      <span class="note-label">@trashpandaemoji · June 7, 2026</span>
+      <p>"It's not ralph/goal loops, that's old hat by now. It's probably some kind of continuous orchestration loop that oversees other threads/agents." <em>The closest thing to a correct answer anyone posted. Hold onto it.</em></p>
+    </div>
+  </section>
+
+  <section id="what-it-is">
+    <h2><a href="#what-it-is" class="heading-link"><span class="num">§ 02</span>What a loop actually is</a></h2>
+    <p>Boris Cherny created Claude Code as a side project in September 2024; it now reportedly sits behind close to four percent of all public commits on GitHub. On stage at WorkOS's Acquired Unplugged event on June 2, he gave the cleanest definition you'll find:</p>
+
+    <p class="tldr">"I don't prompt Claude anymore. I have loops that are running. They're the ones that are prompting Claude and figuring out what to do. My job is to write loops." — Boris Cherny</p>
+
+    <p>The plain version: a loop is a small program you write that prompts the coding agent for you, reads what it produced, decides whether it's done, and if not, prompts it again. You stop being the thing inside the loop typing prompts. You become the author of the loop. The model becomes a subroutine.</p>
+
+    <p>Boris tells it as three stages, and placing yourself on the ladder is the fastest way to get it. A year ago he wrote code by hand with autocomplete. Then he ran five to ten Claude sessions in parallel and prompted each. Now he doesn't prompt at all — he writes the loops, and a couple hundred agents read his GitHub, Slack, and Twitter and decide what to build next. He has the receipt: <strong>"In the last 30 days, 100% of my contributions to Claude Code were written by Claude Code. I landed 259 PRs."</strong> He deleted his IDE in November and hasn't opened it since.</p>
+
+    <div class="note good">
+      <span class="note-label">The nuance the hype skips</span>
+      <p>He is <em>not</em> saying engineers are obsolete. Someone still has to decide what to build, talk to customers, and coordinate teams — and he says great engineers matter more than ever. The job didn't vanish; it moved up an altitude, from writing the code to writing the thing that writes the code.</p>
+    </div>
+  </section>
+
+  <section id="spectrum">
+    <h2><a href="#spectrum" class="heading-link"><span class="num">§ 03</span>The spectrum: ReAct to orchestration</a></h2>
+    <p>The replies were a mess because "loop" hides at least five different things. Here's the ladder, oldest to newest, so you can stop talking past people.</p>
+
+    <table>
+      <thead><tr><th>Stage</th><th>When</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td>1 · ReAct</td><td>2022</td><td>The academic while-loop: the model reasons, calls a tool, reads the result, repeats until done. One model, one loop, a human watching.</td></tr>
+        <tr><td>2 · AutoGPT</td><td>2023</td><td>Gave it a goal and let it prompt itself — famous for spinning forever doing nothing. Seeded years of "agents are a toy."</td></tr>
+        <tr><td>3 · ralph</td><td>2025</td><td>Geoffrey Huntley's bash one-liner that pipes the same prompt file into the agent over and over. The innovation was discipline: reset context to fixed anchor files each iteration. Built a whole language for ~$297.</td></tr>
+        <tr><td>4 · /goal</td><td>spring 2026</td><td>Codex and Claude Code productized ralph: run the loop until a small validator model confirms the task is done.</td></tr>
+        <tr><td>5 · orchestration</td><td>now</td><td>The loop is the unit of work; loops supervise other loops, concurrently and on a schedule; durability is explicit (git-backed state, crash recovery).</td></tr>
+      </tbody>
+    </table>
+
+    <p>Stage five is what Boris and Steinberger actually mean, and it's genuinely new. Ralph assumed your terminal stayed open. The 2026 version assumes it does not. So Trash Panda was right twice: the single-agent ralph loop is old hat, and the multi-agent orchestration loop on top of it is the new thing.</p>
+  </section>
+
+  <section id="cron">
+    <h2><a href="#cron" class="heading-link"><span class="num">§ 04</span>"It's just a cron job with a hat on"</a></h2>
+    <p>The best skeptic line in the whole corpus was four words, posted under someone gushing about loops: <em>"Cronjobs have funny re-branding rn."</em> It deserves a straight answer, because it's half right. Yes, the scheduling layer is cron — Boris literally runs his on cron, and <code>/loop</code> in Claude Code uses cron under the hood. If your whole definition of a loop is "a thing that runs on a timer," we invented that in 1975.</p>
+
+    <p class="tldr">What cron never had is the part in the middle. A cron job runs a fixed script. A loop runs a model that looks at the current state, decides what to do next, does it, checks whether it worked, and decides whether to keep going.</p>
+
+    <p>The decision is the agent's — not yours, and not a hardcoded branch. Stack those, let one loop dispatch and supervise others, give them durable shared state, and you have something cron cannot express. The honest framing: loops are cron plus a decision-maker in the body, and the interesting engineering is everything you wrap around that decision so it doesn't run off a cliff.</p>
+  </section>
+
+  <section id="building-one">
+    <h2><a href="#building-one" class="heading-link"><span class="num">§ 05</span>What it looks like when you build one</a></h2>
+    <p>The on-ramp is one line. Boris's own example is the canonical starter — paste it and change the nouns:</p>
+<pre><code>/loop babysit all my PRs. Auto-fix build issues, and when
+comments come in, use a worktree agent to fix them.</code></pre>
+
+    <p>His fuller recipe — five tips for running Opus autonomously for hours or days:</p>
+    <ol>
+      <li>Use <strong>auto mode</strong> for permissions so Claude doesn't ask for approval.</li>
+      <li>Use <strong>dynamic workflows</strong> to orchestrate hundreds or thousands of agents.</li>
+      <li>Use <code>/goal</code> or <code>/loop</code> to nudge Claude to keep going until it's done.</li>
+      <li>Use Claude Code <strong>in the cloud</strong> so you can close your laptop.</li>
+      <li>Make sure Claude has a way to <strong>self-verify</strong> its work end to end.</li>
+    </ol>
+
+    <div class="note caveat">
+      <span class="note-label">Tip five is the one that matters</span>
+      <p>A loop is only as trustworthy as its ability to check its own work. The fastest-growing sub-theme in the research wasn't orchestration — it was verification. "Your coding agent can move fast, but bad commits compound fast too." (@DanKornas, shipping <em>roborev</em>, which reviews every commit in the background and feeds findings back while the context is still fresh.) An open loop with no feedback is a machine for generating confident mistakes. The loop isn't the magic; the feedback inside it is.</p>
+    </div>
+
+    <p>The deep end is Steve Yegge's <strong>Gas Town</strong> (January): twenty to thirty Claude Code instances coordinated by a Mayor agent, with patrol agents running continuous loops and state stored in git so work survives a crash — the continuous orchestration loop, shipped and open source.</p>
+  </section>
+
+  <section id="expensive">
+    <h2><a href="#expensive" class="heading-link"><span class="num">§ 06</span>The loop is now the expensive part</a></h2>
+    <p>Here's where the research turned from philosophy to a finance problem. The sharpest deflation of the agents mythology came from a working engineer:</p>
+
+    <div class="note">
+      <span class="note-label">@rohit_jsfreaky · June 2026</span>
+      <p>"Every ai agent i shipped this year is a for-loop, an llm call, and a try/catch around the json parsing. The only thing agentic about it is the anthropic bill at the end of the month."</p>
+    </div>
+
+    <p>That bill isn't a joke. The receipt of the month: Uber capped its engineers at $1,500 per person, per tool, per month for Claude Code and Cursor after burning its annual AI budget in four months. Once the model writes the code for almost nothing, the cost moves to the loop running it — "the costliest thing in AI coding is no longer writing code, it's managing the agent loop."</p>
+
+    <p>And the failure mode everyone in production fears is the loop that doesn't stop: <em>"Without guardrails, you get infinite loops and billing surprises orders of magnitude over budget."</em> Which is why every serious 2026 write-up converges on the same three hard stops:</p>
+    <ul>
+      <li>A maximum <strong>iteration count</strong>.</li>
+      <li><strong>No-progress detection</strong>.</li>
+      <li>A token or dollar <strong>budget ceiling</strong>.</li>
+    </ul>
+    <p>The romantic version of loops is that a thousand agents build your company overnight. The production version is that most of your job is making sure they halt. (Gartner puts agentic AI at the peak of inflated expectations, with only ~17% of organizations actually deploying agents.)</p>
+  </section>
+
+  <section id="skills">
+    <h2><a href="#skills" class="heading-link"><span class="num">§ 07</span>It's not loops. It's skills.</a></h2>
+    <p>The loop is plumbing. The asset is the skill it calls. Steinberger's other recurring point is the more durable half: if you do something more than once, turn it into an automated skill; if you do something hard, turn it into a skill afterward so next time is free. A loop with no reusable skills inside it is just a while-true around a stranger. A loop that calls a library of sharp, tested, named skills is a system that compounds.</p>
+
+    <p class="tldr">Stop being the thing in the loop. Write the loop once, give it skills worth calling and feedback so it can check itself, cap it so it halts, and let it run on cron while you go decide what to build next.</p>
+
+    <p>Steinberger and Boris are describing the same animal from two sides. The only people who truly know are the ones who've already built one — and as of this month, the on-ramp is a single slash command.</p>
+  </section>
+
+  <section id="patterns">
+    <h2><a href="#patterns" class="heading-link"><span class="num">§ 08</span>Key patterns</a></h2>
+    <ul>
+      <li>A loop is <strong>cron plus a decision-maker</strong> in the body — the model, not a hardcoded branch, picks the next action each tick.</li>
+      <li>The lineage is real: ReAct (2022) → AutoGPT (2023) → ralph (2025) → <code>/goal</code> (spring 2026) → orchestration (now). Single-agent ralph is old hat; multi-agent supervision is the new layer.</li>
+      <li>A loop is only as good as its <strong>feedback</strong>. Continuous review and validation gates are what make it trustworthy.</li>
+      <li>The expensive resource shifted from <strong>tokens to loop management</strong>: cap iterations, detect no-progress, set a dollar budget.</li>
+      <li>The reusable unit inside the loop is a <strong>skill, not a prompt</strong>. Loops that call sharp named skills compound; loops that re-derive everything just burn money.</li>
+    </ul>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <footer>
+    <span><a href="https://x.com/mvanhorn/status/2063865685558903149">Original · x.com</a></span>
+    <span>Matt Van Horn · Agentic Loops</span>
+    <span>Saved 2026·06·08</span>
+  </footer>
+
+</div>
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

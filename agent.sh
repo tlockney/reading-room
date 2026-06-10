@@ -16,7 +16,7 @@ LABEL="local.reading-room"
 PORT="${PORT:-8413}"
 RR="$(cd "$(dirname "$0")" && pwd)"
 DENO="${DENO:-$(command -v deno || echo /opt/homebrew/bin/deno)}"
-TS="/Applications/Tailscale.app/Contents/MacOS/Tailscale"
+TS="${TS:-$(command -v tailscale || echo /Applications/Tailscale.app/Contents/MacOS/Tailscale)}"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 UID_="$(id -u)"
 

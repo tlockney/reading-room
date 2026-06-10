@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Designing Loops with Fable 5 · Agentic Loops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Floating mini-map TOC */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section { page-break-inside: avoid; }
+  }
+</style>
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+
+  <header class="masthead">
+    <div class="eyebrow">Thread · Agentic Loops</div>
+    <h1><a href="#" class="title-link">Designing Loops with <em>Fable 5</em></a></h1>
+    <p class="lede">Two tips for getting the most out of a Mythos-class model: let it self-correct against a goal or rubric, and let it manage its own memory across sessions. With worked examples from Parameter Golf and Continual Learning Bench.</p>
+    <div class="meta">
+      <span><strong>Author</strong> · Lance Martin</span>
+      <span><strong>Source</strong> · x.com</span>
+      <span><strong>Saved</strong> · 2026·06·09</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#two-tips">Two tips for a Mythos-class model</a></li>
+      <li><a href="#self-correction">Self-correction loops</a></li>
+      <li><a href="#parameter-golf">Parameter Golf — a worked example</a></li>
+      <li><a href="#memory">Memory as the outer loop</a></li>
+      <li><a href="#progression">The memory progression</a></li>
+      <li><a href="#design-dont-steer">Design loops, don't steer</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#two-tips">Two tips</a></li>
+      <li><a href="#self-correction">Self-correction</a></li>
+      <li><a href="#parameter-golf">Parameter Golf</a></li>
+      <li><a href="#memory">Memory</a></li>
+      <li><a href="#progression">Progression</a></li>
+      <li><a href="#design-dont-steer">Design, don't steer</a></li>
+    </ol>
+  </nav>
+
+  <section id="two-tips">
+    <h2><a href="#two-tips" class="heading-link"><span class="num">§ 01</span>Two tips for a Mythos-class model</a></h2>
+    <p class="lead-para">Mythos-class models like Claude Fable 5 have changed the way many of us work at Anthropic. There are two tips worth sharing for getting the most out of this class of models — and both are about building the right loop around the model rather than steering the model directly.</p>
+    <p>The first is letting the model <strong>self-correct against a goal or rubric</strong>. The second is letting it <strong>manage its own memory</strong> across sessions. Each is a kind of loop: one tight (within a task), one wide (across sessions).</p>
+  </section>
+
+  <section id="self-correction">
+    <h2><a href="#self-correction" class="heading-link"><span class="num">§ 02</span>Self-correction loops</a></h2>
+    <p>There's been a lot of interest in loops recently — Boris Cherny <a href="https://x.com/sairahul1/status/2064279904989147577">has said</a> that "(his) job is to write loops." Letting a model hillclimb on an evaluation is a common recipe for improving task performance. <a href="https://code.claude.com/docs/en/goal"><code>/goal</code></a> in Claude Code and <a href="https://platform.claude.com/docs/en/managed-agents/define-outcomes">Outcomes</a> in Claude Managed Agents are primitives that apply this general recipe to your specific task.</p>
+    <p>As the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5">prompting guide</a> notes, Fable 5 is good at self-correcting in a loop. A well-designed goal or rubric adds feedback to the environment Claude is running in: Claude runs, collects feedback via the goal or rubric, self-corrects, and proceeds until the criteria are satisfied.</p>
+
+    <div class="note caveat">
+      <span class="note-label">What does the judging matters</span>
+      <p>Models have trouble with self-critique on their <em>own</em> outputs. A verifier sub-agent <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5">tends to outperform</a> self-critique with Fable 5, because grading happens in an independent context window. Outcomes in CMA handles this by spawning a grader sub-agent for you. (More on this failure mode in the <a href="https://www.anthropic.com/engineering/harness-design-long-running-apps">harness-design writeup</a>.)</p>
+    </div>
+  </section>
+
+  <section id="parameter-golf">
+    <h2><a href="#parameter-golf" class="heading-link"><span class="num">§ 03</span>Parameter Golf — a worked example</a></h2>
+    <p><a href="https://github.com/openai/parameter-golf">Parameter Golf</a> is an open-source ML-engineering challenge: train the best model that fits in a 16MB artifact in under 10 minutes on 8×H100s. It's a bit like Karpathy's <a href="https://github.com/karpathy/autoresearch">autoresearch</a> — it tests an agent's ability to edit basic training code (a single <code>train_gpt.py</code>), launch training, poll the log, read the score, and decide what experiment to run next.</p>
+    <p>I compared Fable 5 to Opus 4.7 using <a href="https://platform.claude.com/docs/en/managed-agents/overview">Claude Managed Agents</a> (CMA), which provides <a href="https://www.anthropic.com/engineering/managed-agents">the agent harness plus a hosted sandbox</a> — well-suited to long-running tasks — with 8×H100 GPUs as a <a href="https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes">self-hosted sandbox</a>. Each test supplied a rubric file with nine checkable criteria (run a baseline, run 20 experiments, and so on), and Parameter Golf ran for up to 8 hours. The Outcomes grader confirmed all criteria were met before letting Claude stop.</p>
+    <p class="tldr">Fable 5 improved the training pipeline ~6× more than Opus 4.7 — betting on larger structural changes and showing resilience, pushing through a quantization regression to its biggest win.</p>
+    <p>Where Fable 5 made structural bets (architecture changes), Opus 4.7's first experiment produced a small win and nearly everything after followed the same template: adjust a scalar, measure, keep if positive.</p>
+  </section>
+
+  <section id="memory">
+    <h2><a href="#memory" class="heading-link"><span class="num">§ 04</span>Memory as the outer loop</a></h2>
+    <p>Memory is <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices">another area where Fable excels</a>. Think of it as an outer loop spanning sessions: Claude writes to memory during a session, and those memories are retrieved in future ones.</p>
+    <p>To test it, I used one task from Parth Asawa's team's <strong>Continual Learning Bench 1.0</strong> — a benchmark for how AI systems improve in online settings (most benchmarks assume models are stateless, but deployed systems should learn from experience). The task asks an agent to answer sequential questions against a SQL database; each question is a separate agent session, with memory provided via <a href="https://platform.claude.com/docs/en/managed-agents/memory">CMA memory</a> (a mounted filesystem shared across sessions).</p>
+  </section>
+
+  <section id="progression">
+    <h2><a href="#progression" class="heading-link"><span class="num">§ 05</span>The memory progression</a></h2>
+    <p>Effective use of memory follows a progression — and how far a model climbs it is what separates the three:</p>
+    <ol>
+      <li><strong>Fail</strong> — get something wrong and document it.</li>
+      <li><strong>Investigate</strong> — before moving on, figure out why.</li>
+      <li><strong>Verify</strong> — turn the diagnosis into a checked fact.</li>
+      <li><strong>Distill</strong> — turn verification into a general rule.</li>
+      <li><strong>Consult</strong> — read the rule instead of re-deriving it.</li>
+    </ol>
+
+    <table>
+      <thead><tr><th>Model</th><th>Climbs to</th><th>Behavior</th></tr></thead>
+      <tbody>
+        <tr><td>Sonnet 4.6</td><td>Step 1 — Fail</td><td>Store is a list of failure notes and open guesses ("maybe <code>prc</code> instead of <code>prc_usd</code>?"); rarely consults prior notes.</td></tr>
+        <tr><td>Opus 4.7</td><td>Step 3 — Verify</td><td>Builds a schema reference with uncertainty flagged, but verification coverage is low: 7–33% of questions (median ~17%).</td></tr>
+        <tr><td>Fable 5</td><td>Step 5 — Consult</td><td>Completes the progression; strongest runs reach 73% verification coverage (22 of 30) and distill learnings into reusable rules.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="note-label">The payoff</span>
+      <p>Fable 5 tends to complete the full progression — distilling general rules that carry forward and help with future tasks, rather than re-deriving the same facts each session.</p>
+    </div>
+  </section>
+
+  <section id="design-dont-steer">
+    <h2><a href="#design-dont-steer" class="heading-link"><span class="num">§ 06</span>Design loops, don't steer</a></h2>
+    <p>Rather than directly prompting and steering Fable 5, it's often better to design loops that let the model self-correct in response to environment feedback (<code>/goal</code> or Outcomes) and manage its own context (via memory). These are just a few small-scale experiments — it's worth testing Fable 5 yourself on challenging tasks, using loops for self-correction or memory.</p>
+    <p>To get started, see the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-fable-5">docs</a>, or ask the latest Claude Code (it can use the built-in <a href="https://github.com/anthropics/skills/tree/main/skills/claude-api"><code>/claude-api</code></a> skill to explain Fable 5 prompting, <code>/goal</code>, Claude Managed Agents, and other API features).</p>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <footer>
+    <span><a href="https://x.com/RLanceMartin/status/2064397389189071163">Original · x.com</a></span>
+    <span>Lance Martin · Agentic Loops</span>
+    <span>Saved 2026·06·09</span>
+  </footer>
+
+</div>
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

@@ -36,5 +36,23 @@
         "footLeft": "Guide", "footRight": "Reading Room",
         "src": "reading-room/_migrated/about-this-library.html", "visibility": "private" }
     ]
+  },
+  {
+    "num": "§ 02", "id": "agentic-loops",
+    "name": "Agentic Loops & Harnesses", "short": "Loops",
+    "docs": [
+      { "slug": "loop-engineering", "title": "Loop Engineering",
+        "kind": "Essay · Agentic Loops", "desc": "Designing the system that prompts your agents — the five primitives Claude Code and Codex now both ship.",
+        "footLeft": "2026·06·10", "footRight": "addyo.substack.com",
+        "src": "reading-room/_migrated/loop-engineering.html", "visibility": "private" },
+      { "slug": "fable5-loops", "title": "Designing Loops with Fable 5",
+        "kind": "Thread · Agentic Loops", "desc": "Let the model self-correct against a goal or rubric, and manage its own memory across sessions — with worked examples.",
+        "footLeft": "2026·06·09", "footRight": "x.com",
+        "src": "reading-room/_migrated/fable5-loops.html", "visibility": "private" },
+      { "slug": "wtf-is-a-loop", "title": "WTF Is a Loop? Steinberger vs. Cherny",
+        "kind": "Essay · Agentic Loops", "desc": "A six-word phrase, a five-year lineage, and the punchline: the loop — not the model — is now the expensive part.",
+        "footLeft": "2026·06·08", "footRight": "x.com",
+        "src": "reading-room/_migrated/wtf-is-a-loop.html", "visibility": "private" }
+    ]
   }
 ]

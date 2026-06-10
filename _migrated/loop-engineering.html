@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loop Engineering · Agentic Loops</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Floating mini-map TOC */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section { page-break-inside: avoid; }
+  }
+</style>
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+
+  <header class="masthead">
+    <div class="eyebrow">Essay · Agentic Loops</div>
+    <h1><a href="#" class="title-link">Loop <em>Engineering</em></a></h1>
+    <p class="lede">Replacing yourself as the person who prompts the agent — and designing the system that does it instead. The five primitives Claude Code and Codex now both ship, and why the leverage point moved from the prompt to the loop.</p>
+    <div class="meta">
+      <span><strong>Author</strong> · Addy Osmani</span>
+      <span><strong>Source</strong> · addyo.substack.com</span>
+      <span><strong>Saved</strong> · 2026·06·10</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#what-it-is">What loop engineering is</a></li>
+      <li><a href="#five-pieces">The five pieces (and the sixth)</a></li>
+      <li><a href="#automations">Automations — the heartbeat</a></li>
+      <li><a href="#worktrees">Worktrees — parallel without chaos</a></li>
+      <li><a href="#skills">Skills — stop re-explaining</a></li>
+      <li><a href="#connectors">Plugins &amp; connectors</a></li>
+      <li><a href="#subagents">Sub-agents — maker vs. checker</a></li>
+      <li><a href="#one-loop">What one loop looks like</a></li>
+      <li><a href="#limits">What the loop still doesn't do</a></li>
+      <li><a href="#stay-the-engineer">Build the loop. Stay the engineer.</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#what-it-is">What it is</a></li>
+      <li><a href="#five-pieces">Five pieces</a></li>
+      <li><a href="#automations">Automations</a></li>
+      <li><a href="#worktrees">Worktrees</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#connectors">Connectors</a></li>
+      <li><a href="#subagents">Sub-agents</a></li>
+      <li><a href="#one-loop">One loop</a></li>
+      <li><a href="#limits">Limits</a></li>
+      <li><a href="#stay-the-engineer">Stay the engineer</a></li>
+    </ol>
+  </nav>
+
+  <section id="what-it-is">
+    <h2><a href="#what-it-is" class="heading-link"><span class="num">§ 01</span>What loop engineering is</a></h2>
+    <p class="lead-para">Loop engineering is replacing yourself as the person who prompts the agent — you design the system that does it instead. A loop here is a recursive goal: you define a purpose and the AI iterates until it's complete. It's roughly five building blocks, and Claude Code and Codex both have all five now. This <em>may</em> be the future of how we work with coding agents — but it's still early, worth being skeptical about, and you absolutely <em>have</em> to be careful about <strong>token costs</strong>, since usage patterns vary wildly depending on whether you're token-rich or token-poor.</p>
+
+    <p>Peter Steinberger recently <a href="https://x.com/steipete/status/2063697162748260627">put it</a> bluntly: "You shouldn't be prompting coding agents anymore. You should be designing loops that prompt your agents." Boris Cherny, head of Claude Code at Anthropic, <a href="https://x.com/rohanpaul_ai/status/2063289804708835412">said</a> much the same: "I don't prompt Claude anymore. I have loops running that prompt Claude and figuring out what to do. My job is to write loops."</p>
+
+    <p class="tldr">For two years, working with a coding agent meant holding the tool the whole time — type a thing, read what came back, type the next thing. That part is over, or some think it's going to be.</p>
+
+    <p>Now you build a small system that finds the work, hands it out, checks it, writes down what's done, and then decides the next thing — and you let <em>that</em> poke the agents instead of you. It's the cousin of <a href="https://addyosmani.com/blog/agent-harness-engineering/">agent harness engineering</a> (the environment a single agent runs inside) and the <a href="https://addyosmani.com/blog/factory-model/">factory model</a> (the system that builds the software). Loop engineering sits one floor above the harness: the same harness, but it runs on a timer, spawns little helpers, and feeds itself.</p>
+
+    <p>The surprising part is that this is no longer really a tool thing. A year ago a loop meant a pile of bash you maintained forever, yours and yours alone. Now the pieces ship inside the products. Steinberger's list maps almost exactly onto the Codex app, and nearly the same onto Claude Code — and once you notice the shape is identical, you stop arguing about which tool and just design a loop that works no matter which one you're sitting in.</p>
+  </section>
+
+  <section id="five-pieces">
+    <h2><a href="#five-pieces" class="heading-link"><span class="num">§ 02</span>The five pieces (and the sixth)</a></h2>
+    <p>A loop needs five things — and then one place to remember stuff.</p>
+    <ol>
+      <li><strong>Automations</strong> that fire on a schedule and do discovery and triage by themselves.</li>
+      <li><strong>Worktrees</strong> so two agents working in parallel don't step on each other.</li>
+      <li><strong>Skills</strong> to write down the project knowledge the agent would otherwise just guess.</li>
+      <li><strong>Plugins and connectors</strong> to plug the agent into the tools you already use.</li>
+      <li><strong>Sub-agents</strong> so one has the idea and a different one checks it.</li>
+    </ol>
+
+    <div class="note good">
+      <span class="note-label">The sixth thing · Memory</span>
+      <p>A markdown file, a Linear board — anything that lives outside the single conversation and holds what's done and what's next. It sounds too dumb to matter, but it's the trick every long-running agent depends on. The model forgets everything between runs, so the memory has to live on disk, not in the context. The agent forgets; the repo doesn't.</p>
+    </div>
+
+    <p>Both products have all five now. The names differ here and there but the capability is the same — and the details are where a loop either holds together or quietly leaks everywhere.</p>
+  </section>
+
+  <section id="automations">
+    <h2><a href="#automations" class="heading-link"><span class="num">§ 03</span>Automations — the heartbeat</a></h2>
+    <p>Automations are what make a loop an actual loop and not just one run you did once. In the Codex app you create one in the Automations tab and pick the project, the prompt it runs, how often, and whether it runs on your local checkout or a background worktree. Runs that find something go to a Triage inbox; runs that find nothing archive themselves. OpenAI uses them internally for the boring stuff — daily issue triage, summarizing CI failures, writing commit briefings, hunting bugs someone added last week. An automation can call a skill, so you fire <code>$skill-name</code> instead of pasting a wall of instructions into a schedule nobody will ever update.</p>
+
+    <p>Claude Code reaches the same place through scheduling and hooks. You can run a prompt or command on an interval with <code>/loop</code>, schedule a cron task, fire shell commands at points in the agent lifecycle with hooks, or push the whole thing to GitHub Actions to keep it running after you close the laptop.</p>
+
+    <div class="note">
+      <span class="note-label">In-session primitive · /goal</span>
+      <p><code>/loop</code> re-runs on a cadence. <code>/goal</code> keeps going until a condition you wrote is actually true — and after every turn a separate small model checks whether you're done, so the agent that wrote the code isn't the one grading it. Give it "all tests in <code>test/auth</code> pass and lint is clean" and walk away. Codex has the same primitive, also called <code>/goal</code>, with pause, resume, and clear.</p>
+    </div>
+
+    <p>This is the part that surfaces the work. The rest of the loop is what acts on it.</p>
+  </section>
+
+  <section id="worktrees">
+    <h2><a href="#worktrees" class="heading-link"><span class="num">§ 04</span>Worktrees — parallel without chaos</a></h2>
+    <p>The second you run more than one agent, files start colliding — and that becomes the failure. Two agents writing the same file is the same headache as two engineers committing to the same lines without talking first. A git worktree fixes it: a separate working directory on its own branch, sharing the same repo history, so one agent's edits literally can't touch the other's checkout.</p>
+
+    <p>Codex builds worktree support right in, so several threads hit the same repo at once without bumping into each other. Claude Code gives you the same isolation with <code>git worktree</code>, a <code>--worktree</code> flag to open a session in its own checkout, and an <code>isolation: worktree</code> setting on a subagent so each helper gets a fresh checkout that cleans itself up after.</p>
+
+    <div class="note caveat">
+      <span class="note-label">The orchestration tax</span>
+      <p>Worktrees remove the mechanical collision, but <strong>you</strong> are still the ceiling. Your review bandwidth decides how many agents you can actually run — not the tool. (See <a href="https://addyosmani.com/blog/orchestration-tax/">the orchestration tax</a>.)</p>
+    </div>
+  </section>
+
+  <section id="skills">
+    <h2><a href="#skills" class="heading-link"><span class="num">§ 05</span>Skills — stop re-explaining</a></h2>
+    <p>A skill is how you stop re-explaining the same project context every session like a goldfish. Both tools use the same format: a folder with a <code>SKILL.md</code> holding instructions and metadata, plus optional scripts, references, and assets. Codex runs a skill when you call it with <code>$</code> or <code>/skills</code>, or on its own when your task matches the skill's description — which is exactly why a tight, boring description beats a clever one. Claude Code works the same way (the pattern is written up in <a href="https://addyosmani.com/blog/agent-skills/">agent skills</a>).</p>
+
+    <p>Skills are also where intent stops costing you over and over. An agent starts every session cold and will fill any gap in your intent with a confident guess — that's <a href="https://addyosmani.com/blog/intent-debt/">intent debt</a>. A skill is that intent written down on the outside: the conventions, the build steps, the "we don't do it like this because of that one incident," recorded once where the agent reads it every run. Without skills the loop re-derives your whole project from zero every cycle; with skills it compounds.</p>
+
+    <div class="note">
+      <span class="note-label">Skill vs. plugin</span>
+      <p>The skill is the authoring format; a plugin is how you ship it. When you want to share a skill across repos or bundle several together, you package them as a plugin. True in Codex, true in Claude Code.</p>
+    </div>
+  </section>
+
+  <section id="connectors">
+    <h2><a href="#connectors" class="heading-link"><span class="num">§ 06</span>Plugins &amp; connectors</a></h2>
+    <p>A loop that can only see the filesystem is a tiny loop. Connectors — built on MCP — let the agent read your issue tracker, query a database, hit a staging API, or drop a message in Slack. Codex and Claude Code both speak MCP, so a connector you wrote for one usually just works in the other. Plugins bundle connectors and skills together, so a teammate installs your whole setup in one go instead of rebuilding it from memory.</p>
+
+    <p>This is the difference between an agent that says "here is the fix" and a loop that opens the PR, links the Linear ticket, and pings the channel once CI is green — by itself. The connectors are why the loop can act inside your actual environment instead of just telling you what it would do if it could.</p>
+  </section>
+
+  <section id="subagents">
+    <h2><a href="#subagents" class="heading-link"><span class="num">§ 07</span>Sub-agents — maker vs. checker</a></h2>
+    <p>The single most useful structural move in a loop is splitting the one who writes from the one who checks. The model that wrote the code is far too generous grading its own homework. A second agent — different instructions, sometimes a different model — catches the stuff the first one talked itself into.</p>
+
+    <p>Codex spawns subagents when you ask, runs them concurrently, and folds the results back into one answer. You define your own agents as TOML files in <code>.codex/agents/</code> — name, description, instructions, optional model and reasoning effort — so your security reviewer can be a strong model on high effort while your explorer is a fast read-only one. Claude Code does the same with subagents in <code>.claude/agents/</code> and agent teams that pass work between them. The usual split, in both: one explores, one implements, one verifies against the spec.</p>
+
+    <div class="note caveat">
+      <span class="note-label">Spend tokens where a second opinion pays</span>
+      <p>Inside a loop this matters because the loop runs while you're not watching — a verifier you actually trust is the only reason you can walk away. Subagents burn more tokens (each does its own model and tool work), so spend them where a second opinion is worth paying for. Claude Code's <code>/goal</code> is basically this under the hood: a fresh model decides whether the loop is done, the maker/checker split applied to the stop condition itself.</p>
+    </div>
+  </section>
+
+  <section id="one-loop">
+    <h2><a href="#one-loop" class="heading-link"><span class="num">§ 08</span>What one loop looks like</a></h2>
+    <p>Stick the pieces together and a single thread turns into a little control panel. Here's one shape worth keeping.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="loop-d-title loop-d-desc">
+        <title id="loop-d-title">The shape of one loop</title>
+        <desc id="loop-d-desc">A scheduled automation discovers work, opens an isolated worktree, a maker sub-agent drafts a fix, a checker sub-agent verifies it, connectors act on the result, and a memory file records state — then the cycle repeats from the top.</desc>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#a85a1a"/>
+          </marker>
+        </defs>
+        <g font-family="JetBrains Mono, monospace" font-size="11" letter-spacing="0.04em">
+          <!-- nodes -->
+          <g>
+            <rect x="14" y="40" width="150" height="52" rx="3" fill="none" stroke="#1f3a32" stroke-width="1.5"/>
+            <text x="89" y="62" text-anchor="middle" fill="#142822" font-weight="600">Automation</text>
+            <text x="89" y="78" text-anchor="middle" fill="#6b6357" font-size="9">discover · triage</text>
+          </g>
+          <g>
+            <rect x="194" y="40" width="150" height="52" rx="3" fill="none" stroke="#1f3a32" stroke-width="1.5"/>
+            <text x="269" y="62" text-anchor="middle" fill="#142822" font-weight="600">Worktree</text>
+            <text x="269" y="78" text-anchor="middle" fill="#6b6357" font-size="9">isolate the work</text>
+          </g>
+          <g>
+            <rect x="374" y="40" width="150" height="52" rx="3" fill="none" stroke="#1f3a32" stroke-width="1.5"/>
+            <text x="449" y="62" text-anchor="middle" fill="#142822" font-weight="600">Maker agent</text>
+            <text x="449" y="78" text-anchor="middle" fill="#6b6357" font-size="9">draft the fix</text>
+          </g>
+          <g>
+            <rect x="554" y="40" width="150" height="52" rx="3" fill="none" stroke="#a85a1a" stroke-width="1.5"/>
+            <text x="629" y="62" text-anchor="middle" fill="#142822" font-weight="600">Checker agent</text>
+            <text x="629" y="78" text-anchor="middle" fill="#6b6357" font-size="9">verify vs. spec</text>
+          </g>
+          <g>
+            <rect x="554" y="158" width="150" height="52" rx="3" fill="none" stroke="#1f3a32" stroke-width="1.5"/>
+            <text x="629" y="180" text-anchor="middle" fill="#142822" font-weight="600">Connectors</text>
+            <text x="629" y="196" text-anchor="middle" fill="#6b6357" font-size="9">PR · ticket · Slack</text>
+          </g>
+          <g>
+            <rect x="194" y="158" width="330" height="52" rx="3" fill="none" stroke="#6b6357" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="359" y="180" text-anchor="middle" fill="#142822" font-weight="600">Memory · what's done, what's next</text>
+            <text x="359" y="196" text-anchor="middle" fill="#6b6357" font-size="9">markdown file or board — outside the context</text>
+          </g>
+          <!-- arrows across the top -->
+          <line x1="164" y1="66" x2="190" y2="66" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="344" y1="66" x2="370" y2="66" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <line x1="524" y1="66" x2="550" y2="66" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <!-- checker down to connectors -->
+          <line x1="629" y1="92" x2="629" y2="156" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <!-- connectors back to memory -->
+          <line x1="554" y1="184" x2="526" y2="184" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <!-- memory back up to automation (the loop closes) -->
+          <line x1="194" y1="184" x2="89" y2="184" stroke="#a85a1a" stroke-width="1.5"/>
+          <line x1="89" y1="184" x2="89" y2="94" stroke="#a85a1a" stroke-width="1.5" marker-end="url(#arrow)"/>
+          <text x="120" y="150" fill="#a85a1a" font-size="9" font-style="italic" font-family="Fraunces, serif">tomorrow's run picks up here</text>
+        </g>
+      </svg>
+      <figcaption>One loop: a scheduled automation surfaces work, an isolated worktree contains it, a maker drafts and a checker verifies, connectors ship the result, and a state file outside the context lets the next run resume where this one stopped.</figcaption>
+    </figure>
+
+    <p>An automation runs every morning on the repo. Its prompt calls a triage skill that reads yesterday's CI failures, the open issues, and the recent commits, then writes findings into a markdown file or a Linear board. For each finding worth doing, the thread opens an isolated worktree and sends a sub-agent to draft the fix; a second sub-agent reviews that draft against the project's skills and existing tests. Connectors open the PR and update the ticket. Anything the loop can't handle lands in the triage inbox for you. The state file is the spine — it remembers what was tried, what passed, what's still open — so tomorrow's run picks up where today's stopped.</p>
+
+    <p>Look at what you actually did there: you designed it once, and prompted none of those steps. That's Steinberger's whole point made real — and it's the same loop in Codex or Claude Code, because the pieces are the same pieces.</p>
+  </section>
+
+  <section id="limits">
+    <h2><a href="#limits" class="heading-link"><span class="num">§ 09</span>What the loop still doesn't do</a></h2>
+    <p>The loop changes the work; it doesn't delete you from it. And three problems get <em>sharper</em> as the loop gets better, not easier.</p>
+
+    <h3>Verification is still on you</h3>
+    <p>A loop running unattended is also a loop making mistakes unattended. Splitting the verifier from the maker is what makes the loop's "it's done" mean something — and even then, "done" is a claim, not a proof. Your job is to ship code you confirmed works (<a href="https://addyosmani.com/blog/code-review-ai/">code review in the age of AI</a>).</p>
+
+    <h3>Your understanding rots if you let it</h3>
+    <p>The faster the loop ships code you didn't write, the bigger the gap between what exists and what you actually grasp. That's <a href="https://addyosmani.com/blog/comprehension-debt/">comprehension debt</a>, and a smooth loop just grows it faster — unless you read what the loop made.</p>
+
+    <h3>The comfortable posture is the dangerous one</h3>
+    <p>When the loop runs itself, it's tempting to stop having an opinion and just take whatever it returns — <a href="https://addyosmani.com/blog/cognitive-surrender/">cognitive surrender</a>. Designing the loop is the cure when you do it with judgment, and the accelerant when you do it to avoid thinking. Same action, opposite result.</p>
+  </section>
+
+  <section id="stay-the-engineer">
+    <h2><a href="#stay-the-engineer" class="heading-link"><span class="num">§ 10</span>Build the loop. Stay the engineer.</a></h2>
+    <p>This is likely a preview of how the work evolves. But if you weren't reviewing the code yourself — if you relied entirely on automated loops to fix it — quality would suffer, and you'd dig yourself into a deeper hole. So set up your loops, but don't forget that prompting agents directly still works. It's about finding the balance.</p>
+
+    <p>Loops also produce different outcomes depending on you. Two people can build the exact same loop and get opposite results: one uses it to move faster on work they understand deeply, the other to avoid understanding the work at all. The loop doesn't know the difference. You do.</p>
+
+    <p class="tldr">That's what makes loop design harder than prompt engineering, not easier. Cherny's point isn't that the work got easier — it's that the leverage point moved.</p>
+
+    <p>Build the loop. But build it like someone who intends to stay the engineer — not just the person who presses go.</p>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <footer>
+    <span><a href="https://addyo.substack.com/p/loop-engineering">Original · addyo.substack.com</a></span>
+    <span>Addy Osmani · Agentic Loops</span>
+    <span>Saved 2026·06·10</span>
+  </footer>
+
+</div>
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

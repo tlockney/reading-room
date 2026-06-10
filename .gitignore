@@ -6,3 +6,6 @@
 # LaunchAgent logs (agent.sh)
 .agent.out.log
 .agent.err.log
+
+# Scratch space for importing docs (raw html, defuddled md, assembled editorial)
+/_work/
