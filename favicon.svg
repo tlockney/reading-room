@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Reading Room">
+  <rect width="64" height="64" rx="13" fill="#142822"/>
+  <text x="32" y="34" text-anchor="middle" dominant-baseline="central"
+        font-family="Georgia, 'Times New Roman', Times, serif" font-style="italic"
+        font-weight="700" font-size="44" fill="#c87a2f">§</text>
+</svg>

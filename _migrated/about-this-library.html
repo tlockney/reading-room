@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<!-- About This Library — the Reading Room's resident sample document.
+     Authored from the editorial-longform-html skill template. -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About This Library · The Reading Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;        /* 820 for how-tos */
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Restricted / internal-only banner — OPTIONAL, delete if not needed.
+     Sits above the masthead. Small copper-outlined chip; makes it
+     immediately obvious if the doc surfaces somewhere it shouldn't. */
+  .restricted-banner {
+    margin: 0 0 20px;
+    padding: 10px 16px;
+    background: rgba(168, 90, 26, 0.08);
+    border: 1px solid var(--copper);
+    border-radius: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    text-align: center;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  /* Self-link on the document title — clicking resets the URL hash so the
+     canonical document URL appears in the address bar (no section anchor). */
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* Series-nav — OPTIONAL, for multi-part document sets.
+     Sits between the masthead and the TOC. Mark the current part with
+     class="current". Delete if this is a standalone document. */
+  .series-nav {
+    margin: 0 0 56px;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--forest);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .series-nav .series-label {
+    display: block;
+    color: var(--forest);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: 0.22em;
+  }
+  .series-nav ol { list-style: none; padding: 0; margin: 0; }
+  .series-nav li { margin: 4px 0; font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.1em; }
+  .series-nav li a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  .series-nav li a:hover { border-bottom-color: var(--copper); }
+  .series-nav li.current { color: var(--ink); font-weight: 600; }
+  .series-nav li.current::before { content: "▸ "; color: var(--copper); }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;            /* drop to 1 for how-tos / short docs */
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* For how-to / step-based docs, swap the ::before content above for: */
+  /* content: "STEP / " counter(toc, decimal-leading-zero); */
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Self-anchoring section headings. Wrap each section h2's contents in
+     an <a href="#section-id" class="heading-link"> so a click sets the URL
+     hash and the section URL can be copied from the address bar. */
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — apply to first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption — for inline SVG, Mermaid, or images. */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Mermaid */
+  .mermaid { margin: 24px 0 32px; text-align: center; background: transparent; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom lightbox, dark-mode theme, and mobile fixes come from the shared
+     editorial bundle (the EDITORIAL-HEAD and EDITORIAL-BODY blocks below),
+     canonical in the Reading Room repo (assets/editorial/). Don't add
+     figure-zoom or theme CSS here — edit the partials and re-sync. */
+
+  /* Floating mini-map TOC. Shown only at viewport >= 1180px, where the
+     gutter outside the 880px content column is wide enough to hold it.
+     Mirror the main TOC entries — the mini-map is a persistent companion,
+     not an alternate navigation. Delete the <nav class="minimap"> block
+     in the body if you don't want it. */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  /* Progressive enhancement: on browsers that support scroll-driven
+     animations, the mini-map fades in once the user has scrolled past
+     the masthead. Browsers without support get the always-visible
+     version above. No JavaScript fallback is needed. */
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section { page-break-inside: avoid; }
+  }
+</style>
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  /* The hint is a CSS pseudo-element, not a DOM node, so async renderers
+     (Mermaid rewrites its host's innerHTML) can't wipe it. */
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+
+
+  <header class="masthead">
+    <div class="eyebrow">Guide · The Reading Room</div>
+    <h1><a href="#" class="title-link">About This <em>Library</em></a></h1>
+    <p class="lede">What the Reading Room is, how documents get into it, and the
+    house style they share. This page is itself a worked example of the
+    editorial template — view source to see the components in context.</p>
+    <div class="meta">
+      <span><strong>Status</strong> · Evergreen</span>
+      <span><strong>Source</strong> · reading-room</span>
+      <span><strong>Kind</strong> · Guide</span>
+    </div>
+  </header>
+
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#what-this-is">What this is</a></li>
+      <li><a href="#adding-a-document">Adding a document</a></li>
+      <li><a href="#the-house-style">The house style</a></li>
+    </ol>
+  </nav>
+
+  <!-- Floating mini-map TOC — mirrors the main TOC, shown only on wide
+       viewports. Keep entries in sync with the main TOC. Delete this
+       block if you don't want a floating nav. -->
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#what-this-is">What this is</a></li>
+      <li><a href="#adding-a-document">Adding a document</a></li>
+      <li><a href="#the-house-style">The house style</a></li>
+    </ol>
+  </nav>
+
+  <section id="what-this-is">
+    <h2><a href="#what-this-is" class="heading-link"><span class="num">§ 01</span>What this is</a></h2>
+    <p class="lead-para">The Reading Room is a local library for long-form documents — the kind a reader is expected to sit with, not skim. Each document is a standalone HTML file in the editorial-print style; the library gathers them behind one index, adds a breadcrumb back to the shelf, and keeps the figure-zoom and theme behavior consistent across every page. Nothing here requires a build step: the server renders straight from the registry on every request.</p>
+
+    <p>The site structure lives in <code>registry.jsonc</code> — topics, and the documents inside them. The renderer never modifies a source document; it injects shared chrome (navigation, zoom, theme) on the way out, and strips any stale copy a document baked in, so older docs heal themselves on serve.</p>
+
+    <p class="tldr">One registry, no build step, and every page carries the same calm typography — that's the whole trick.</p>
+  </section>
+
+  <section id="adding-a-document">
+    <h2><a href="#adding-a-document" class="heading-link"><span class="num">§ 02</span>Adding a document</a></h2>
+    <p>Author a document with the <code>editorial-longform-html</code> skill (start from the bundled template — never from scratch), then file it into the library:</p>
+
+<pre><code>deno task add-doc --src /path/to/your-doc.html --topic library-tooling \
+  --title "Your Title" --kind "Guide · Reference" --desc "One line." \
+  --foot-left "2026·06" --foot-right "source-repo"</code></pre>
+
+    <p>The helper validates that the slug is unique, copies the file into <code>_migrated/</code>, and inserts a registry entry without disturbing the file's comments. Refresh the index and the card is there. The registry fields map directly onto what the card shows:</p>
+
+    <table>
+      <thead><tr><th>Field</th><th>Where it appears</th></tr></thead>
+      <tbody>
+        <tr><td><code>title</code> / <code>kind</code> / <code>desc</code></td><td>Card title, mono eyebrow label, one-line italic blurb</td></tr>
+        <tr><td><code>footLeft</code> / <code>footRight</code></td><td>Card footer — typically a date and a source repo</td></tr>
+        <tr><td><code>slug</code></td><td>The URL: <code>/docs/&lt;slug&gt;</code>, extensionless</td></tr>
+        <tr><td><code>review</code></td><td>Pins the doc to a "For Review" section with a copper chip</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="note-label">Worth knowing</span>
+      <p>Documents stay fully standalone — they open correctly off-disk or attached to an email. The library is a view over them, not a dependency.</p>
+    </div>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="the-house-style">
+    <h2><a href="#the-house-style" class="heading-link"><span class="num">§ 03</span>The house style</a></h2>
+    <p>Every document here shares one visual language: cream paper, forest and copper, three typefaces — <strong>Fraunces</strong> for display, <strong>Source Serif 4</strong> for body, <strong>JetBrains Mono</strong> for labels. Copper is the only accent; the mono <code>§</code> marks are the only iconography. No drop shadows, no decorative motion — this is print, not Material.</p>
+
+    <p>Two scripts are sanctioned, both bundled into every page: a click-to-zoom lightbox for figures, and the light/espresso theme toggle at bottom right. Everything else is static HTML and CSS. The full rules live in the skill's <em>design-language</em> reference; the template implements them, so following the template is following the rules.</p>
+  </section>
+
+  <footer>
+    <span>about-this-library</span>
+    <span>The Reading Room · Guide</span>
+    <span>2026·06</span>
+  </footer>
+
+</div>
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

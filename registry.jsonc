@@ -1,0 +1,40 @@
+// Reading Room — document registry.
+//
+// The structure of the site lives here, NOT in code. serve.ts renders from
+// this file (via jsr:@std/jsonc) on every request; build.ts writes the same
+// output to static files. Edit this to add/remove/reorder topics and
+// documents, then refresh (or run `deno task build` to publish).
+//
+// Topic fields:
+//   num    — section marker shown on the index/breadcrumb (e.g. "§ 01")
+//   id     — URL-fragment id (anchor target); keep kebab-case
+//   name   — full topic title
+//   short  — compact label for the side rail + breadcrumb
+//   docs[] — documents in the topic
+//
+// Doc fields:
+//   slug       — output filename stem -> docs/<slug> (must be unique)
+//   title      — display title
+//   kind       — small eyebrow label on the card (e.g. "Guide · Engineering Ref")
+//   desc       — one-line italic description on the card
+//   footLeft   — card footer, left (e.g. a date or doc kind)
+//   footRight  — card footer, right (e.g. repo/source)
+//   src        — source HTML, relative to this repo's parent directory (so
+//                docs can live in sibling repos). Overridden when
+//                _migrated/<slug>.html exists (editorial-restyled copy).
+//   visibility — "private" (local only) | "shared" (eligible for a remote).
+//                Reserved for a future shared remote; the local build ignores
+//                it and includes everything. Default: "private".
+//   review     — true pins the doc to a "For Review" section at the top.
+[
+  {
+    "num": "§ 01", "id": "library-tooling",
+    "name": "Library & Tooling", "short": "Tooling",
+    "docs": [
+      { "slug": "about-this-library", "title": "About This Library",
+        "kind": "Guide · Reading Room", "desc": "What the Reading Room is, how documents get in, and the style they share.",
+        "footLeft": "Guide", "footRight": "Reading Room",
+        "src": "reading-room/_migrated/about-this-library.html", "visibility": "private" }
+    ]
+  }
+]
