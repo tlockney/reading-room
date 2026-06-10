@@ -59,6 +59,28 @@ function run(promise) {
     .catch((err) => toast(`failed: ${err.message}`));
 }
 
+/** Two-step destructive confirm: first click arms ("confirm?", 3s), second
+ * click runs. Nothing destructive happens on a single click. */
+function armDelete(btn, label, onConfirm) {
+  let timer = 0;
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!btn.classList.contains("rradmin-armed")) {
+      btn.classList.add("rradmin-armed");
+      btn.textContent = "confirm?";
+      timer = setTimeout(() => {
+        btn.classList.remove("rradmin-armed");
+        btn.textContent = label;
+      }, 3000);
+      return;
+    }
+    clearTimeout(timer);
+    onConfirm();
+  });
+}
+
+const fmtDate = (iso) => iso.slice(0, 10).replaceAll("-", "·");
+
 // --- index: § manage mode ----------------------------------------------------
 
 function initIndex(ctx) {
@@ -119,20 +141,7 @@ function initIndex(ctx) {
 
     const remove = el("button", "", "remove");
     remove.type = "button";
-    let disarmTimer = 0;
-    remove.addEventListener("click", () => {
-      if (!remove.classList.contains("rradmin-armed")) {
-        remove.classList.add("rradmin-armed");
-        remove.textContent = "confirm?";
-        disarmTimer = setTimeout(() => {
-          remove.classList.remove("rradmin-armed");
-          remove.textContent = "remove";
-        }, 3000);
-        return;
-      }
-      clearTimeout(disarmTimer);
-      run(api("DELETE", `/api/docs/${slug}`));
-    });
+    armDelete(remove, "remove", () => run(api("DELETE", `/api/docs/${slug}`)));
 
     row.append(review, vis, remove);
     card.appendChild(row);
@@ -168,6 +177,13 @@ function initDoc(ctx) {
   notesBtn.type = "button";
   notesBtn.title = "Annotations — show all in the margin";
   cluster.appendChild(notesBtn);
+
+  // reviewed annotations retire from the margin; ✓ n toggles them back in
+  const revBtn = el("button", "", "✓ …");
+  revBtn.type = "button";
+  revBtn.title = "Show / hide reviewed annotations";
+  revBtn.style.display = "none";
+  cluster.appendChild(revBtn);
 
   // --- text extraction shared by anchoring + selection capture
   // Structural chrome (masthead, minimap/toc navs, page footer) is not
@@ -233,6 +249,28 @@ function initDoc(ctx) {
   try {
     showAll = sessionStorage.getItem(SHOWALL_KEY) === "1";
   } catch (_) { /* storage unavailable */ }
+  let showReviewed = false; // reviewed notes stay hidden unless toggled in
+  const SHOWREV_KEY = `rradmin-showrev:${ctx.doc.slug}`;
+  try {
+    showReviewed = sessionStorage.getItem(SHOWREV_KEY) === "1";
+  } catch (_) { /* storage unavailable */ }
+
+  function setShowReviewed(next) {
+    showReviewed = next;
+    try {
+      sessionStorage.setItem(SHOWREV_KEY, next ? "1" : "0");
+    } catch (_) { /* storage unavailable */ }
+    renderMarks();
+  }
+
+  /** Flip the reviewed marker on one annotation, then re-render (and reopen
+   * the list panel when the change was made from it). */
+  function setReviewed(c, next, reopenList = false) {
+    api("PATCH", `/api/docs/${ctx.doc.slug}/comments/${c.id}`, { reviewed: next })
+      .then(() => refresh(reopenList))
+      .then(() => toast(next ? "marked reviewed" : "back in review"))
+      .catch((err) => toast(`failed: ${err.message}`));
+  }
 
   /** Left edge for the annotation gutter (document coords): just right of the
    * content column, derived from the breadcrumb bar's inner column, which
@@ -303,9 +341,11 @@ function initDoc(ctx) {
 
     const gutter = gutterLeft();
     const { text, spans } = collectText();
+    const reviewedCount = comments.filter((c) => c.reviewed).length;
+    const active = comments.filter((c) => showReviewed || !c.reviewed);
     const hits = [];
     const orphans = [];
-    for (const c of comments) {
+    for (const c of active) {
       const hit = findAnchor(text, c);
       const range = hit && rangeFromOffsets(spans, hit.start, hit.end);
       if (!range) {
@@ -327,8 +367,11 @@ function initDoc(ctx) {
       });
     }
     hits.sort((a, b) => a.top - b.top);
-    notesBtn.textContent = `§ ${comments.length}`;
+    notesBtn.textContent = `§ ${comments.length - reviewedCount}`;
     notesBtn.classList.toggle("rradmin-on", showAll);
+    revBtn.style.display = reviewedCount ? "" : "none";
+    revBtn.textContent = `✓ ${reviewedCount}`;
+    revBtn.classList.toggle("rradmin-on", showReviewed);
     if (showAll && gutter !== null && cardWidth(gutter) !== null) {
       renderCards(hits, orphans, gutter);
     } else {
@@ -341,7 +384,11 @@ function initDoc(ctx) {
     for (const h of hits) {
       const top = h.top - prevTop < 20 ? prevTop + 20 : h.top;
       prevTop = top;
-      const mark = el("button", "rradmin-mark", "§");
+      const mark = el(
+        "button",
+        h.c.reviewed ? "rradmin-mark rradmin-reviewed" : "rradmin-mark",
+        "§",
+      );
       mark.type = "button";
       mark.title = h.c.note.slice(0, 80);
       mark.style.top = `${top - 2}px`;
@@ -369,24 +416,30 @@ function initDoc(ctx) {
       ...hits,
     ];
     const cards = entries.map((h) => {
-      const card = el("div", "rradmin-card");
+      const card = el("div", h.c.reviewed ? "rradmin-card rradmin-reviewed" : "rradmin-card");
       card.style.left = `${gutter}px`;
       card.style.width = `${width}px`;
       const eyebrow = el("p", "rradmin-eyebrow");
-      eyebrow.append(
-        el("span", "", h.range ? h.c.created.slice(0, 10).replaceAll("-", "·") : "unanchored"),
-      );
+      const label = h.range ? fmtDate(h.c.created) : "unanchored";
+      eyebrow.append(el("span", "", h.c.reviewed ? `✓ ${label}` : label));
       if (!ctx.readonly) {
+        const actions = el("span", "rradmin-card-actions");
+        const rev = el("button", h.c.reviewed ? "rradmin-del rradmin-on" : "rradmin-del", "✓");
+        rev.type = "button";
+        rev.title = h.c.reviewed ? "Reviewed — click to put back in review" : "Mark reviewed";
+        rev.addEventListener("click", () => setReviewed(h.c, !h.c.reviewed));
+        actions.append(rev);
         const del = el("button", "rradmin-del", "×");
         del.type = "button";
         del.title = "Delete annotation";
-        del.addEventListener("click", () => {
+        armDelete(del, "×", () => {
           api("DELETE", `/api/docs/${ctx.doc.slug}/comments/${h.c.id}`)
             .then(() => refresh())
-            .then(() => toast("annotation removed"))
+            .then(() => toast("annotation deleted"))
             .catch((err) => toast(`failed: ${err.message}`));
         });
-        eyebrow.append(del);
+        actions.append(del);
+        eyebrow.append(actions);
       }
       const quote = el("p", "rradmin-quote", h.c.quote);
       const note = el("p", "rradmin-note", h.c.note);
@@ -418,7 +471,8 @@ function initDoc(ctx) {
   function openNotePanel(c, x, y) {
     openPanel(x, y, (p) => {
       const eyebrow = el("p", "rradmin-eyebrow");
-      eyebrow.append(el("span", "", c.created.slice(0, 10).replaceAll("-", "·")));
+      const label = fmtDate(c.created);
+      eyebrow.append(el("span", "", c.reviewed ? `✓ ${label}` : label));
       const quote = el("p", "rradmin-quote", c.quote);
       const note = el("p", "", c.note);
       const row = el("div", "rradmin-row");
@@ -427,15 +481,26 @@ function initDoc(ctx) {
       close.addEventListener("click", closePanel);
       row.appendChild(close);
       if (!ctx.readonly) {
+        const rev = el(
+          "button",
+          c.reviewed ? "rradmin-on" : "",
+          c.reviewed ? "✓ reviewed" : "mark reviewed",
+        );
+        rev.type = "button";
+        rev.addEventListener("click", () => {
+          closePanel();
+          setReviewed(c, !c.reviewed);
+        });
+        row.appendChild(rev);
         const del = el("button", "", "delete");
         del.type = "button";
-        del.addEventListener("click", () => {
+        armDelete(del, "delete", () => {
           api("DELETE", `/api/docs/${ctx.doc.slug}/comments/${c.id}`)
             .then(() => {
               closePanel();
               return refresh();
             })
-            .then(() => toast("annotation removed"))
+            .then(() => toast("annotation deleted"))
             .catch((err) => toast(`failed: ${err.message}`));
         });
         row.appendChild(del);
@@ -446,14 +511,16 @@ function initDoc(ctx) {
 
   function openListPanel() {
     const rect = notesBtn.getBoundingClientRect();
+    const items = comments.filter((c) => showReviewed || !c.reviewed);
+    const hidden = comments.length - items.length;
     openPanel(rect.left + window.scrollX - 200, rect.bottom + window.scrollY + 10, (p) => {
-      p.appendChild(el("p", "rradmin-eyebrow", `§ annotations — ${comments.length}`));
+      p.appendChild(el("p", "rradmin-eyebrow", `§ annotations — ${items.length}`));
       if (comments.length === 0) {
         p.appendChild(el("p", "", "None yet. Select a passage to annotate it."));
       } else {
         const list = el("ul", "rradmin-list");
-        for (const c of comments) {
-          const li = el("li", "");
+        for (const c of items) {
+          const li = el("li", c.reviewed ? "rradmin-reviewed" : "");
           const jump = el(
             "span",
             "rradmin-jump",
@@ -472,12 +539,18 @@ function initDoc(ctx) {
           }
           li.prepend(jump);
           if (!ctx.readonly) {
+            const rev = el("button", c.reviewed ? "rradmin-del rradmin-on" : "rradmin-del", "✓");
+            rev.type = "button";
+            rev.title = c.reviewed ? "Reviewed — click to put back in review" : "Mark reviewed";
+            rev.addEventListener("click", () => setReviewed(c, !c.reviewed, true));
+            li.appendChild(rev);
             const del = el("button", "rradmin-del", "×");
             del.type = "button";
             del.title = "Delete annotation";
-            del.addEventListener("click", () => {
+            armDelete(del, "×", () => {
               api("DELETE", `/api/docs/${ctx.doc.slug}/comments/${c.id}`)
                 .then(() => refresh(true))
+                .then(() => toast("annotation deleted"))
                 .catch((err) => toast(`failed: ${err.message}`));
             });
             li.appendChild(del);
@@ -485,6 +558,9 @@ function initDoc(ctx) {
           list.appendChild(li);
         }
         p.appendChild(list);
+        if (hidden) {
+          p.appendChild(el("p", "rradmin-orphan", `${hidden} reviewed — hidden (✓ toggles)`));
+        }
       }
       const row = el("div", "rradmin-row");
       const close = el("button", "", "close");
@@ -500,6 +576,11 @@ function initDoc(ctx) {
     renderMarks();
     if (reopenList) openListPanel();
   }
+
+  revBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setShowReviewed(!showReviewed);
+  });
 
   notesBtn.addEventListener("click", (e) => {
     e.stopPropagation();

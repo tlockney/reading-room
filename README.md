@@ -89,9 +89,12 @@ Select a passage on any doc page → **§ annotate** → write a note. Only the
 document's content is annotatable — masthead, minimap/TOC, and footer are
 not. Notes are anchored to the text (quote + context, W3C-annotation style)
 and shown as copper `§` marks in a consistent gutter right of the column;
-click one to read, jump, or delete. Click the `§ n` counter to lay every
-note out in the margin at once — overlapping anchors stack downward — and
-click it again to return to marks. If a doc is re-authored and a quote
+click one to read, jump, mark reviewed, or delete (deletes always ask to
+confirm). Click the `§ n` counter to lay every note out in the margin at
+once — overlapping anchors stack downward — and click it again to return to
+marks. Marking a note `✓` reviewed retires it from the margin; a `✓ n`
+counter appears beside `§ n` to toggle reviewed notes back into view,
+muted. If a doc is re-authored and a quote
 disappears (or becomes ambiguous), the note
 survives as "unanchored" in the `§ n` list. Storage is `comments/<slug>.json`
 sidecars — source HTML is never modified, and annotations never appear in the

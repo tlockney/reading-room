@@ -25,6 +25,7 @@ import {
   deleteComment,
   loadComments,
   parseCommentInput,
+  setCommentReviewed,
   writeAtomic,
 } from "./comments.ts";
 import { injectAdmin } from "./admin.ts";
@@ -162,6 +163,21 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
 
     const comment = path.match(API_COMMENT_RE);
     if (comment) {
+      if (req.method === "PATCH") {
+        const raw = await readJson(req);
+        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        const o = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : null;
+        if (!o || typeof o.reviewed !== "boolean" || Object.keys(o).length !== 1) {
+          return jsonError('body must be {"reviewed": boolean}', 400);
+        }
+        const updated = await setCommentReviewed(
+          opts.commentsDir,
+          comment[1],
+          comment[2],
+          o.reviewed,
+        );
+        return updated ? json(updated) : jsonError("no such comment", 404);
+      }
       if (req.method === "DELETE") {
         const ok = await deleteComment(opts.commentsDir, comment[1], comment[2]);
         return ok ? json({ ok: true }) : jsonError("no such comment", 404);

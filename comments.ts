@@ -18,6 +18,7 @@ export interface Comment {
   prefix: string; // up to ~32 chars before the selection
   suffix: string; // up to ~32 chars after
   note: string; // the annotation body
+  reviewed?: string; // ISO-8601 — when it was marked reviewed; absent = active
 }
 
 export type CommentInput = Pick<Comment, "quote" | "prefix" | "suffix" | "note">;
@@ -74,6 +75,24 @@ export async function addComment(dir: string, slug: string, input: CommentInput)
   all.push(comment);
   await writeAtomic(fileFor(dir, slug), JSON.stringify(all, null, 2) + "\n");
   return comment;
+}
+
+/** Stamp or clear the reviewed marker on one comment; null when the id is
+ * unknown. Clearing removes the key (absent and unreviewed are the same),
+ * mirroring how registry-edit treats `review: false`. */
+export async function setCommentReviewed(
+  dir: string,
+  slug: string,
+  id: string,
+  reviewed: boolean,
+): Promise<Comment | null> {
+  const all = await loadComments(dir, slug);
+  const target = all.find((c) => c.id === id);
+  if (!target) return null;
+  if (reviewed) target.reviewed = new Date().toISOString();
+  else delete target.reviewed;
+  await writeAtomic(fileFor(dir, slug), JSON.stringify(all, null, 2) + "\n");
+  return target;
 }
 
 export async function deleteComment(dir: string, slug: string, id: string): Promise<boolean> {

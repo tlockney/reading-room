@@ -1,6 +1,12 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
-import { addComment, deleteComment, loadComments, parseCommentInput } from "./comments.ts";
+import {
+  addComment,
+  deleteComment,
+  loadComments,
+  parseCommentInput,
+  setCommentReviewed,
+} from "./comments.ts";
 
 const INPUT = {
   quote: "the loop is the expensive part",
@@ -55,4 +61,17 @@ Deno.test("parseCommentInput rejects bad shapes with a reason", () => {
   assertEquals(typeof parseCommentInput({ ...INPUT, quote: "" }), "string");
   assertEquals(typeof parseCommentInput({ prefix: "", suffix: "", note: "n" }), "string"); // quote missing
   assertEquals(typeof parseCommentInput({ ...INPUT, note: "x".repeat(10_001) }), "string");
+});
+
+Deno.test("setCommentReviewed stamps, clears, and rejects unknown ids", async () => {
+  const dir = await Deno.makeTempDir();
+  const c = await addComment(dir, "alpha", INPUT);
+  const marked = await setCommentReviewed(dir, "alpha", c.id, true);
+  assert(marked !== null && typeof marked.reviewed === "string");
+  assert(!Number.isNaN(Date.parse(marked.reviewed!)));
+  assertEquals((await loadComments(dir, "alpha"))[0].reviewed, marked.reviewed);
+  const cleared = await setCommentReviewed(dir, "alpha", c.id, false);
+  assert(cleared !== null);
+  assertEquals("reviewed" in (await loadComments(dir, "alpha"))[0], false);
+  assertEquals(await setCommentReviewed(dir, "alpha", "nope", true), null);
 });

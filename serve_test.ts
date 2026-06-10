@@ -139,6 +139,11 @@ Deno.test("READONLY blocks mutations but not reads", async () => {
     (await f.handler(req("/api/docs/alpha/comments/some-id", { method: "DELETE" }))).status,
     403,
   );
+  assertEquals(
+    (await f.handler(jsonReq("/api/docs/alpha/comments/some-id", "PATCH", { reviewed: true })))
+      .status,
+    403,
+  );
   assertEquals((await f.handler(req("/api/docs/alpha/comments"))).status, 200);
 });
 
@@ -177,4 +182,33 @@ Deno.test("GET / renders the index from the configured registry", async () => {
   const html = await res.text();
   assert(html.includes("Alpha"));
   assert(html.includes("For Review")); // beta carries review: true
+});
+
+Deno.test("comments: PATCH reviewed stamps/clears; bad body 400; unknown id 404", async () => {
+  const f = await fixture();
+  const input = { quote: "q", prefix: "", suffix: "", note: "n" };
+  const created = await (await f.handler(jsonReq("/api/docs/alpha/comments", "POST", input)))
+    .json() as { id: string };
+  const on = await f.handler(jsonReq(`/api/docs/alpha/comments/${created.id}`, "PATCH", {
+    reviewed: true,
+  }));
+  assertEquals(on.status, 200);
+  const marked = await on.json() as { reviewed?: string };
+  assertEquals(typeof marked.reviewed, "string");
+  const off = await f.handler(jsonReq(`/api/docs/alpha/comments/${created.id}`, "PATCH", {
+    reviewed: false,
+  }));
+  assertEquals(off.status, 200);
+  assertEquals("reviewed" in (await off.json() as Record<string, unknown>), false);
+  assertEquals(
+    (await f.handler(jsonReq(`/api/docs/alpha/comments/${created.id}`, "PATCH", {
+      reviewed: "yes",
+    }))).status,
+    400,
+  );
+  assertEquals(
+    (await f.handler(jsonReq("/api/docs/alpha/comments/nope", "PATCH", { reviewed: true })))
+      .status,
+    404,
+  );
 });

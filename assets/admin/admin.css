@@ -175,6 +175,42 @@
 .rradmin-card .rradmin-del:hover {
   color: var(--copper-soft, #c87a2f);
 }
+.rradmin-card-actions {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+
+/* reviewed annotations: muted until ✓ n toggles them back in */
+.rradmin-card.rradmin-reviewed {
+  opacity: 0.62;
+  border-left-color: var(--rule-strong, #8a7e5e);
+}
+.rradmin-card.rradmin-reviewed:hover {
+  opacity: 1;
+}
+.rradmin-mark.rradmin-reviewed {
+  opacity: 0.3;
+}
+.rradmin-panel .rradmin-list li.rradmin-reviewed {
+  opacity: 0.62;
+}
+.rradmin-del.rradmin-on {
+  color: var(--copper, #a85a1a);
+}
+.rradmin-del.rradmin-armed {
+  color: #8a3030;
+}
+.rradmin-panel .rradmin-row button.rradmin-on {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+  background: rgba(168, 90, 26, 0.07);
+}
+.rradmin-panel .rradmin-row button.rradmin-armed {
+  color: #8a3030;
+  border-color: #8a3030;
+  background: rgba(138, 48, 48, 0.07);
+}
 
 .rradmin-fab {
   position: absolute;
