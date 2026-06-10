@@ -34,7 +34,6 @@ import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
 import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
-import { join } from "jsr:@std/path@1";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
