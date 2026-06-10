@@ -20,7 +20,7 @@
 import { emptyDir, ensureDir } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
-import { loadCorpus, renderIndex, transformDoc } from "./render.ts";
+import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Topic } from "./render.ts";
 import { makeContext } from "./config.ts";
 import type { RoomContext } from "./config.ts";
@@ -57,7 +57,10 @@ export async function build(
       console.log(`  doc  ${d.slug}/index.html`);
     }
   }
-  await Deno.writeTextFile(join(outDir, "index.html"), renderIndex(ctx.site, corpus));
+  await Deno.writeTextFile(
+    join(outDir, "index.html"),
+    injectLocalSlots(renderIndex(ctx.site, corpus), await loadSlots(ctx.root)),
+  );
   // site icons ship embedded in the engine; the output dir gets its own copies
   await Deno.writeTextFile(join(outDir, "favicon.svg"), FAVICON_SVG);
   await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TOUCH_ICON_B64));

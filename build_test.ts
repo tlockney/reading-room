@@ -51,6 +51,8 @@ Deno.test("built output carries no admin layer, even from contaminated sources",
   const out = await Deno.makeTempDir();
   try {
     await Deno.mkdir(join(root, "_migrated"));
+    await Deno.mkdir(join(root, "assets"));
+    await Deno.writeTextFile(join(root, "assets/head-extra.html"), "<style>/*local*/</style>");
     await Deno.writeTextFile(
       join(root, "_migrated", `${slug}.html`),
       `<!DOCTYPE html><html><head><title>f</title></head><body><p>fixture</p>\n` +
@@ -71,6 +73,11 @@ Deno.test("built output carries no admin layer, even from contaminated sources",
     assertEquals(builtDoc.includes("window.__RR"), false);
     assertEquals(builtIndex.includes("RR-ADMIN"), false);
     assert(builtDoc.includes("fixture")); // the content itself survived
+    // local slots ARE content: they ride along into static output
+    assert(builtDoc.includes("RR-LOCAL-HEAD"));
+    assert(builtDoc.includes("/*local*/"));
+    assert(builtIndex.includes("RR-LOCAL-HEAD"));
+    assert(builtIndex.includes("/*local*/"));
     // icons written from the embedded constants
     assert((await Deno.stat(join(out, "favicon.svg"))).isFile);
     assert((await Deno.stat(join(out, "apple-touch-icon.png"))).isFile);

@@ -102,6 +102,58 @@ export function stripAdmin(docHtml: string): string {
   return docHtml.replace(EXISTING_ADMIN_RE, "");
 }
 
+// Per-environment additive slots: a consumer's assets/head-extra.html and
+// assets/body-extra.html ride along on every page (index, served docs, static
+// builds) in their own marked regions. Additive only — the canonical editorial
+// bundle always injects regardless; there is no override mechanism.
+export interface LocalSlots {
+  head: string;
+  body: string;
+}
+
+const LOCAL_HEAD_START = "<!-- RR-LOCAL-HEAD:start -->";
+const LOCAL_HEAD_END = "<!-- RR-LOCAL-HEAD:end -->";
+const LOCAL_BODY_START = "<!-- RR-LOCAL-BODY:start -->";
+const LOCAL_BODY_END = "<!-- RR-LOCAL-BODY:end -->";
+const EXISTING_LOCAL_HEAD_RE = new RegExp(
+  reEscape(LOCAL_HEAD_START) + "[\\s\\S]*?" + reEscape(LOCAL_HEAD_END) + "\\n?",
+  "g",
+);
+const EXISTING_LOCAL_BODY_RE = new RegExp(
+  reEscape(LOCAL_BODY_START) + "[\\s\\S]*?" + reEscape(LOCAL_BODY_END) + "\\n?",
+  "g",
+);
+
+async function readOr(path: string, fallback: string): Promise<string> {
+  try {
+    return await Deno.readTextFile(path);
+  } catch {
+    return fallback;
+  }
+}
+
+/** Read a content root's slot fragments (absent files mean empty slots). */
+export async function loadSlots(root: string): Promise<LocalSlots> {
+  return {
+    head: await readOr(join(root, "assets/head-extra.html"), ""),
+    body: await readOr(join(root, "assets/body-extra.html"), ""),
+  };
+}
+
+/** Strip-then-inject both slot regions (idempotent, healing, empty = absent). */
+export function injectLocalSlots(html: string, slots: LocalSlots): string {
+  let out = html.replace(EXISTING_LOCAL_HEAD_RE, "").replace(EXISTING_LOCAL_BODY_RE, "");
+  if (slots.head && HEAD_END_RE.test(out)) {
+    const block = `${LOCAL_HEAD_START}\n${slots.head}\n${LOCAL_HEAD_END}`;
+    out = out.replace(HEAD_END_RE, (): string => block + "\n</head>");
+  }
+  if (slots.body && BODY_END_RE.test(out)) {
+    const block = `${LOCAL_BODY_START}\n${slots.body}\n${LOCAL_BODY_END}`;
+    out = out.replace(BODY_END_RE, (): string => block + "\n</body>");
+  }
+  return out;
+}
+
 const HREF_RE = /href="([^"]+)"/g;
 
 function sourceBasenameToSlug(corpus: Topic[]): Map<string, string> {
@@ -177,7 +229,10 @@ export async function transformDoc(
   if (!(await exists(src))) throw new Error(`missing source: ${src}`);
   const body = rewriteLinks(await Deno.readTextFile(src), sourceBasenameToSlug(corpus));
   const withNav = injectNav(body, navSnippet(topic.id, topic.short, doc.title));
-  return injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav))));
+  return injectLocalSlots(
+    injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav)))),
+    await loadSlots(ctx.root),
+  );
 }
 
 /** Find + render a doc by slug; null if no such slug. */

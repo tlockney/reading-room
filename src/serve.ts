@@ -16,7 +16,7 @@
  *
  * (Run under launchd via ./agent.sh install for an always-on local agent.)
  */
-import { loadCorpus, renderIndex, transformDoc } from "./render.ts";
+import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
 import { makeContext } from "./config.ts";
 import type { RoomContext } from "./config.ts";
@@ -233,7 +233,11 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
           }
         }
         const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
-        return page(injectAdmin(renderIndex(opts.ctx.site, corpus), ctx));
+        const index = injectLocalSlots(
+          renderIndex(opts.ctx.site, corpus),
+          await loadSlots(opts.ctx.root),
+        );
+        return page(injectAdmin(index, ctx));
       }
       const m = path.match(DOC_RE);
       if (m) {
