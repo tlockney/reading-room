@@ -617,14 +617,16 @@ function initDoc(ctx) {
     hideFab();
     const range = selectionRange();
     if (!range) return;
+    // A static copy: tapping the button collapses the live selection on touch
+    // devices (and some Safari setups) before the click handler runs.
+    const captured = range.cloneRange();
     const rect = range.getBoundingClientRect();
     fab = el("button", "rradmin-fab", "§ annotate");
     fab.type = "button";
     // keep the selection alive when the button is pressed
     fab.addEventListener("mousedown", (e) => e.preventDefault());
     fab.addEventListener("click", () => {
-      const r = selectionRange();
-      if (!r) return hideFab();
+      const r = selectionRange() ?? captured;
       const liveRect = r.getBoundingClientRect();
       const { text, spans } = collectText();
       const offsets = offsetsFromSelection(spans, r);
@@ -674,9 +676,19 @@ function initDoc(ctx) {
   }
 
   if (!ctx.readonly) {
-    document.addEventListener("mouseup", (e) => {
-      if (e.target instanceof Element && e.target.closest(".rradmin-panel,.rradmin-fab")) return;
-      setTimeout(showFab, 0);
+    // selectionchange covers every way a selection is made — mouse drag,
+    // double-click, keyboard (shift+arrows), and iOS/iPadOS long-press —
+    // where mouseup-only wiring missed touch and keyboard entirely. Debounced
+    // so the fab settles after the selection stops moving.
+    let selTimer = 0;
+    document.addEventListener("selectionchange", () => {
+      clearTimeout(selTimer);
+      selTimer = setTimeout(() => {
+        // typing in the composer moves the textarea's selection — leave it be
+        const active = document.activeElement;
+        if (active instanceof Element && active.closest(".rradmin-panel")) return;
+        showFab();
+      }, 250);
     });
   }
   document.addEventListener("keyup", (e) => {
