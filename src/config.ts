@@ -89,7 +89,9 @@ export function resolveHome(flagRoot?: string): string {
   if (flagRoot) return resolve(flagRoot);
   const env = Deno.env.get("READING_ROOM_HOME");
   if (env) return resolve(env);
-  const xdg = Deno.env.get("XDG_DATA_HOME") ??
-    join(Deno.env.get("HOME") ?? ".", ".local", "share");
+  // `||` (not `??`) so an empty-string env var falls through rather than
+  // resolving a cwd-relative path like "reading-room".
+  const xdg = Deno.env.get("XDG_DATA_HOME") ||
+    join(Deno.env.get("HOME") || ".", ".local", "share");
   return join(xdg, "reading-room");
 }

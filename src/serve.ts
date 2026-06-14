@@ -266,7 +266,12 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 
 export async function serveMain(args: string[]): Promise<number> {
   const a = parseArgs(args, { string: ["root", "port"] });
-  const port = Number(a.port ?? a._[0] ?? Deno.env.get("PORT") ?? 8413);
+  const portArg = a.port ?? a._[0] ?? Deno.env.get("PORT") ?? 8413;
+  const port = Number(portArg);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    console.error(`reading-room serve: invalid port: ${portArg}`);
+    return 1;
+  }
   const readonly = Deno.env.get("READONLY") === "1";
   const ctx = await makeContext(resolveHome(a.root));
   const handler = makeHandler({ ctx, readonly });

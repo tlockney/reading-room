@@ -80,3 +80,16 @@ Deno.test("resolveHome: falls back to ~/.local/share/reading-room", () => {
     if (savedHome !== undefined) Deno.env.set("HOME", savedHome);
   }
 });
+
+Deno.test("resolveHome: empty XDG_DATA_HOME falls through to HOME, not a relative path", () => {
+  Deno.env.delete("READING_ROOM_HOME");
+  Deno.env.set("XDG_DATA_HOME", "");
+  const savedHome = Deno.env.get("HOME");
+  Deno.env.set("HOME", "/home/tester");
+  try {
+    assertEquals(resolveHome(), join("/home/tester", ".local", "share", "reading-room"));
+  } finally {
+    Deno.env.delete("XDG_DATA_HOME");
+    if (savedHome !== undefined) Deno.env.set("HOME", savedHome);
+  }
+});

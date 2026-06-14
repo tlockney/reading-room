@@ -91,4 +91,10 @@ Migration complete. Next steps:
    No WorkingDirectory needed — the CLI resolves the home from
    \$READING_ROOM_HOME or the XDG default.
 
+Note: each registry doc renders from \$HOME_DIR/_migrated/<slug>.html when that
+file exists, else from its (now legacy) "src" path. Migrated content is served
+correctly only when each _migrated/ file is named <slug>.html. add-doc always
+writes them that way; if you hand-authored a registry whose _migrated filename
+differs from the slug, rename it to <slug>.html (or that doc will 404 on serve).
+
 NEXT

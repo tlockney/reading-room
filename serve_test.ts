@@ -217,3 +217,7 @@ Deno.test("comments: PATCH reviewed stamps/clears; bad body 400; unknown id 404"
 Deno.test("serveMain is an exported function (server smoke is via makeHandler)", () => {
   assertEquals(typeof serveMain, "function");
 });
+
+Deno.test("serveMain returns 1 on an invalid --port without starting a server", async () => {
+  assertEquals(await serveMain(["--port", "abc"]), 1);
+});
