@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
-import { removeDoc, setDocField, UnknownSlugError } from "./src/registry-edit.ts";
+import { insertTopic, removeDoc, setDocField, UnknownSlugError } from "./src/registry-edit.ts";
 
 // Three docs across two topics; header comment and hand-formatting must survive.
 const REGISTRY = `// header comment — must survive
@@ -119,4 +119,29 @@ Deno.test("surgery tolerates brackets and braces inside string values", () => {
   // alpha's desc contains "[tricky] {chars}" — entry-range scanning must skip strings
   const out = removeDoc(REGISTRY, "alpha");
   assertEquals(parsed(out).find((x) => x.id === "tooling")!.docs.length, 1);
+});
+
+Deno.test("insertTopic into an empty array produces valid JSONC", () => {
+  const empty = "// registry\n[]\n";
+  const out = insertTopic(empty, {
+    num: "§ 01",
+    id: "intro",
+    name: "Introduction",
+    short: "Intro",
+    docs: [{
+      slug: "hello",
+      title: "Hello",
+      kind: "Reference",
+      desc: "",
+      footLeft: "Reference",
+      footRight: "Reading Room",
+      src: "reading-room/_migrated/hello.html",
+      visibility: "private",
+    }],
+  });
+  // Must parse back to exactly one topic with one doc.
+  const parsed = parseJsonc(out) as Array<{ id: string; docs: Array<{ slug: string }> }>;
+  assertEquals(parsed.length, 1);
+  assertEquals(parsed[0].id, "intro");
+  assertEquals(parsed[0].docs[0].slug, "hello");
 });
