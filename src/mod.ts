@@ -14,8 +14,9 @@
  *
  * @module
  */
-export { DEFAULT_SITE, loadSite, makeContext, parseSite } from "./config.ts";
+export { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./config.ts";
 export type { RoomContext, Site } from "./config.ts";
+export { ensureHome, initMain } from "./init.ts";
 export {
   injectLocalSlots,
   loadCorpus,
