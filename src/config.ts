@@ -3,7 +3,8 @@
  *
  * The engine operates on a content root (the consumer repo, normally
  * Deno.cwd()). Site identity comes from <root>/site.jsonc; an absent file
- * means the generic defaults, so a bare content repo still serves.
+ * means the generic defaults, so a bare content repo still serves. The CLI
+ * resolves the content home directory via resolveHome().
  */
 import { dirname, join, resolve } from "jsr:@std/path@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
@@ -79,4 +80,16 @@ export async function makeContext(root: string = Deno.cwd()): Promise<RoomContex
     commentsDir: join(abs, "comments"),
     site: await loadSite(abs),
   };
+}
+
+/** Resolve the content home the CLI operates on: an explicit --root flag, else
+ * $READING_ROOM_HOME, else ${XDG_DATA_HOME:-~/.local/share}/reading-room. The
+ * library API (makeContext) stays root-agnostic; only the CLI uses this. */
+export function resolveHome(flagRoot?: string): string {
+  if (flagRoot) return resolve(flagRoot);
+  const env = Deno.env.get("READING_ROOM_HOME");
+  if (env) return resolve(env);
+  const xdg = Deno.env.get("XDG_DATA_HOME") ??
+    join(Deno.env.get("HOME") ?? ".", ".local", "share");
+  return join(xdg, "reading-room");
 }

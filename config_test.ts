@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
-import { join } from "jsr:@std/path@1";
-import { DEFAULT_SITE, loadSite, makeContext, parseSite } from "./src/config.ts";
+import { join, resolve } from "jsr:@std/path@1";
+import { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./src/config.ts";
 
 Deno.test("loadSite: missing site.jsonc falls back to defaults", async () => {
   const dir = await Deno.makeTempDir();
@@ -39,4 +39,44 @@ Deno.test("makeContext derives all paths from the root", async () => {
   assertEquals(ctx.commentsDir, join(ctx.root, "comments"));
   assert(ctx.root.startsWith("/"), "root is absolute");
   assertEquals(ctx.site, DEFAULT_SITE);
+});
+
+Deno.test("resolveHome: --root flag wins over env", () => {
+  Deno.env.set("READING_ROOM_HOME", "/from/env");
+  try {
+    assertEquals(resolveHome("/from/flag"), resolve("/from/flag"));
+  } finally {
+    Deno.env.delete("READING_ROOM_HOME");
+  }
+});
+
+Deno.test("resolveHome: READING_ROOM_HOME used when no flag", () => {
+  Deno.env.set("READING_ROOM_HOME", "/srv/rr");
+  try {
+    assertEquals(resolveHome(), resolve("/srv/rr"));
+  } finally {
+    Deno.env.delete("READING_ROOM_HOME");
+  }
+});
+
+Deno.test("resolveHome: XDG_DATA_HOME default when no flag/env", () => {
+  Deno.env.delete("READING_ROOM_HOME");
+  Deno.env.set("XDG_DATA_HOME", "/xdg");
+  try {
+    assertEquals(resolveHome(), join("/xdg", "reading-room"));
+  } finally {
+    Deno.env.delete("XDG_DATA_HOME");
+  }
+});
+
+Deno.test("resolveHome: falls back to ~/.local/share/reading-room", () => {
+  Deno.env.delete("READING_ROOM_HOME");
+  Deno.env.delete("XDG_DATA_HOME");
+  const savedHome = Deno.env.get("HOME");
+  Deno.env.set("HOME", "/home/tester");
+  try {
+    assertEquals(resolveHome(), join("/home/tester", ".local", "share", "reading-room"));
+  } finally {
+    if (savedHome !== undefined) Deno.env.set("HOME", savedHome);
+  }
 });
