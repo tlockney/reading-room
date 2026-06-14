@@ -1,23 +1,39 @@
 # Content Home + CLI Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Turn the Reading Room engine into an installable `reading-room` CLI that operates on a single well-known per-machine content home (`--root` → `$READING_ROOM_HOME` → `${XDG_DATA_HOME:-~/.local/share}/reading-room`) instead of per-host content repos rooted at `Deno.cwd()`.
+**Goal:** Turn the Reading Room engine into an installable `reading-room` CLI that operates on a
+single well-known per-machine content home (`--root` → `$READING_ROOM_HOME` →
+`${XDG_DATA_HOME:-~/.local/share}/reading-room`) instead of per-host content repos rooted at
+`Deno.cwd()`.
 
-**Architecture:** Keep the root-agnostic library API (`makeContext(root)`); add a `resolveHome()` resolver and lift each entry point's `import.meta.main` block into an exported `*Main(args)` function that resolves the home and returns an exit code. A new `src/cli.ts` dispatches `serve|build|add-doc|publish|init` plus `--help`/`--version`. A generated `src/version.ts` surfaces the version (the package omits `deno.jsonc`). `init` + a lazy `ensureHome()` bootstrap a fresh home.
+**Architecture:** Keep the root-agnostic library API (`makeContext(root)`); add a `resolveHome()`
+resolver and lift each entry point's `import.meta.main` block into an exported `*Main(args)`
+function that resolves the home and returns an exit code. A new `src/cli.ts` dispatches
+`serve|build|add-doc|publish|init` plus `--help`/`--version`. A generated `src/version.ts` surfaces
+the version (the package omits `deno.jsonc`). `init` + a lazy `ensureHome()` bootstrap a fresh home.
 
-**Tech Stack:** Deno 2.x, TypeScript (no `any`), JSR (`@std/path`, `@std/fs`, `@std/jsonc`, `@std/cli`), `deno test`.
+**Tech Stack:** Deno 2.x, TypeScript (no `any`), JSR (`@std/path`, `@std/fs`, `@std/jsonc`,
+`@std/cli`), `deno test`.
 
-**Reference specs:** `_specs/2026-06-13-content-home-design.md` (this work) and `_specs/2026-06-13-cli-distribution-design.md` (the dispatcher it amends).
+**Reference specs:** `_specs/2026-06-13-content-home-design.md` (this work) and
+`_specs/2026-06-13-cli-distribution-design.md` (the dispatcher it amends).
 
-**Conventions:** Tests live at repo ROOT as `<name>_test.ts`, run with `deno test --allow-read --allow-write --allow-env`. Never use `any`. Never mention AI/Claude in commit messages. Keep changes minimal and match surrounding style. Run `deno fmt --check` and `deno lint` before each commit (CI enforces them).
+**Conventions:** Tests live at repo ROOT as `<name>_test.ts`, run with
+`deno test --allow-read --allow-write --allow-env`. Never use `any`. Never mention AI/Claude in
+commit messages. Keep changes minimal and match surrounding style. Run `deno fmt --check` and
+`deno lint` before each commit (CI enforces them).
 
 ---
 
 ## Task ordering / parallelism
 
-- **Wave 1 (independent leaves):** Task 1 (`resolveHome`), Task 2 (`version.ts`), Task 3 (`insertTopic` empty-array fix). Different files; safe to run concurrently.
-- **Wave 2 (need `resolveHome`):** Task 4 (`init`/`ensureHome`, also needs Task 3), Task 5 (`buildMain`), Task 6 (`serveMain`), Task 8 (`publishMain`).
+- **Wave 1 (independent leaves):** Task 1 (`resolveHome`), Task 2 (`version.ts`), Task 3
+  (`insertTopic` empty-array fix). Different files; safe to run concurrently.
+- **Wave 2 (need `resolveHome`):** Task 4 (`init`/`ensureHome`, also needs Task 3), Task 5
+  (`buildMain`), Task 6 (`serveMain`), Task 8 (`publishMain`).
 - **Wave 3:** Task 7 (`addDocMain`, needs `ensureHome` from Task 4).
 - **Wave 4:** Task 9 (`cli.ts`, needs Tasks 2,4,5,6,7,8).
 - **Wave 5:** Task 10 (`deno.jsonc`), then Task 11 (docs), then Task 12 (final verification).
@@ -27,6 +43,7 @@
 ## Task 1: `resolveHome()` in config.ts
 
 **Files:**
+
 - Modify: `src/config.ts` (add exported function; `dirname, join, resolve` are already imported)
 - Test: `config_test.ts` (append)
 
@@ -77,12 +94,13 @@ Deno.test("resolveHome: falls back to ~/.local/share/reading-room", () => {
 });
 ```
 
-(If `config_test.ts` already imports `assertEquals` and/or `join`/`resolve`, do not duplicate the import — merge into the existing import lines.)
+(If `config_test.ts` already imports `assertEquals` and/or `join`/`resolve`, do not duplicate the
+import — merge into the existing import lines.)
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write --allow-env config_test.ts`
-Expected: FAIL — `resolveHome` is not exported.
+Run: `deno test --allow-read --allow-write --allow-env config_test.ts` Expected: FAIL —
+`resolveHome` is not exported.
 
 - [ ] **Step 3: Implement `resolveHome`** — add to `src/config.ts` (after `makeContext`):
 
@@ -100,12 +118,13 @@ export function resolveHome(flagRoot?: string): string {
 }
 ```
 
-Also update the file header comment block (lines 1-7) note "normally Deno.cwd()" to mention the CLI resolves the home via `resolveHome` — keep it to one added clause; do not rewrite the comment.
+Also update the file header comment block (lines 1-7) note "normally Deno.cwd()" to mention the CLI
+resolves the home via `resolveHome` — keep it to one added clause; do not rewrite the comment.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env config_test.ts`
-Expected: PASS (all resolveHome tests + existing config tests).
+Run: `deno test --allow-read --allow-write --allow-env config_test.ts` Expected: PASS (all
+resolveHome tests + existing config tests).
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -120,7 +139,9 @@ git commit -m "feat(config): resolveHome — CLI content-home resolution"
 ## Task 2: generated `src/version.ts` + pin test
 
 **Files:**
-- Modify: `scripts/gen-assets.ts` (add version generation; emit `src/version.ts` in `import.meta.main`)
+
+- Modify: `scripts/gen-assets.ts` (add version generation; emit `src/version.ts` in
+  `import.meta.main`)
 - Create: `src/version.ts` (generated)
 - Create: `version_test.ts` (pin)
 
@@ -139,8 +160,7 @@ Deno.test("version.ts VERSION matches deno.jsonc version", async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read version_test.ts`
-Expected: FAIL — `./src/version.ts` does not exist.
+Run: `deno test --allow-read version_test.ts` Expected: FAIL — `./src/version.ts` does not exist.
 
 - [ ] **Step 3: Extend the generator** — in `scripts/gen-assets.ts`:
 
@@ -173,8 +193,9 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Generate version.ts and verify the test passes**
 
-Run: `deno task gen && deno test --allow-read version_test.ts`
-Expected: writes `src/version.ts` and `src/assets_gen.ts`; test PASSES. (`src/version.ts` should read `export const VERSION: string = "0.1.1";` until Task 10 bumps it.)
+Run: `deno task gen && deno test --allow-read version_test.ts` Expected: writes `src/version.ts` and
+`src/assets_gen.ts`; test PASSES. (`src/version.ts` should read
+`export const VERSION: string = "0.1.1";` until Task 10 bumps it.)
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -189,9 +210,12 @@ git commit -m "feat(version): generate src/version.ts from deno.jsonc with pin t
 
 ## Task 3: `insertTopic` handles an empty top-level array
 
-The lazy-created/init registry is `[]`. `insertTopic` currently always prepends `,\n`, which would produce invalid `[,\n {...}]` on the first `add-doc --new-topic`. Fix it to omit the separator when the array is empty.
+The lazy-created/init registry is `[]`. `insertTopic` currently always prepends `,\n`, which would
+produce invalid `[,\n {...}]` on the first `add-doc --new-topic`. Fix it to omit the separator when
+the array is empty.
 
 **Files:**
+
 - Modify: `src/registry-edit.ts:175-188` (`insertTopic`)
 - Test: `registry-edit_test.ts` (append)
 
@@ -224,12 +248,13 @@ Deno.test("insertTopic into an empty array produces valid JSONC", () => {
 });
 ```
 
-Ensure `registry-edit_test.ts` imports `insertTopic` and `parseJsonc` (`import { parse as parseJsonc } from "jsr:@std/jsonc@1";`) — add if missing.
+Ensure `registry-edit_test.ts` imports `insertTopic` and `parseJsonc`
+(`import { parse as parseJsonc } from "jsr:@std/jsonc@1";`) — add if missing.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env registry-edit_test.ts`
-Expected: FAIL — `parseJsonc(out)` throws on the leading comma `[,`.
+Run: `deno test --allow-read --allow-write --allow-env registry-edit_test.ts` Expected: FAIL —
+`parseJsonc(out)` throws on the leading comma `[,`.
 
 - [ ] **Step 3: Fix `insertTopic`** — replace the body of `insertTopic` in `src/registry-edit.ts`:
 
@@ -245,9 +270,8 @@ export function insertTopic(registry: string, topic: TopicEntry): string {
   const before = registry.slice(0, lastClose).replace(/\s*$/, "");
   const docs = topic.docs.map((d) => formatDoc(d, "      ")).join(",\n");
   const lead = isEmpty ? "\n" : ",\n";
-  const block = `${lead}  {\n    "num": ${JSON.stringify(topic.num)}, "id": ${
-    JSON.stringify(topic.id)
-  },\n` +
+  const block =
+    `${lead}  {\n    "num": ${JSON.stringify(topic.num)}, "id": ${JSON.stringify(topic.id)},\n` +
     `    "name": ${JSON.stringify(topic.name)}, "short": ${JSON.stringify(topic.short)},\n` +
     `    "docs": [\n${docs}\n    ]\n  }\n`;
   return before + block + registry.slice(lastClose);
@@ -256,8 +280,8 @@ export function insertTopic(registry: string, topic: TopicEntry): string {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env registry-edit_test.ts`
-Expected: PASS — the new test AND every existing registry-edit test (non-empty insert still gets the `,\n` separator).
+Run: `deno test --allow-read --allow-write --allow-env registry-edit_test.ts` Expected: PASS — the
+new test AND every existing registry-edit test (non-empty insert still gets the `,\n` separator).
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -273,6 +297,7 @@ git commit -m "fix(registry): insertTopic handles an empty top-level array"
 ## Task 4: `src/init.ts` — `ensureHome` + `initMain`
 
 **Files:**
+
 - Create: `src/init.ts`
 - Test: `init_test.ts`
 - Depends on: Task 1 (`resolveHome`), Task 3 (empty-array `insertTopic`)
@@ -340,8 +365,8 @@ Deno.test("initMain is idempotent and never clobbers site.jsonc", async () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write --allow-env init_test.ts`
-Expected: FAIL — `./src/init.ts` does not exist.
+Run: `deno test --allow-read --allow-write --allow-env init_test.ts` Expected: FAIL —
+`./src/init.ts` does not exist.
 
 - [ ] **Step 3: Implement `src/init.ts`:**
 
@@ -399,8 +424,7 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env init_test.ts`
-Expected: PASS (all four).
+Run: `deno test --allow-read --allow-write --allow-env init_test.ts` Expected: PASS (all four).
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -415,6 +439,7 @@ git commit -m "feat(init): ensureHome + reading-room init bootstrap"
 ## Task 5: lift `buildMain` in build.ts
 
 **Files:**
+
 - Modify: `src/build.ts:72-75` (the `import.meta.main` block) + imports
 - Test: `build_test.ts` (append a `buildMain` smoke test)
 - Depends on: Task 1
@@ -446,10 +471,11 @@ Ensure `build_test.ts` imports `assert`/`assertEquals` (merge with existing impo
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env build_test.ts`
-Expected: FAIL — `buildMain` not exported.
+Run: `deno test --allow-read --allow-write --allow-env build_test.ts` Expected: FAIL — `buildMain`
+not exported.
 
-- [ ] **Step 3: Implement `buildMain`** — in `src/build.ts`, add `parseArgs` + `resolveHome` imports:
+- [ ] **Step 3: Implement `buildMain`** — in `src/build.ts`, add `parseArgs` + `resolveHome`
+      imports:
 
 ```ts
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
@@ -475,8 +501,8 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env build_test.ts`
-Expected: PASS — new smoke test + existing build-purity tests.
+Run: `deno test --allow-read --allow-write --allow-env build_test.ts` Expected: PASS — new smoke
+test + existing build-purity tests.
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -491,8 +517,10 @@ git commit -m "refactor(build): lift import.meta.main into buildMain(args)"
 ## Task 6: lift `serveMain` in serve.ts
 
 **Files:**
+
 - Modify: `src/serve.ts:266-291` (the `import.meta.main` block) + imports
-- Test: `serve_test.ts` (append a thin `serveMain` export-shape assertion; the server itself is exercised via existing `makeHandler` tests)
+- Test: `serve_test.ts` (append a thin `serveMain` export-shape assertion; the server itself is
+  exercised via existing `makeHandler` tests)
 - Depends on: Task 1
 
 - [ ] **Step 1: Write the failing test** — append to `serve_test.ts`:
@@ -505,12 +533,13 @@ Deno.test("serveMain is an exported function (server smoke is via makeHandler)",
 });
 ```
 
-(The live bind is intentionally not started in tests — `makeHandler` coverage in this file already exercises request handling.)
+(The live bind is intentionally not started in tests — `makeHandler` coverage in this file already
+exercises request handling.)
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env serve_test.ts`
-Expected: FAIL — `serveMain` not exported.
+Run: `deno test --allow-read --allow-write --allow-env serve_test.ts` Expected: FAIL — `serveMain`
+not exported.
 
 - [ ] **Step 3: Implement `serveMain`** — in `src/serve.ts`, add imports:
 
@@ -521,7 +550,8 @@ import { makeContext, resolveHome } from "./config.ts";
 
 (Merge with the existing `makeContext` import line — replace it.)
 
-Replace the `import.meta.main` block (lines 266-291) with a `serveMain` that contains the same startup logic, then a thin guard:
+Replace the `import.meta.main` block (lines 266-291) with a `serveMain` that contains the same
+startup logic, then a thin guard:
 
 ```ts
 export async function serveMain(args: string[]): Promise<number> {
@@ -561,8 +591,8 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env serve_test.ts`
-Expected: PASS — new shape test + all existing handler tests.
+Run: `deno test --allow-read --allow-write --allow-env serve_test.ts` Expected: PASS — new shape
+test + all existing handler tests.
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -577,6 +607,7 @@ git commit -m "refactor(serve): lift import.meta.main into serveMain(args)"
 ## Task 7: lift `addDocMain` in add-doc.ts (home-resolved + ensureHome)
 
 **Files:**
+
 - Modify: `src/add-doc.ts:27-82` (the `import.meta.main` block) + imports
 - Test: `add-doc_test.ts` (append an end-to-end test against a fresh home)
 - Depends on: Task 1, Task 4
@@ -595,10 +626,14 @@ Deno.test("addDocMain files a doc into a fresh home (lazy create)", async () => 
     const src = join(srcDir, "hello.html");
     await Deno.writeTextFile(src, "<html><body><h1>Hello</h1></body></html>");
     const code = await addDocMain([
-      "--root", home,
-      "--src", src,
-      "--new-topic", "§ 01|intro|Introduction|Intro",
-      "--title", "Hello",
+      "--root",
+      home,
+      "--src",
+      src,
+      "--new-topic",
+      "§ 01|intro|Introduction|Intro",
+      "--title",
+      "Hello",
     ]);
     assertEquals(code, 0);
     assert(await exists(join(home, "_migrated", "hello.html")));
@@ -611,12 +646,13 @@ Deno.test("addDocMain files a doc into a fresh home (lazy create)", async () => 
 });
 ```
 
-Ensure `add-doc_test.ts` imports `assert`, `assertEquals`, `assertStringIncludes` (merge with existing imports).
+Ensure `add-doc_test.ts` imports `assert`, `assertEquals`, `assertStringIncludes` (merge with
+existing imports).
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env add-doc_test.ts`
-Expected: FAIL — `addDocMain` not exported.
+Run: `deno test --allow-read --allow-write --allow-env add-doc_test.ts` Expected: FAIL —
+`addDocMain` not exported.
 
 - [ ] **Step 3: Implement `addDocMain`** — in `src/add-doc.ts`, update imports:
 
@@ -627,7 +663,10 @@ import { ensureHome } from "./init.ts";
 
 (Add these alongside the existing imports.)
 
-Replace the `import.meta.main` block (lines 27-82) with `addDocMain` + a guard. The body is the existing logic, with three changes: (a) `ROOT = resolveHome(a.root)`, (b) `await ensureHome(ROOT)` before reading the registry, (c) add `"root"` to the `string` flag list, (d) `return 0` at the end and `throw` on errors (already the case):
+Replace the `import.meta.main` block (lines 27-82) with `addDocMain` + a guard. The body is the
+existing logic, with three changes: (a) `ROOT = resolveHome(a.root)`, (b) `await ensureHome(ROOT)`
+before reading the registry, (c) add `"root"` to the `string` flag list, (d) `return 0` at the end
+and `throw` on errors (already the case):
 
 ```ts
 export async function addDocMain(args: string[]): Promise<number> {
@@ -697,8 +736,8 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env add-doc_test.ts`
-Expected: PASS — new end-to-end test + existing re-export tests.
+Run: `deno test --allow-read --allow-write --allow-env add-doc_test.ts` Expected: PASS — new
+end-to-end test + existing re-export tests.
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -713,11 +752,13 @@ git commit -m "refactor(add-doc): lift into addDocMain(args) with home resolutio
 ## Task 8: lift `publishMain` in publish.ts
 
 **Files:**
+
 - Modify: `src/publish.ts:42-92` (the `import.meta.main` block) + imports
 - Test: `publish_test.ts` (append a `--dry-run` smoke test)
 - Depends on: Task 1
 
-The lift converts the script's `Deno.exit(n)` calls into `return n` so `publishMain` yields an exit code; the guard does `Deno.exit(await publishMain(Deno.args))`.
+The lift converts the script's `Deno.exit(n)` calls into `return n` so `publishMain` yields an exit
+code; the guard does `Deno.exit(await publishMain(Deno.args))`.
 
 - [ ] **Step 1: Write the failing test** — append to `publish_test.ts`:
 
@@ -748,8 +789,8 @@ Ensure `publish_test.ts` imports `assertEquals` (merge with existing).
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run publish_test.ts`
-Expected: FAIL — `publishMain` not exported.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run publish_test.ts` Expected: FAIL —
+`publishMain` not exported.
 
 - [ ] **Step 3: Implement `publishMain`** — in `src/publish.ts`, update imports:
 
@@ -760,7 +801,8 @@ import { makeContext, resolveHome } from "./config.ts";
 
 (Replace the existing `import { makeContext } from "./config.ts";` line.)
 
-Replace the `import.meta.main` block (lines 42-92) with `publishMain` (each former `Deno.exit(n)` becomes `return n`) + a guard:
+Replace the `import.meta.main` block (lines 42-92) with `publishMain` (each former `Deno.exit(n)`
+becomes `return n`) + a guard:
 
 ```ts
 export async function publishMain(args: string[]): Promise<number> {
@@ -783,7 +825,9 @@ export async function publishMain(args: string[]): Promise<number> {
   try {
     rawCfg = parseJsonc(await Deno.readTextFile(cfgPath));
   } catch (err) {
-    console.error(`  publish.jsonc is not valid JSONC: ${err instanceof Error ? err.message : err}`);
+    console.error(
+      `  publish.jsonc is not valid JSONC: ${err instanceof Error ? err.message : err}`,
+    );
     return 1;
   }
   const cfg = parsePublishConfig(rawCfg);
@@ -821,8 +865,8 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run publish_test.ts`
-Expected: PASS — new dry-run test + existing config tests.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run publish_test.ts` Expected: PASS —
+new dry-run test + existing config tests.
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -837,6 +881,7 @@ git commit -m "refactor(publish): lift into publishMain(args) returning an exit 
 ## Task 9: `src/cli.ts` dispatcher + `cli_test.ts`
 
 **Files:**
+
 - Create: `src/cli.ts`
 - Test: `cli_test.ts`
 - Depends on: Tasks 2, 4, 5, 6, 7, 8
@@ -925,8 +970,8 @@ Deno.test("cli with no subcommand exits 1", async () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run cli_test.ts`
-Expected: FAIL — `./src/cli.ts` does not exist.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run cli_test.ts` Expected: FAIL —
+`./src/cli.ts` does not exist.
 
 - [ ] **Step 3: Implement `src/cli.ts`:**
 
@@ -1002,8 +1047,8 @@ if (import.meta.main) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run cli_test.ts`
-Expected: PASS (all six).
+Run: `deno test --allow-read --allow-write --allow-env --allow-run cli_test.ts` Expected: PASS (all
+six).
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -1018,40 +1063,44 @@ git commit -m "feat(cli): src/cli.ts dispatcher for serve|build|add-doc|publish|
 ## Task 10: deno.jsonc — version 0.2.0, ./cli export, dev tasks, mod.ts surface
 
 **Files:**
+
 - Modify: `deno.jsonc` (version, exports, tasks)
 - Modify: `src/mod.ts` (export `resolveHome`, `ensureHome`, `initMain`)
 - Modify: `src/version.ts` (regenerated to 0.2.0)
 - Depends on: Task 9
 
-- [ ] **Step 1: Bump version + add ./cli export + widen env + add --root to dev tasks** — in `deno.jsonc`:
+- [ ] **Step 1: Bump version + add ./cli export + widen env + add --root to dev tasks** — in
+      `deno.jsonc`:
 
 Set `"version": "0.2.0"`.
 
 Add to `exports` (after `./add-doc`):
 
 ```jsonc
-    "./add-doc": "./src/add-doc.ts",
-    "./cli": "./src/cli.ts"
+"./add-doc": "./src/add-doc.ts",
+"./cli": "./src/cli.ts"
 ```
 
-Replace the four content-facing task lines so dev serves THIS repo (`--root .`) and the env union matches the installed CLI (`resolveHome` may read these):
+Replace the four content-facing task lines so dev serves THIS repo (`--root .`) and the env union
+matches the installed CLI (`resolveHome` may read these):
 
 ```jsonc
-    "build": "deno run --allow-read --allow-write --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/build.ts --root .",
-    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/serve.ts --root .",
-    "add-doc": "deno run --allow-read --allow-write --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/add-doc.ts --root .",
-    "publish": "deno run --allow-read --allow-write --allow-run --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/publish.ts --root .",
-    "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/cli.ts",
+"build": "deno run --allow-read --allow-write --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/build.ts --root .",
+"serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/serve.ts --root .",
+"add-doc": "deno run --allow-read --allow-write --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/add-doc.ts --root .",
+"publish": "deno run --allow-read --allow-write --allow-run --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/publish.ts --root .",
+"cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/cli.ts",
 ```
 
-Leave `gen` and `test` as they are (the `gen` task now also emits `src/version.ts` via Task 2's change to `gen-assets.ts`).
+Leave `gen` and `test` as they are (the `gen` task now also emits `src/version.ts` via Task 2's
+change to `gen-assets.ts`).
 
 - [ ] **Step 2: Regenerate version.ts at the new version**
 
-Run: `deno task gen`
-Expected: `src/version.ts` now reads `export const VERSION: string = "0.2.0";`.
+Run: `deno task gen` Expected: `src/version.ts` now reads `export const VERSION: string = "0.2.0";`.
 
-- [ ] **Step 3: Export the new library surface** — in `src/mod.ts`, extend the config re-export line and add init:
+- [ ] **Step 3: Export the new library surface** — in `src/mod.ts`, extend the config re-export line
+      and add init:
 
 ```ts
 export { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./config.ts";
@@ -1065,13 +1114,13 @@ export { ensureHome, initMain } from "./init.ts";
 
 - [ ] **Step 4: Verify the whole suite + version pin + a live CLI invocation**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run`
-Expected: PASS, including `version_test.ts` now pinning `0.2.0`.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run` Expected: PASS, including
+`version_test.ts` now pinning `0.2.0`.
 
-Run: `deno task cli --version`
-Expected: prints `0.2.0`.
+Run: `deno task cli --version` Expected: prints `0.2.0`.
 
-Run: `deno task cli build --root .` then confirm it builds (it writes `index.html`/`docs/` into the repo root — these are gitignored build artifacts).
+Run: `deno task cli build --root .` then confirm it builds (it writes `index.html`/`docs/` into the
+repo root — these are gitignored build artifacts).
 
 - [ ] **Step 5: fmt + lint + commit**
 
@@ -1087,19 +1136,37 @@ git commit -m "feat(cli): ship ./cli export, bump to 0.2.0, point dev tasks at -
 ## Task 11: docs + conversion tooling
 
 **Files:**
-- Modify: `CLAUDE.md` (root-resolution contract; remove worktree-as-sibling gotcha; content-repo → content-home; replace the "known limitation" section)
+
+- Modify: `CLAUDE.md` (root-resolution contract; remove worktree-as-sibling gotcha; content-repo →
+  content-home; replace the "known limitation" section)
 - Modify: `README.md` (install → init → home + env override; no-install fallback)
-- Modify: `convert-to-engine.sh` (thin wrapper around `reading-room init` + content move + install hint)
+- Modify: `convert-to-engine.sh` (thin wrapper around `reading-room init` + content move + install
+  hint)
 - Depends on: Tasks 9, 10
 
-This task changes prose/scripts only — no new tests. Verify with `deno fmt --check` (Markdown is formatted) and by reading the diff.
+This task changes prose/scripts only — no new tests. Verify with `deno fmt --check` (Markdown is
+formatted) and by reading the diff.
 
-- [ ] **Step 1: Update `CLAUDE.md`.** Make these specific edits (smallest reasonable changes — do not rewrite whole sections):
-  - In "How the engine resolves an environment": change the contract from "Every entry point treats `Deno.cwd()` as the content root" to: the **library** still builds a `RoomContext` from an explicit root (default `Deno.cwd()`), but the **CLI** resolves the content home via `resolveHome` — `--root` → `$READING_ROOM_HOME` → `${XDG_DATA_HOME:-~/.local/share}/reading-room`. Note the entry points are now the `reading-room <subcommand>` CLI (with `deno run jsr:.../cli <sub>` as the no-install fallback), plus the back-compatible `./serve`-style exports.
-  - In "The two-repo model": reframe "Content repo (per environment, private git repo)" as "Content home (per machine, a plain local directory at the resolved home path)". State plainly: no git, no sync (a later, separate concern); one library per machine.
-  - In "Land mines": **remove** the worktree-as-sibling note from "Working conventions" (content is self-contained under the home; `_migrated/<slug>.html` overrides win over the vestigial scattered `src`). Keep the `deno fmt`/JSR-asset/admin-purity land mines.
-  - Replace the "Known limitation / planned work" (version duplication) section with a short "Installed CLI" section: install once per machine via `deno install -g`, version is per-machine ambient state, `init` bootstraps the home; point at both specs.
-  - Update "Releasing" step 4 (consumers upgrade) to: re-run `deno install -g -f` at the new version (per machine), not per-repo task edits.
+- [ ] **Step 1: Update `CLAUDE.md`.** Make these specific edits (smallest reasonable changes — do
+      not rewrite whole sections):
+  - In "How the engine resolves an environment": change the contract from "Every entry point treats
+    `Deno.cwd()` as the content root" to: the **library** still builds a `RoomContext` from an
+    explicit root (default `Deno.cwd()`), but the **CLI** resolves the content home via
+    `resolveHome` — `--root` → `$READING_ROOM_HOME` →
+    `${XDG_DATA_HOME:-~/.local/share}/reading-room`. Note the entry points are now the
+    `reading-room <subcommand>` CLI (with `deno run jsr:.../cli <sub>` as the no-install fallback),
+    plus the back-compatible `./serve`-style exports.
+  - In "The two-repo model": reframe "Content repo (per environment, private git repo)" as "Content
+    home (per machine, a plain local directory at the resolved home path)". State plainly: no git,
+    no sync (a later, separate concern); one library per machine.
+  - In "Land mines": **remove** the worktree-as-sibling note from "Working conventions" (content is
+    self-contained under the home; `_migrated/<slug>.html` overrides win over the vestigial
+    scattered `src`). Keep the `deno fmt`/JSR-asset/admin-purity land mines.
+  - Replace the "Known limitation / planned work" (version duplication) section with a short
+    "Installed CLI" section: install once per machine via `deno install -g`, version is per-machine
+    ambient state, `init` bootstraps the home; point at both specs.
+  - Update "Releasing" step 4 (consumers upgrade) to: re-run `deno install -g -f` at the new version
+    (per machine), not per-repo task edits.
 
 - [ ] **Step 2: Update `README.md`.** Add an "Install" section:
 
@@ -1124,12 +1191,18 @@ The content home is `--root`, else `$READING_ROOM_HOME`, else
 
 (Adjust surrounding prose minimally to fit; keep the existing README voice.)
 
-- [ ] **Step 3: Rewrite `convert-to-engine.sh` as a thin wrapper.** It should: (a) run `reading-room init` (or print the `deno run jsr:.../cli init` fallback if the binary is absent), (b) move an existing content repo's `registry.jsonc`, `site.jsonc`, `_migrated/`, `comments/`, `assets/`, `publish.jsonc` into the resolved home (skip what's absent; never overwrite), (c) print the one-time `deno install -g` command and the launchd-agent note (agent runs `reading-room serve`, no `WorkingDirectory` needed). Keep it POSIX `sh`, `set -eu`, and echo each action. Do not delete the file.
+- [ ] **Step 3: Rewrite `convert-to-engine.sh` as a thin wrapper.** It should: (a) run
+      `reading-room init` (or print the `deno run jsr:.../cli init` fallback if the binary is
+      absent), (b) move an existing content repo's `registry.jsonc`, `site.jsonc`, `_migrated/`,
+      `comments/`, `assets/`, `publish.jsonc` into the resolved home (skip what's absent; never
+      overwrite), (c) print the one-time `deno install -g` command and the launchd-agent note (agent
+      runs `reading-room serve`, no `WorkingDirectory` needed). Keep it POSIX `sh`, `set -eu`, and
+      echo each action. Do not delete the file.
 
 - [ ] **Step 4: Verify formatting**
 
-Run: `deno fmt --check CLAUDE.md README.md`
-Expected: PASS (no diff). If it reports changes, run `deno fmt CLAUDE.md README.md` and re-check.
+Run: `deno fmt --check CLAUDE.md README.md` Expected: PASS (no diff). If it reports changes, run
+`deno fmt CLAUDE.md README.md` and re-check.
 
 - [ ] **Step 5: Commit**
 
@@ -1153,7 +1226,8 @@ deno test --allow-read --allow-write --allow-env --allow-run
 deno publish --dry-run
 ```
 
-Expected: all four succeed. `deno publish --dry-run` must include `src/cli.ts`, `src/version.ts`, `src/init.ts` (they live under `src/`, which is in `publish.include`).
+Expected: all four succeed. `deno publish --dry-run` must include `src/cli.ts`, `src/version.ts`,
+`src/init.ts` (they live under `src/`, which is in `publish.include`).
 
 - [ ] **Step 2: Smoke-test the CLI end to end against a throwaway home**
 
@@ -1170,12 +1244,20 @@ rm -rf "$TMP"
 
 Expected: prints `OK` — init → add-doc → build round-trips on a fresh home.
 
-- [ ] **Step 3: Report results** — summarize pass/fail of each gate command; if all green, the branch is ready for a PR.
+- [ ] **Step 3: Report results** — summarize pass/fail of each gate command; if all green, the
+      branch is ready for a PR.
 
 ---
 
 ## Self-review notes (author)
 
-- **Spec coverage:** resolveHome (T1), version.ts (T2), empty-registry insertTopic (T3, surfaced during planning), init+ensureHome (T4), the four `*Main` lifts (T5-T8), cli dispatcher (T9), deno.jsonc/exports/version bump/dev `--root .` (T10), CLAUDE.md/README/convert-to-engine (T11), full gate (T12). Permission union documented in README (T11 Step 2). Per-machine migration + launchd note documented in CLAUDE.md/convert-to-engine (T11).
-- **Out of scope (per spec):** Option B `deno compile`, moving dev content to `example/`, removing the `workspace`/scattered-`src` code, any sync mechanism.
-- **Type consistency:** `*Main(args: string[]): Promise<number>` across all five; `resolveHome(flagRoot?: string)`, `ensureHome(home)`, `initMain(args)`, `cli(args)` — names match across tasks and the cli imports.
+- **Spec coverage:** resolveHome (T1), version.ts (T2), empty-registry insertTopic (T3, surfaced
+  during planning), init+ensureHome (T4), the four `*Main` lifts (T5-T8), cli dispatcher (T9),
+  deno.jsonc/exports/version bump/dev `--root .` (T10), CLAUDE.md/README/convert-to-engine (T11),
+  full gate (T12). Permission union documented in README (T11 Step 2). Per-machine migration +
+  launchd note documented in CLAUDE.md/convert-to-engine (T11).
+- **Out of scope (per spec):** Option B `deno compile`, moving dev content to `example/`, removing
+  the `workspace`/scattered-`src` code, any sync mechanism.
+- **Type consistency:** `*Main(args: string[]): Promise<number>` across all five;
+  `resolveHome(flagRoot?: string)`, `ensureHome(home)`, `initMain(args)`, `cli(args)` — names match
+  across tasks and the cli imports.

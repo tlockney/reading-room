@@ -10,8 +10,9 @@
 
 Stop tying a machine's Reading Room content to a hand-placed, per-host **git repo** whose location
 the human and tools must each know. Instead, keep content in **one well-known local directory per
-machine** — the *content home* — that the installed `reading-room` CLI, the `editorial-longform-html`
-skill, and any other tool can reliably resolve, serve from, and write into.
+machine** — the _content home_ — that the installed `reading-room` CLI, the
+`editorial-longform-html` skill, and any other tool can reliably resolve, serve from, and write
+into.
 
 Primary goal: **distinct, per-machine content servers** with one canonical place to add and update
 content. A machine's content reflects that machine's role.
@@ -24,38 +25,39 @@ delivery vehicle; the content home is where it operates.
 1. **Plain local directory — no git, no sync.** Sync between machines is explicitly **not** a goal
    now; it is a later, harder problem needing an as-yet-unidentified mechanism. Each machine is
    independent. The worktree-as-sibling constraint disappears with git.
-2. **One library per machine.** The content home *is* the library — `site.jsonc`, `registry.jsonc`,
+2. **One library per machine.** The content home _is_ the library — `site.jsonc`, `registry.jsonc`,
    `_migrated/`, `comments/` live directly under it. A machine needing different content is a
    different machine. No multi-library-per-host container.
-3. **Home-always resolution** (no cwd auto-detection). Precedence:
-   `--root <dir>` flag → `$READING_ROOM_HOME` env → `${XDG_DATA_HOME:-~/.local/share}/reading-room`.
+3. **Home-always resolution** (no cwd auto-detection). Precedence: `--root <dir>` flag →
+   `$READING_ROOM_HOME` env → `${XDG_DATA_HOME:-~/.local/share}/reading-room`.
 4. **`init` subcommand + lazy auto-create.** `reading-room init` scaffolds a starter home; write
    paths also lazily create missing structure so a fresh machine never hard-fails.
 
 ## Why the home is self-contained (key finding)
 
-`transformDoc` (`src/render.ts`) resolves a doc's body from `<root>/_migrated/<slug>.html` **first**,
-falling back to the scattered `join(ctx.workspace, doc.src)` only when that override is absent. In
-the current registry all 9 entries already have a matching `_migrated/<slug>.html`, so the override
-always wins and the scattered `src` is never read (its paths don't even resolve to the real files
-here). Therefore a content home built around `{ registry.jsonc, site.jsonc, _migrated/, comments/ }`
-is **fully self-contained** — it has no real dependency on `dirname(root)`. The `workspace` field and
-scattered-`src` fallback become **vestigial/legacy**: kept for back-compat, not relied upon.
+`transformDoc` (`src/render.ts`) resolves a doc's body from `<root>/_migrated/<slug>.html`
+**first**, falling back to the scattered `join(ctx.workspace, doc.src)` only when that override is
+absent. In the current registry all 9 entries already have a matching `_migrated/<slug>.html`, so
+the override always wins and the scattered `src` is never read (its paths don't even resolve to the
+real files here). Therefore a content home built around
+`{ registry.jsonc, site.jsonc, _migrated/, comments/ }` is **fully self-contained** — it has no real
+dependency on `dirname(root)`. The `workspace` field and scattered-`src` fallback become
+**vestigial/legacy**: kept for back-compat, not relied upon.
 
 ## Relationship to the CLI spec — amendments
 
 This design **amends** `2026-06-13-cli-distribution-design.md`:
 
-- **Subcommands operate on the resolved home, not `Deno.cwd()`.** Each `*Main(args)` parses `--root`,
-  calls `resolveHome`, and threads `makeContext(home)`.
+- **Subcommands operate on the resolved home, not `Deno.cwd()`.** Each `*Main(args)` parses
+  `--root`, calls `resolveHome`, and threads `makeContext(home)`.
 - **The `init` open question is resolved: yes, `init` is in scope** and largely supersedes the
   "fresh repo" path of `convert-to-engine.sh`.
 - **The launchd agent no longer needs a meaningful `WorkingDirectory`** — `reading-room serve`
   resolves the home internally. The agent just runs the binary.
 
 Everything else in the CLI spec stands: the `cli` dispatcher, the `*Main` lift, generated
-`version.ts`, the permission union for `deno install -g`, Option A (install) now / Option B (compile)
-later, and back-compat of the four `./serve`-style exports.
+`version.ts`, the permission union for `deno install -g`, Option A (install) now / Option B
+(compile) later, and back-compat of the four `./serve`-style exports.
 
 **Build order:** build the dispatcher with home resolution baked into the `*Main` functions from the
 start, rather than building cwd-based and changing it later.
@@ -78,8 +80,8 @@ export function resolveHome(flagRoot?: string): string {
 }
 ```
 
-- **`makeContext(root = Deno.cwd())` keeps its signature.** The library API (`mod.ts`) and the entire
-  test suite stay root-agnostic and untouched; only the CLI's *choice* of root changes.
+- **`makeContext(root = Deno.cwd())` keeps its signature.** The library API (`mod.ts`) and the
+  entire test suite stay root-agnostic and untouched; only the CLI's _choice_ of root changes.
 - `workspace = dirname(root)` stays as the vestigial scattered-`src` fallback — deprecated, not
   removed (smallest change). A one-line comment marks it legacy.
 - Reads `HOME`/`XDG_DATA_HOME`/`READING_ROOM_HOME` from the env → the installed CLI's permission set
@@ -102,8 +104,8 @@ annotation-mutation handlers): creates the home dir + `_migrated/` + `comments/`
 so identity needs no special handling. Net effect: a fresh machine can `reading-room add-doc …` with
 zero prior setup; `init` is the guided path, not a prerequisite.
 
-`init` is serve-independent and read/write only — it must not import `admin.ts`/`comments.ts` mutation
-chrome beyond what is needed to create the empty directory.
+`init` is serve-independent and read/write only — it must not import `admin.ts`/`comments.ts`
+mutation chrome beyond what is needed to create the empty directory.
 
 ### Engine-repo dev story
 
@@ -156,4 +158,4 @@ Do **not** delete it outright — keep it as the documented migration entry poin
 - No removal of the scattered-`src` / `workspace` code (kept vestigial).
 - No moving dev content into `example/` (separate future cleanup).
 - No change to the content/engine split, `site.jsonc` schema, slots, the admin/annotations model, or
-  the render pipeline — only *where* the engine looks and *how* it bootstraps.
+  the render pipeline — only _where_ the engine looks and _how_ it bootstraps.
