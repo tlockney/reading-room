@@ -6,9 +6,8 @@ An editorial document library **engine**, published to JSR as
 no build step.
 
 The engine serves, builds, publishes, and annotates a registry of long-form HTML documents. Each
-_environment_ (a personal library, a work library, …) is a small private **content repo** that pins
-the engine and holds only its own content and identity; features land once here and every
-environment picks them up with a version bump.
+machine has a **content home** — a plain local directory — that holds only its own content and
+identity; features land once here and every machine picks them up with a CLI upgrade.
 
 Three pieces, one visual language:
 
@@ -22,13 +21,30 @@ Three pieces, one visual language:
       ln -s "$(pwd)/skill/editorial-longform-html" ~/.claude/skills/
 
 - **The content** — `registry.jsonc` + `_migrated/` + `comments/`. This repo carries its own content
-  (it is its own first consumer); other environments keep theirs in their own repos.
+  for development; each machine keeps its content in the resolved content home.
 
-## A content repo
+## Install
 
-The complete consumer shape (see `example/` for a working one):
+```sh
+deno install -g -f -n reading-room \
+  --allow-read --allow-write --allow-net --allow-run \
+  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME \
+  --minimum-dependency-age=0 \
+  jsr:@tlockney/reading-room/cli
 
-    deno.jsonc          # tasks pinning jsr:@tlockney/reading-room/<entry>
+reading-room init        # scaffold the content home
+reading-room serve       # serve it on 127.0.0.1:8413
+```
+
+The content home is `--root`, else `$READING_ROOM_HOME`, else
+`${XDG_DATA_HOME:-~/.local/share}/reading-room`. No install? Use the fallback:
+`deno run -A jsr:@tlockney/reading-room/cli <subcommand>`.
+
+## A content home
+
+A plain local directory — no git, no sync. `reading-room init` scaffolds it; write commands lazily
+create missing structure. The layout:
+
     site.jsonc          # site identity (title, eyebrow, lede, footer) — optional
     registry.jsonc      # the corpus: topics → docs
     _migrated/          # the documents
@@ -36,39 +52,27 @@ The complete consumer shape (see `example/` for a working one):
     assets/head-extra.html   # optional: local <head> additions (CSS, fonts…)
     assets/body-extra.html   # optional: local <body> additions
     publish.jsonc       # optional: remote-publish command
-    agent.sh            # optional: launchd + tailscale wrapper (macOS)
-
-Tasks delegate to the packaged entry points, which operate on the **current directory**:
-
-    "serve":   "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY jsr:@tlockney/reading-room/serve",
-    "build":   "deno run --allow-read --allow-write jsr:@tlockney/reading-room/build",
-    "add-doc": "deno run --allow-read --allow-write jsr:@tlockney/reading-room/add-doc",
-    "publish": "deno run --allow-read --allow-write --allow-run jsr:@tlockney/reading-room/publish"
 
 ## Use it
 
-    deno task serve              # serve on 127.0.0.1:8413 — rendered live, no build step
-    PORT=9000 deno task serve    # …a different port  (also: deno task serve 9000)
+    reading-room serve           # serve on 127.0.0.1:8413 — rendered live, no build step
+    PORT=9000 reading-room serve # …a different port
 
-    deno task build              # write STATIC files (only needed to publish)
-    deno task publish            # build the shared subset + run publish.jsonc's command
+    reading-room build           # write static files (only needed to publish)
+    reading-room publish         # build the shared subset + run publish.jsonc's command
 
-`deno task serve` renders every page on the fly from `registry.jsonc` and the source docs, bound to
-**localhost only**. Editing the registry or any doc shows up on the next refresh — no rebuild, no
+`reading-room serve` renders every page on the fly from `registry.jsonc` and the source docs, bound
+to **localhost only**. Editing the registry or any doc shows up on the next refresh — no rebuild, no
 restart. It also carries the management layer — review toggles, visibility, removal, and annotations
 — which exists only on the live server, never in published output.
 
 ## Always-on, over Tailscale (optional)
 
-    ./agent.sh install     # load a LaunchAgent + expose over your tailnet (HTTPS)
-    ./agent.sh status      # agent + tailscale serve state
-    ./agent.sh logs        # tail the agent logs
-    ./agent.sh uninstall   # unload the agent + reset tailscale serve
-
-The agent (macOS launchd) runs the server on `127.0.0.1:8413` (starts at login, auto-restarts via
-`KeepAlive`), and `tailscale serve` fronts it at `https://<your-machine>.<your-tailnet>.ts.net/` —
-reachable only from your tailnet, over HTTPS, with no raw LAN exposure. Because serving is dynamic,
-the agent never needs restarting when you add or edit docs.
+A macOS launchd agent running `reading-room serve` (starts at login, auto-restarts via `KeepAlive`)
+with `tailscale serve` fronting it at `https://<your-machine>.<your-tailnet>.ts.net/` — reachable
+only from your tailnet, over HTTPS, with no raw LAN exposure. Because serving is dynamic, the agent
+never needs restarting when you add or edit docs. The agent does not need a `WorkingDirectory` —
+`reading-room serve` resolves the content home internally.
 
 > Access is gated by your Tailscale ACLs (tailnet-only) — no separate login. It serves the full
 > local set, including private docs.
@@ -78,16 +82,16 @@ the agent never needs restarting when you add or edit docs.
 Author a doc with the skill (start from
 `skill/editorial-longform-html/assets/engineering-reference.html`), then file it in:
 
-    deno task add-doc --src /path/to/your-doc.html --topic <topic-id> \
+    reading-room add-doc --src /path/to/your-doc.html --topic <topic-id> \
       --title "Title" --kind "Guide · Engineering Ref" --desc "One line." \
       --foot-left "2026·06·07" --foot-right "repo-or-source"
 
-Or edit `registry.jsonc` (topics → docs) by hand and refresh — that's it. Each doc points at a `src`
-HTML (relative to the content repo's parent directory, so docs can live in sibling repos); if
-`_migrated/<slug>.html` exists it's used instead. Flags:
+Or edit `registry.jsonc` (topics → docs) by hand and refresh — that's it. Each doc's
+`_migrated/<slug>.html` is the self-contained source; the registry's `src` field is vestigial and
+not relied upon. Flags:
 
-- `visibility`: `private` | `shared` — `deno task publish` ships only the `shared` subset; the local
-  server ignores it (shows everything).
+- `visibility`: `private` | `shared` — `reading-room publish` ships only the `shared` subset; the
+  local server ignores it (shows everything).
 - `review`: `true` — surfaces the doc in a pinned **For Review** section at the top of the index,
   with a chip on its card.
 
@@ -153,7 +157,7 @@ Layout:
 - `src/assets_gen.ts` — GENERATED (`deno task gen`): the editorial partials, admin bundle, and site
   icons embedded as strings so the package never reads package-relative files.
 - `src/mod.ts` — the library surface (also exports `EDITORIAL_HEAD`/`EDITORIAL_BODY` for
-  content-repo drift tests).
+  content-home drift tests).
 - `assets/editorial/` — the canonical zoom + theme + mobile bundle **source** (inlined in the skill
   template; `drift_test.ts` pins the two together).
 - `assets/admin/` — the management UI bundle source (manage mode, review chip, marginalia).
@@ -170,7 +174,7 @@ tests and runs `deno publish` (JSR OIDC, no token).
 
 ## Remote sharing
 
-`deno task publish` builds the **`visibility: shared` subset** into `.publish/` and, if
+`reading-room publish` builds the **`visibility: shared` subset** into `.publish/` and, if
 `publish.jsonc` exists, hands it to your command:
 
     { "cmd": ["aws", "s3", "sync", "{out}", "s3://my-bucket", "--delete"] }
