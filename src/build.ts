@@ -22,7 +22,8 @@ import { join } from "jsr:@std/path@1";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Topic } from "./render.ts";
-import { makeContext } from "./config.ts";
+import { parseArgs } from "jsr:@std/cli@1/parse-args";
+import { makeContext, resolveHome } from "./config.ts";
 import type { RoomContext } from "./config.ts";
 import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 
@@ -69,7 +70,13 @@ export async function build(
   return { docs: total, topics: corpus.length };
 }
 
-if (import.meta.main) {
-  await build(await makeContext());
+export async function buildMain(args: string[]): Promise<number> {
+  const a = parseArgs(args, { string: ["root"] });
+  await build(await makeContext(resolveHome(a.root)));
   console.log("Done.");
+  return 0;
+}
+
+if (import.meta.main) {
+  Deno.exit(await buildMain(Deno.args));
 }
