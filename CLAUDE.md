@@ -133,6 +133,9 @@ the skill template too — the drift test will tell you.
 - `deno task test` must pass before every commit; `deno fmt --check` and `deno lint` too (CI runs
   all three plus `deno publish --dry-run` on PRs). The CI Deno is `v2.x` (currently ahead of some
   local installs — lint rules can be stricter there than locally; trust CI).
+- Tests are colocated next to the code they cover as `src/<name>_test.ts` (Deno convention); a
+  `publish.exclude` keeps them out of the JSR package. Add new tests beside their module, not at the
+  repo root.
 - TDD where practical; the suite covers render injection, registry string-surgery, comments CRUD,
   the handler API (round-trips, 404s, `READONLY` 403s), build-purity guards, layout, anchors, the
   codegen pin, slot idempotency, `site.jsonc` loading, and an `example/` integration build.

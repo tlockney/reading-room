@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { exists } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
-import { ensureHome, initMain } from "./src/init.ts";
+import { ensureHome, initMain } from "./init.ts";
 
 Deno.test("ensureHome creates dirs and an empty registry", async () => {
   const home = await Deno.makeTempDir();

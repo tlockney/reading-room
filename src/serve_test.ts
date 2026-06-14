@@ -1,8 +1,8 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
-import { makeHandler, serveMain } from "./src/serve.ts";
-import { makeContext } from "./src/config.ts";
+import { makeHandler, serveMain } from "./serve.ts";
+import { makeContext } from "./config.ts";
 
 const FIXTURE = `// fixture registry
 [

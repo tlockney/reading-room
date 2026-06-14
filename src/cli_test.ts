@@ -1,8 +1,8 @@
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { exists } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
-import { cli } from "./src/cli.ts";
-import { VERSION } from "./src/version.ts";
+import { cli } from "./cli.ts";
+import { VERSION } from "./version.ts";
 
 Deno.test("cli build --root builds into the home", async () => {
   const home = await Deno.makeTempDir();

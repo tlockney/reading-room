@@ -15,7 +15,9 @@
     "./cli": "./src/cli.ts"
   },
   "publish": {
-    "include": ["src/", "README.md", "LICENSE"]
+    "include": ["src/", "README.md", "LICENSE"],
+    // Tests are colocated as src/<name>_test.ts; never ship them to JSR.
+    "exclude": ["src/**/*_test.ts"]
   },
   "tasks": {
     // Regenerate src/assets_gen.ts after editing assets/ (pinned by assets_gen_test.ts).

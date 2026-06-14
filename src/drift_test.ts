@@ -1,7 +1,7 @@
 import { assert } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
 
-const ROOT = dirname(fromFileUrl(import.meta.url));
+const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
 const SKILL = join(ROOT, "skill/editorial-longform-html/assets/engineering-reference.html");
 
 // The skill template inlines the canonical zoom+theme bundle verbatim so its

@@ -1,6 +1,6 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { join, resolve } from "jsr:@std/path@1";
-import { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./src/config.ts";
+import { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./config.ts";
 
 Deno.test("loadSite: missing site.jsonc falls back to defaults", async () => {
   const dir = await Deno.makeTempDir();

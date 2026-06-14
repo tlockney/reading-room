@@ -2,7 +2,7 @@ import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@s
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { exists } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
-import { addDocMain, type DocEntry, insertDoc, insertTopic, slugExists } from "./src/add-doc.ts";
+import { addDocMain, type DocEntry, insertDoc, insertTopic, slugExists } from "./add-doc.ts";
 
 const REGISTRY = `// header comment — must survive
 [
