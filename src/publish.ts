@@ -18,7 +18,8 @@ import { join } from "jsr:@std/path@1";
 import { exists } from "jsr:@std/fs@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { build } from "./build.ts";
-import { makeContext } from "./config.ts";
+import { parseArgs } from "jsr:@std/cli@1/parse-args";
+import { makeContext, resolveHome } from "./config.ts";
 
 export interface PublishConfig {
   cmd: string[];
@@ -39,9 +40,10 @@ export function resolveCmd(cmd: string[], out: string): string[] {
   return cmd.map((a) => a.replaceAll("{out}", out));
 }
 
-if (import.meta.main) {
-  const dryRun = Deno.args.includes("--dry-run");
-  const ctx = await makeContext();
+export async function publishMain(args: string[]): Promise<number> {
+  const a = parseArgs(args, { string: ["root"], boolean: ["dry-run"] });
+  const dryRun = a["dry-run"];
+  const ctx = await makeContext(resolveHome(a.root));
   const out = join(ctx.root, ".publish");
   const { docs } = await build(ctx, { outDir: out, sharedOnly: true });
   if (docs === 0) {
@@ -52,7 +54,7 @@ if (import.meta.main) {
     console.log(`\n  Built shared subset -> ${out}`);
     console.log(`  No publish.jsonc — create one to push, e.g.:`);
     console.log(`    { "cmd": ["aws", "s3", "sync", "{out}", "s3://my-bucket", "--delete"] }`);
-    Deno.exit(0);
+    return 0;
   }
   let rawCfg: unknown;
   try {
@@ -61,17 +63,17 @@ if (import.meta.main) {
     console.error(
       `  publish.jsonc is not valid JSONC: ${err instanceof Error ? err.message : err}`,
     );
-    Deno.exit(1);
+    return 1;
   }
   const cfg = parsePublishConfig(rawCfg);
   if (typeof cfg === "string") {
     console.error(`  publish.jsonc invalid: ${cfg}`);
-    Deno.exit(1);
+    return 1;
   }
   const argv = resolveCmd(cfg.cmd, out);
   if (dryRun) {
     console.log(`\n  dry-run — would run:\n    ${argv.join(" ")}`);
-    Deno.exit(0);
+    return 0;
   }
   console.log(`\n  Running: ${argv.join(" ")}\n`);
   let status;
@@ -84,9 +86,13 @@ if (import.meta.main) {
   } catch (err) {
     if (err instanceof Deno.errors.NotFound) {
       console.error(`  command not found: ${argv[0]}`);
-      Deno.exit(1);
+      return 1;
     }
     throw err;
   }
-  Deno.exit(status.code);
+  return status.code;
+}
+
+if (import.meta.main) {
+  Deno.exit(await publishMain(Deno.args));
 }

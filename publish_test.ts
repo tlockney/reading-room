@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { parsePublishConfig, resolveCmd } from "./src/publish.ts";
+import { join } from "jsr:@std/path@1";
+import { parsePublishConfig, publishMain, resolveCmd } from "./src/publish.ts";
 
 Deno.test("resolveCmd substitutes {out} wherever it appears", () => {
   assertEquals(
@@ -21,4 +22,22 @@ Deno.test("parsePublishConfig rejects bad shapes with a reason", () => {
   assertEquals(typeof parsePublishConfig({ cmd: [] }), "string");
   assertEquals(typeof parsePublishConfig({ cmd: "aws s3 sync" }), "string");
   assertEquals(typeof parsePublishConfig({ cmd: ["aws", 3] }), "string");
+});
+
+Deno.test("publishMain --dry-run returns 0 and builds nothing destructive", async () => {
+  const home = await Deno.makeTempDir();
+  try {
+    await Deno.writeTextFile(
+      join(home, "registry.jsonc"),
+      '[\n  { "num": "§ 01", "id": "t", "name": "T", "short": "T", "docs": [] }\n]\n',
+    );
+    await Deno.writeTextFile(
+      join(home, "publish.jsonc"),
+      '{ "cmd": ["echo", "{out}"] }\n',
+    );
+    const code = await publishMain(["--root", home, "--dry-run"]);
+    assertEquals(code, 0);
+  } finally {
+    await Deno.remove(home, { recursive: true });
+  }
 });
