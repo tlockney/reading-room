@@ -1,6 +1,8 @@
-import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
-import { type DocEntry, insertDoc, insertTopic, slugExists } from "./src/add-doc.ts";
+import { exists } from "jsr:@std/fs@1";
+import { join } from "jsr:@std/path@1";
+import { addDocMain, type DocEntry, insertDoc, insertTopic, slugExists } from "./src/add-doc.ts";
 
 const REGISTRY = `// header comment — must survive
 [
@@ -65,4 +67,30 @@ Deno.test("insertTopic appends a new topic before the closing bracket", () => {
   });
   const corpus = parseJsonc(out) as Array<{ id: string }>;
   assertEquals(corpus.map((t) => t.id), ["data-platform", "ops"]);
+});
+
+Deno.test("addDocMain files a doc into a fresh home (lazy create)", async () => {
+  const home = await Deno.makeTempDir();
+  const srcDir = await Deno.makeTempDir();
+  try {
+    const src = join(srcDir, "hello.html");
+    await Deno.writeTextFile(src, "<html><body><h1>Hello</h1></body></html>");
+    const code = await addDocMain([
+      "--root",
+      home,
+      "--src",
+      src,
+      "--new-topic",
+      "§ 01|intro|Introduction|Intro",
+      "--title",
+      "Hello",
+    ]);
+    assertEquals(code, 0);
+    assert(await exists(join(home, "_migrated", "hello.html")));
+    const registry = await Deno.readTextFile(join(home, "registry.jsonc"));
+    assertStringIncludes(registry, '"slug": "hello"');
+  } finally {
+    await Deno.remove(home, { recursive: true });
+    await Deno.remove(srcDir, { recursive: true });
+  }
 });
