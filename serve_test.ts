@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
-import { makeHandler } from "./src/serve.ts";
+import { makeHandler, serveMain } from "./src/serve.ts";
 import { makeContext } from "./src/config.ts";
 
 const FIXTURE = `// fixture registry
@@ -212,4 +212,8 @@ Deno.test("comments: PATCH reviewed stamps/clears; bad body 400; unknown id 404"
       .status,
     404,
   );
+});
+
+Deno.test("serveMain is an exported function (server smoke is via makeHandler)", () => {
+  assertEquals(typeof serveMain, "function");
 });
