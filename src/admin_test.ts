@@ -1,11 +1,11 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
-import { type AdminContext, injectAdmin } from "./src/admin.ts";
-import { renderIndex } from "./src/render.ts";
-import type { Topic } from "./src/render.ts";
-import { DEFAULT_SITE } from "./src/config.ts";
+import { type AdminContext, injectAdmin } from "./admin.ts";
+import { renderIndex } from "./render.ts";
+import type { Topic } from "./render.ts";
+import { DEFAULT_SITE } from "./config.ts";
 
-const ROOT = dirname(fromFileUrl(import.meta.url));
+const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
 
 const CTX: AdminContext = {

@@ -1,7 +1,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
 
-const ROOT = dirname(fromFileUrl(import.meta.url));
+const ROOT = dirname(dirname(fromFileUrl(import.meta.url)));
 const head = await Deno.readTextFile(join(ROOT, "assets/editorial/head.html"));
 const body = await Deno.readTextFile(join(ROOT, "assets/editorial/body.html"));
 

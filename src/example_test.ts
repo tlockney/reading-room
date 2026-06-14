@@ -1,9 +1,9 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { dirname, fromFileUrl, join } from "jsr:@std/path@1";
-import { makeContext } from "./src/config.ts";
-import { build } from "./src/build.ts";
+import { makeContext } from "./config.ts";
+import { build } from "./build.ts";
 
-const EXAMPLE = join(dirname(fromFileUrl(import.meta.url)), "example");
+const EXAMPLE = join(dirname(dirname(fromFileUrl(import.meta.url))), "example");
 
 Deno.test("example consumer builds with site config and slots applied", async () => {
   const out = await Deno.makeTempDir();

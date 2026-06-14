@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { stackTops } from "./assets/admin/layout.js";
+import { stackTops } from "../assets/admin/layout.js";
 
 Deno.test("stackTops leaves non-overlapping entries at their anchors", () => {
   assertEquals(

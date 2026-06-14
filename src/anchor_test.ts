@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { describeRange, findAnchor } from "./assets/admin/anchor.js";
+import { describeRange, findAnchor } from "../assets/admin/anchor.js";
 
 const TEXT =
   "The loop is the expensive part. The loop is also the fun part. End of the loop story.";

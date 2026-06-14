@@ -20,17 +20,17 @@ import { basename, join } from "jsr:@std/path@1";
 import { copy, exists } from "jsr:@std/fs@1";
 import { insertDoc, insertTopic } from "./registry-edit.ts";
 import type { DocEntry } from "./registry-edit.ts";
+import { resolveHome } from "./config.ts";
+import { ensureHome } from "./init.ts";
 
 export { insertDoc, insertTopic, slugExists } from "./registry-edit.ts";
 export type { DocEntry, TopicEntry } from "./registry-edit.ts";
 
-// --- CLI shell (only when run directly) ------------------------------------
-if (import.meta.main) {
-  const ROOT = Deno.cwd(); // the content repo this doc is being filed into
-  const REGISTRY_PATH = join(ROOT, "registry.jsonc");
-  const MIGRATED = join(ROOT, "_migrated");
-  const a = parseArgs(Deno.args, {
+// --- CLI dispatcher (exported so cli.ts can call it) -----------------------
+export async function addDocMain(args: string[]): Promise<number> {
+  const a = parseArgs(args, {
     string: [
+      "root",
       "src",
       "topic",
       "slug",
@@ -45,6 +45,11 @@ if (import.meta.main) {
     boolean: ["review"],
     default: { visibility: "private" },
   });
+
+  const ROOT = resolveHome(a.root); // the content home this doc is being filed into
+  await ensureHome(ROOT);
+  const REGISTRY_PATH = join(ROOT, "registry.jsonc");
+  const MIGRATED = join(ROOT, "_migrated");
 
   if (!a.src) throw new Error("--src <file.html> is required");
   if (!(await exists(a.src))) throw new Error(`source not found: ${a.src}`);
@@ -78,5 +83,10 @@ if (import.meta.main) {
   }
   await Deno.writeTextFile(REGISTRY_PATH, registry);
   console.log(`Added "${entry.title}" -> http://127.0.0.1:8413/docs/${slug}`);
-  console.log(`Placed _migrated/${slug}.html ; run \`deno task serve\` to view.`);
+  console.log(`Placed _migrated/${slug}.html ; run \`reading-room serve\` to view.`);
+  return 0;
+}
+
+if (import.meta.main) {
+  Deno.exit(await addDocMain(Deno.args));
 }

@@ -1,8 +1,9 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
-import { build, filterShared } from "./src/build.ts";
-import { makeContext } from "./src/config.ts";
-import type { Topic } from "./src/render.ts";
+import { build, buildMain, filterShared } from "./build.ts";
+import { exists } from "jsr:@std/fs@1";
+import { makeContext } from "./config.ts";
+import type { Topic } from "./render.ts";
 
 const doc = (slug: string, visibility?: "private" | "shared") => ({
   slug,
@@ -84,5 +85,20 @@ Deno.test("built output carries no admin layer, even from contaminated sources",
   } finally {
     await Deno.remove(root, { recursive: true });
     await Deno.remove(out, { recursive: true });
+  }
+});
+
+Deno.test("buildMain --root builds index.html into the given home", async () => {
+  const home = await Deno.makeTempDir();
+  try {
+    await Deno.writeTextFile(
+      join(home, "registry.jsonc"),
+      '[\n  { "num": "§ 01", "id": "t", "name": "T", "short": "T", "docs": [] }\n]\n',
+    );
+    const code = await buildMain(["--root", home]);
+    assertEquals(code, 0);
+    assert(await exists(join(home, "index.html")));
+  } finally {
+    await Deno.remove(home, { recursive: true });
   }
 });

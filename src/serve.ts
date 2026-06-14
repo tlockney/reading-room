@@ -18,7 +18,8 @@
  */
 import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
-import { makeContext } from "./config.ts";
+import { parseArgs } from "jsr:@std/cli@1/parse-args";
+import { makeContext, resolveHome } from "./config.ts";
 import type { RoomContext } from "./config.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
@@ -263,10 +264,16 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 
 // --- startup (only when run directly) ----------------------------------------
 
-if (import.meta.main) {
-  const port = Number(Deno.args[0] ?? Deno.env.get("PORT") ?? 8413);
+export async function serveMain(args: string[]): Promise<number> {
+  const a = parseArgs(args, { string: ["root", "port"] });
+  const portArg = a.port ?? a._[0] ?? Deno.env.get("PORT") ?? 8413;
+  const port = Number(portArg);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    console.error(`reading-room serve: invalid port: ${portArg}`);
+    return 1;
+  }
   const readonly = Deno.env.get("READONLY") === "1";
-  const ctx = await makeContext();
+  const ctx = await makeContext(resolveHome(a.root));
   const handler = makeHandler({ ctx, readonly });
 
   console.log(`\n  Reading Room — rendered live on http://127.0.0.1:${port}/ (localhost only).`);
@@ -287,5 +294,11 @@ if (import.meta.main) {
     } catch { /* watch unavailable */ }
   })();
 
-  Deno.serve({ hostname: "127.0.0.1", port, onListen() {} }, handler);
+  const server = Deno.serve({ hostname: "127.0.0.1", port, onListen() {} }, handler);
+  await server.finished;
+  return 0;
+}
+
+if (import.meta.main) {
+  Deno.exit(await serveMain(Deno.args));
 }

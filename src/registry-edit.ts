@@ -178,10 +178,12 @@ export function insertTopic(registry: string, topic: TopicEntry): string {
   }
   const lastClose = registry.lastIndexOf("]");
   if (lastClose === -1) throw new Error("registry is not a JSON array");
+  const isEmpty = (parseJsonc(registry) as unknown[]).length === 0;
   const before = registry.slice(0, lastClose).replace(/\s*$/, "");
   const docs = topic.docs.map((d) => formatDoc(d, "      ")).join(",\n");
+  const lead = isEmpty ? "\n" : ",\n";
   const block =
-    `,\n  {\n    "num": ${JSON.stringify(topic.num)}, "id": ${JSON.stringify(topic.id)},\n` +
+    `${lead}  {\n    "num": ${JSON.stringify(topic.num)}, "id": ${JSON.stringify(topic.id)},\n` +
     `    "name": ${JSON.stringify(topic.name)}, "short": ${JSON.stringify(topic.short)},\n` +
     `    "docs": [\n${docs}\n    ]\n  }\n`;
   return before + block + registry.slice(lastClose);

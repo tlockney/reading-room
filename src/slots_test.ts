@@ -1,6 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
-import { injectLocalSlots, loadSlots } from "./src/render.ts";
+import { injectLocalSlots, loadSlots } from "./render.ts";
 
 const PAGE = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
 
