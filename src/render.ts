@@ -289,7 +289,7 @@ function minimapItem(t: Topic): string {
   }</span></a>`;
 }
 
-export function renderIndex(site: Site, corpus: Topic[]): string {
+export function renderIndex(site: Site, corpus: Topic[], instanceName?: string): string {
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   const reviewing = corpus.flatMap((t) => t.docs.filter((d) => d.review));
   const reviewChip = reviewing.length
@@ -304,7 +304,7 @@ export function renderIndex(site: Site, corpus: Topic[]): string {
     ? reviewGroup(reviewing) + "\n\n" + corpus.map(group).join("\n\n")
     : corpus.map(group).join("\n\n");
   return injectEditorialBody(injectEditorialHead(injectFavicon(
-    indexTemplate(site)
+    indexTemplate(site, instanceName)
       .replaceAll("%%MINIMAP%%", () => reviewMini + corpus.map(minimapItem).join("\n"))
       .replaceAll("%%CHIPS%%", () => reviewChip + corpus.map(chip).join("\n"))
       .replaceAll("%%GROUPS%%", () => groups)
@@ -313,7 +313,7 @@ export function renderIndex(site: Site, corpus: Topic[]): string {
   )));
 }
 
-function indexTemplate(site: Site): string {
+function indexTemplate(site: Site, instanceName?: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -456,7 +456,7 @@ function indexTemplate(site: Site): string {
 </nav>
 
 <div class="container">
-  <div class="eyebrow">${site.eyebrow}</div>
+  <div class="eyebrow">${site.eyebrow}${instanceName ? ` · ${instanceName}` : ""}</div>
   <h1>The Reading <em>Room</em></h1>
   <p class="lede">${site.lede}</p>
 

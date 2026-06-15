@@ -4,7 +4,7 @@
   // jsr: specifiers; this repo's own content doubles as the dev environment
   // until the content split.
   "name": "@tlockney/reading-room",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
@@ -27,7 +27,7 @@
     // Serve locally on 127.0.0.1 (expose via `tailscale serve`). PORT env or
     // first CLI arg overrides the default 8413. READONLY=1 disables the
     // management API (view-only). Needs write access for registry/comments.
-    "serve": "deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/serve.ts --root .",
+    "serve": "deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/serve.ts --root .",
     // Register (and place in _migrated/) a standalone editorial doc. The
     // editorial-longform-html skill looks for this task. See add-doc.ts.
     "add-doc": "deno run --allow-read --allow-write --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/add-doc.ts --root .",
@@ -35,9 +35,9 @@
     // configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
     "publish": "deno run --allow-read --allow-write --allow-run --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/publish.ts --root .",
     // Run the CLI dispatcher (serve | build | add-doc | publish | init).
-    "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/cli.ts",
+    "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/cli.ts",
     // Run the test suite (render injection, registry surgery, comments, skill drift).
-    "test": "deno test --allow-read --allow-write --allow-env"
+    "test": "deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname"
   },
   // fmt must never touch byte-pinned content: the editorial partials and skill
   // template (drift tests compare them verbatim), generated assets_gen.ts (pin

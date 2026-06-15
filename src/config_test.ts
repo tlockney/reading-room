@@ -1,6 +1,13 @@
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { join, resolve } from "jsr:@std/path@1";
-import { DEFAULT_SITE, loadSite, makeContext, parseSite, resolveHome } from "./config.ts";
+import {
+  DEFAULT_SITE,
+  loadSite,
+  makeContext,
+  parseSite,
+  resolveHome,
+  resolveInstanceName,
+} from "./config.ts";
 
 Deno.test("loadSite: missing site.jsonc falls back to defaults", async () => {
   const dir = await Deno.makeTempDir();
@@ -92,4 +99,40 @@ Deno.test("resolveHome: empty XDG_DATA_HOME falls through to HOME, not a relativ
     Deno.env.delete("XDG_DATA_HOME");
     if (savedHome !== undefined) Deno.env.set("HOME", savedHome);
   }
+});
+
+Deno.test("parseSite accepts a seeds array", () => {
+  const s = parseSite({ seeds: ["https://a.ts.net/", "https://b.ts.net/"] });
+  assertEquals(typeof s === "string" ? s : s.seeds, ["https://a.ts.net/", "https://b.ts.net/"]);
+});
+
+Deno.test("parseSite rejects non-string seeds", () => {
+  assertEquals(parseSite({ seeds: [1, 2] }), "seeds must be an array of strings");
+});
+
+Deno.test("parseSite accepts a string instance", () => {
+  const s = parseSite({ instance: "Studio" });
+  assertEquals(typeof s === "string" ? s : s.instance, "Studio");
+});
+
+Deno.test("parseSite rejects a non-string instance", () => {
+  assertEquals(parseSite({ instance: 5 }), "instance must be a string");
+});
+
+Deno.test("resolveInstanceName prefers site.instance", () => {
+  assertEquals(
+    resolveInstanceName({ ...DEFAULT_SITE, instance: "Studio" }, () => "m4mini.local"),
+    "Studio",
+  );
+});
+
+Deno.test("resolveInstanceName falls back to the bare hostname", () => {
+  assertEquals(resolveInstanceName(DEFAULT_SITE, () => "m4mini.local"), "m4mini");
+});
+
+Deno.test("resolveInstanceName treats a blank instance as unset", () => {
+  assertEquals(
+    resolveInstanceName({ ...DEFAULT_SITE, instance: "  " }, () => "host.example"),
+    "host",
+  );
 });

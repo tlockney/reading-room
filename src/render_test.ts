@@ -1,5 +1,12 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
-import { injectEditorialBody, injectEditorialHead, injectFavicon, stripAdmin } from "./render.ts";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
+import {
+  injectEditorialBody,
+  injectEditorialHead,
+  injectFavicon,
+  renderIndex,
+  stripAdmin,
+} from "./render.ts";
+import { DEFAULT_SITE } from "./config.ts";
 
 const MINIMAL = `<!DOCTYPE html><html><head><title>x</title></head><body><p>hi</p></body></html>`;
 
@@ -54,4 +61,14 @@ Deno.test("a baked-in admin block is stripped (and stripping is idempotent)", ()
   assertEquals(out.includes("RR-ADMIN"), false);
   assertEquals(out.includes("window.__RR"), false);
   assertEquals(stripAdmin(out), out);
+});
+
+Deno.test("renderIndex tags the eyebrow with the instance name when given", () => {
+  const html = renderIndex(DEFAULT_SITE, [], "Studio");
+  assertStringIncludes(html, `<div class="eyebrow">${DEFAULT_SITE.eyebrow} · Studio</div>`);
+});
+
+Deno.test("renderIndex omits the instance tag with no name (build purity)", () => {
+  const html = renderIndex(DEFAULT_SITE, []);
+  assertStringIncludes(html, `<div class="eyebrow">${DEFAULT_SITE.eyebrow}</div>`);
 });

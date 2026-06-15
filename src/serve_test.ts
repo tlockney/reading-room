@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
 import { makeHandler, serveMain } from "./serve.ts";
@@ -220,4 +220,112 @@ Deno.test("serveMain is an exported function (server smoke is via makeHandler)",
 
 Deno.test("serveMain returns 1 on an invalid --port without starting a server", async () => {
   assertEquals(await serveMain(["--port", "abc"]), 1);
+});
+
+async function tmpCtx() {
+  const home = await Deno.makeTempDir();
+  await Deno.writeTextFile(
+    join(home, "registry.jsonc"),
+    '[\n  { "num": "§ 01", "id": "t", "name": "T", "short": "T", "docs": [ ' +
+      '{ "slug": "a", "title": "A", "kind": "k", "desc": "d", "footLeft": "l", "footRight": "r", "src": "a.html" } ] }\n]\n',
+  );
+  await Deno.writeTextFile(join(home, "site.jsonc"), '{ "instance": "Test Room" }\n');
+  return { ctx: await makeContext(home), cleanup: () => Deno.remove(home, { recursive: true }) };
+}
+
+Deno.test("GET /.well-known/reading-room.json returns this instance's identity", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({ ctx, readonly: false });
+    const res = await h(new Request("http://localhost/.well-known/reading-room.json"));
+    assertEquals(res.status, 200);
+    const body = await res.json();
+    assertEquals(body.topics, 1);
+    assertEquals(body.docs, 1);
+    assertEquals(typeof body.version, "string");
+    assertEquals(body.name, "Test Room");
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("well-known identity rejects non-GET", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({ ctx, readonly: false });
+    const res = await h(
+      new Request("http://localhost/.well-known/reading-room.json", { method: "POST" }),
+    );
+    assertEquals(res.status, 405);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("GET /api/peers returns the injected discovery result", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const peers = [{
+      name: "studio",
+      url: "https://studio.ts.net/",
+      identity: { name: "Studio", version: "0.2.0", topics: 2, docs: 5 },
+    }];
+    const h = makeHandler({ ctx, readonly: false, discover: () => Promise.resolve(peers) });
+    const res = await h(new Request("http://localhost/api/peers"));
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).peers, peers);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("/api/peers is allowed under READONLY (read-only nav)", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({ ctx, readonly: true, discover: () => Promise.resolve([]) });
+    const res = await h(new Request("http://localhost/api/peers"));
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).peers, []);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("/api/peers with no discover configured returns an empty list", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({ ctx, readonly: false });
+    const res = await h(new Request("http://localhost/api/peers"));
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).peers, []);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("/api/peers fails soft to an empty list if discovery rejects", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({
+      ctx,
+      readonly: false,
+      discover: () => Promise.reject(new Error("boom")),
+    });
+    const res = await h(new Request("http://localhost/api/peers"));
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).peers, []);
+  } finally {
+    await cleanup();
+  }
+});
+
+Deno.test("served index masthead carries the instance eyebrow tag", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({ ctx, readonly: false });
+    const html = await (await h(new Request("http://localhost/"))).text();
+    assertStringIncludes(html, "Reference Library · Test Room");
+  } finally {
+    await cleanup();
+  }
 });

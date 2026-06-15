@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY
 /**
  * Serve the Reading Room locally — rendered DYNAMICALLY per request, no build
  * step. Binds 127.0.0.1 ONLY; expose it over your tailnet (HTTPS, tailnet-only)
@@ -19,7 +19,7 @@
 import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
-import { makeContext, resolveHome } from "./config.ts";
+import { makeContext, resolveHome, resolveInstanceName } from "./config.ts";
 import type { RoomContext } from "./config.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
@@ -35,6 +35,9 @@ import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
 import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
+import { buildIdentity, listTailscalePeers, makeCachedDiscover, probePeer } from "./discovery.ts";
+import type { Peer } from "./discovery.ts";
+import { VERSION } from "./version.ts";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
@@ -48,6 +51,7 @@ const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
 export interface ServeOptions {
   ctx: RoomContext;
   readonly: boolean;
+  discover?: () => Promise<Peer[]>;
 }
 
 function page(body: string, status = 200): Response {
@@ -121,6 +125,14 @@ async function readJson(req: Request): Promise<unknown> {
 async function api(req: Request, path: string, opts: ServeOptions): Promise<Response> {
   if (opts.readonly && req.method !== "GET") return jsonError("read-only mode", 403);
   try {
+    if (path === "/api/peers") {
+      if (req.method !== "GET") return jsonError("method not allowed", 405);
+      try {
+        return json({ peers: opts.discover ? await opts.discover() : [] });
+      } catch {
+        return json({ peers: [] }); // discovery is best-effort — never fail the nav request
+      }
+    }
     const doc = path.match(API_DOC_RE);
     if (doc) {
       const slug = doc[1];
@@ -219,6 +231,15 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
         headers: { "content-type": type, "cache-control": "no-cache" },
       });
     }
+    if (path === "/.well-known/reading-room.json") {
+      if (req.method !== "GET") return jsonError("method not allowed", 405);
+      try {
+        const corpus = await loadCorpus(opts.ctx.registryPath);
+        return json(buildIdentity(resolveInstanceName(opts.ctx.site), corpus, VERSION));
+      } catch (err) {
+        return jsonError(String(err), 500);
+      }
+    }
     if (path === "/index.html") return redirect("/");
     const legacy = path.match(DOC_HTML_RE);
     if (legacy) return redirect(`/docs/${legacy[1]}`);
@@ -234,7 +255,7 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
         }
         const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
         const index = injectLocalSlots(
-          renderIndex(opts.ctx.site, corpus),
+          renderIndex(opts.ctx.site, corpus, resolveInstanceName(opts.ctx.site)),
           await loadSlots(opts.ctx.root),
         );
         return page(injectAdmin(index, ctx));
@@ -274,7 +295,12 @@ export async function serveMain(args: string[]): Promise<number> {
   }
   const readonly = Deno.env.get("READONLY") === "1";
   const ctx = await makeContext(resolveHome(a.root));
-  const handler = makeHandler({ ctx, readonly });
+  const discover = makeCachedDiscover({
+    listPeers: () => listTailscalePeers(),
+    probe: (url) => probePeer(url),
+    seeds: ctx.site.seeds,
+  });
+  const handler = makeHandler({ ctx, readonly, discover });
 
   console.log(`\n  Reading Room — rendered live on http://127.0.0.1:${port}/ (localhost only).`);
   console.log(`  Expose over your tailnet (HTTPS):  tailscale serve --bg ${port}`);

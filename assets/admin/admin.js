@@ -13,6 +13,7 @@ import { stackTops } from "./layout.js";
 const ctx = window.__RR;
 if (ctx && ctx.page === "index") initIndex(ctx);
 else if (ctx && ctx.page === "doc") initDoc(ctx);
+initSwitcher();
 
 // --- shared helpers ----------------------------------------------------------
 
@@ -57,6 +58,32 @@ function run(promise) {
   promise
     .then(() => location.reload())
     .catch((err) => toast(`failed: ${err.message}`));
+}
+
+async function initSwitcher() {
+  let peers;
+  try {
+    peers = (await api("GET", "/api/peers")).peers;
+  } catch (_) {
+    return; // discovery unavailable → no switcher
+  }
+  if (!peers || !peers.length) return; // no peers → no clutter
+  const wrap = el("div", "rr-switcher");
+  wrap.appendChild(el("span", "rr-switcher-label", "Libraries"));
+  const select = el("select", "rr-switcher-select");
+  const here = el("option", null, "This library");
+  here.value = "";
+  select.appendChild(here);
+  for (const p of peers) {
+    const opt = el("option", null, (p.identity && p.identity.name) || p.name || p.url);
+    opt.value = p.url;
+    select.appendChild(opt);
+  }
+  select.addEventListener("change", () => {
+    if (select.value) location.href = select.value;
+  });
+  wrap.appendChild(select);
+  document.body.appendChild(wrap);
 }
 
 /** Two-step destructive confirm: first click arms ("confirm?", 3s), second
