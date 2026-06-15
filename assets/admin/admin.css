@@ -399,8 +399,8 @@
 /* peer switcher — cross-instance navigation (serve-only) */
 .rr-switcher {
   position: fixed;
-  left: 12px;
-  bottom: 12px;
+  top: 12px;
+  right: 12px;
   z-index: 9000;
   display: flex;
   align-items: center;
