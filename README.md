@@ -77,6 +77,14 @@ never needs restarting when you add or edit docs. The agent does not need a `Wor
 > Access is gated by your Tailscale ACLs (tailnet-only) — no separate login. It serves the full
 > local set, including private docs.
 
+## Discover other instances
+
+Each served instance advertises its identity at `GET /.well-known/reading-room.json`. When
+`reading-room serve` starts it discovers peers by querying `tailscale status` (plus any `seeds`
+listed in `site.jsonc`) and probing that endpoint on each candidate. Found peers appear in a
+masthead library switcher, so you can navigate between instances in one click. Requires instances to
+be exposed via `tailscale serve`.
+
 ## Add or change a document
 
 Author a doc with the skill (start from

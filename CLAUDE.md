@@ -112,6 +112,9 @@ rejected in design.
    live selection on touch before the click handler runs. (Fixed in 0.1.1; don't regress it back to
    mouseup.)
 
+7. **Peer discovery shells `tailscale` — that is why serve carries `--allow-run`.** Do not remove
+   that flag from the install snippet or the launchd agent; it is not incidental.
+
 ## Annotations & management (serve-only)
 
 The live server injects an admin layer: browser "manage mode" (toggle review / visibility / remove a
@@ -119,6 +122,24 @@ doc) and anchored marginalia. Annotations are stored as `comments/<slug>.json` s
 content home (source HTML is never modified) using W3C-style text-quote anchoring (quote + prefix +
 suffix; unresolved anchors degrade to "unanchored", never lost). `READONLY=1` disables all mutation
 routes for a view-only exposure. None of this appears in static builds.
+
+## Peer discovery (serve-only)
+
+Each served instance advertises its identity at `GET /.well-known/reading-room.json` —
+`{ title, version, topics, docs }` — available even under `READONLY=1`. `serve` discovers peers by
+enumerating `tailscale status --json` plus any `seeds` (an optional array of base URLs in
+`site.jsonc`), probing each candidate's `/.well-known/reading-room.json`, and exposing the live
+results at `GET /api/peers`. The masthead renders those results as a library switcher so the user
+can navigate between instances.
+
+Two invariants to preserve: (1) discovery is **serve-only** — `build.ts` must never import
+`src/discovery.ts` (pinned in `admin_test.ts` alongside `admin.ts` / `comments.ts`); (2) the serve
+path needs **`--allow-run`** (already in the installed-CLI permission union) because peer discovery
+shells out to `tailscale`. The tailscale call and HTTP probe are dependency-injected, so the suite
+needs no real tailnet.
+
+mDNS (for LAN-only hosts not on a tailnet) is a deferred Phase 2 source — not in this change. See
+`_specs/2026-06-14-peer-discovery-design.md` for the design rationale.
 
 ## Skill relationship
 
