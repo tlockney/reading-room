@@ -126,17 +126,24 @@ routes for a view-only exposure. None of this appears in static builds.
 ## Peer discovery (serve-only)
 
 Each served instance advertises its identity at `GET /.well-known/reading-room.json` —
-`{ title, version, topics, docs }` — available even under `READONLY=1`. `serve` discovers peers by
-enumerating `tailscale status --json` plus any `seeds` (an optional array of base URLs in
+`{ name, title, version, topics, docs }` — available even under `READONLY=1`. `serve` discovers
+peers by enumerating `tailscale status --json` plus any `seeds` (an optional array of base URLs in
 `site.jsonc`), probing each candidate's `/.well-known/reading-room.json`, and exposing the live
 results at `GET /api/peers`. The masthead renders those results as a library switcher so the user
 can navigate between instances.
 
-Two invariants to preserve: (1) discovery is **serve-only** — `build.ts` must never import
+Each instance has a **name**: the `instance` field in `site.jsonc` (e.g. `"instance": "Studio"`),
+falling back to the bare hostname (`Deno.hostname()`, first dot-label). The name is shown
+**serve-only** as an eyebrow tag (`REFERENCE LIBRARY · STUDIO`) and is dropped from static builds
+(the build path calls the two-arg `renderIndex` with no name). It is also the `name` field the
+library switcher displays when showing peers.
+
+Three invariants to preserve: (1) discovery is **serve-only** — `build.ts` must never import
 `src/discovery.ts` (pinned in `admin_test.ts` alongside `admin.ts` / `comments.ts`); (2) the serve
 path needs **`--allow-run`** (already in the installed-CLI permission union) because peer discovery
-shells out to `tailscale`. The tailscale call and HTTP probe are dependency-injected, so the suite
-needs no real tailnet.
+shells out to `tailscale`; (3) the serve path needs **`--allow-sys=hostname`** (already in the
+permission union) because the hostname fallback calls `Deno.hostname()`. The tailscale call and HTTP
+probe are dependency-injected, so the suite needs no real tailnet.
 
 mDNS (for LAN-only hosts not on a tailnet) is a deferred Phase 2 source — not in this change. See
 `_specs/2026-06-14-peer-discovery-design.md` for the design rationale.
@@ -175,7 +182,7 @@ Install once per machine:
 
 ```sh
 deno install -g -f -n reading-room \
-  --allow-read --allow-write --allow-net --allow-run \
+  --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
   --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME \
   --minimum-dependency-age=0 \
   jsr:@tlockney/reading-room/cli

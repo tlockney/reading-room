@@ -27,7 +27,7 @@ Three pieces, one visual language:
 
 ```sh
 deno install -g -f -n reading-room \
-  --allow-read --allow-write --allow-net --allow-run \
+  --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
   --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME \
   --minimum-dependency-age=0 \
   jsr:@tlockney/reading-room/cli
@@ -83,7 +83,9 @@ Each served instance advertises its identity at `GET /.well-known/reading-room.j
 `reading-room serve` starts it discovers peers by querying `tailscale status` (plus any `seeds`
 listed in `site.jsonc`) and probing that endpoint on each candidate. Found peers appear in a
 masthead library switcher, so you can navigate between instances in one click. Requires instances to
-be exposed via `tailscale serve`.
+be exposed via `tailscale serve`. Set `instance` in `site.jsonc` (e.g. `"instance": "Studio"`) to
+name a machine's library — it shows in the masthead eyebrow and the library switcher, and defaults
+to the hostname.
 
 ## Add or change a document
 
