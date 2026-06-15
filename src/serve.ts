@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-env=PORT,READONLY
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY
 /**
  * Serve the Reading Room locally — rendered DYNAMICALLY per request, no build
  * step. Binds 127.0.0.1 ONLY; expose it over your tailnet (HTTPS, tailnet-only)
