@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-run --allow-env=PORT,READONLY
 /**
  * Serve the Reading Room locally — rendered DYNAMICALLY per request, no build
  * step. Binds 127.0.0.1 ONLY; expose it over your tailnet (HTTPS, tailnet-only)
@@ -127,7 +127,11 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
   try {
     if (path === "/api/peers") {
       if (req.method !== "GET") return jsonError("method not allowed", 405);
-      return json({ peers: opts.discover ? await opts.discover() : [] });
+      try {
+        return json({ peers: opts.discover ? await opts.discover() : [] });
+      } catch {
+        return json({ peers: [] }); // discovery is best-effort — never fail the nav request
+      }
     }
     const doc = path.match(API_DOC_RE);
     if (doc) {

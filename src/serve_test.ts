@@ -301,3 +301,19 @@ Deno.test("/api/peers with no discover configured returns an empty list", async 
     await cleanup();
   }
 });
+
+Deno.test("/api/peers fails soft to an empty list if discovery rejects", async () => {
+  const { ctx, cleanup } = await tmpCtx();
+  try {
+    const h = makeHandler({
+      ctx,
+      readonly: false,
+      discover: () => Promise.reject(new Error("boom")),
+    });
+    const res = await h(new Request("http://localhost/api/peers"));
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).peers, []);
+  } finally {
+    await cleanup();
+  }
+});

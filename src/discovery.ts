@@ -137,12 +137,16 @@ export async function discoverPeers(opts: DiscoverOptions): Promise<Peer[]> {
     if (c.online) candidates.set(`https://${c.dnsName}/`, c.name);
   }
   for (const url of opts.seeds ?? []) {
-    if (candidates.has(url)) continue;
+    let parsed: URL;
     try {
-      candidates.set(url, new URL(url).hostname);
+      parsed = new URL(url);
     } catch {
-      // skip a malformed seed
+      continue; // skip a malformed seed
     }
+    // Normalize to .href so a seed written without a trailing slash dedupes
+    // against the canonical https://host/ form used for tailnet candidates.
+    if (candidates.has(parsed.href)) continue;
+    candidates.set(parsed.href, parsed.hostname);
   }
   const probed = await Promise.all(
     [...candidates].map(async ([url, name]): Promise<Peer | null> => {

@@ -103,3 +103,21 @@ Deno.test("makeCachedDiscover serves from cache within TTL", async () => {
   await discover();
   assertEquals(calls, 1);
 });
+
+Deno.test("discoverPeers dedupes a no-slash seed against the canonical tailnet url", async () => {
+  const listPeers = (): Promise<TailscalePeer[]> =>
+    Promise.resolve([{ name: "studio", dnsName: "studio.ts.net", online: true }]);
+  const probe = (url: string): Promise<PeerIdentity | null> =>
+    Promise.resolve(
+      url === "https://studio.ts.net/"
+        ? { title: "Studio", version: "0.2.0", topics: 1, docs: 1 }
+        : null,
+    );
+  const peers = await discoverPeers({
+    listPeers,
+    probe,
+    seeds: ["https://studio.ts.net"], // no trailing slash — same host as the tailnet peer
+  });
+  assertEquals(peers.length, 1);
+  assertEquals(peers[0].url, "https://studio.ts.net/");
+});
