@@ -126,8 +126,8 @@ routes for a view-only exposure. None of this appears in static builds.
 ## Peer discovery (serve-only)
 
 Each served instance advertises its identity at `GET /.well-known/reading-room.json` —
-`{ name, title, version, topics, docs }` — available even under `READONLY=1`. `serve` discovers
-peers by enumerating `tailscale status --json` plus any `seeds` (an optional array of base URLs in
+`{ name, version, topics, docs }` — available even under `READONLY=1`. `serve` discovers peers by
+enumerating `tailscale status --json` plus any `seeds` (an optional array of base URLs in
 `site.jsonc`), probing each candidate's `/.well-known/reading-room.json`, and exposing the live
 results at `GET /api/peers`. The masthead renders those results as a library switcher so the user
 can navigate between instances.
