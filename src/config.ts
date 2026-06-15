@@ -15,6 +15,7 @@ export interface Site {
   lede: string;
   footer: string[];
   seeds?: string[]; // optional discovery escape-hatch: base URLs of peers the auto-sources can't see
+  instance?: string; // this instance's name; serve-only, advertised to peers. Unset → bare hostname.
 }
 
 export const DEFAULT_SITE: Site = {
@@ -52,6 +53,9 @@ export function parseSite(raw: unknown): Site | string {
     } else if (key === "footer") {
       if (!isStringArray(o.footer)) return "footer must be an array of strings";
       site.footer = o.footer;
+    } else if (key === "instance") {
+      if (typeof o.instance !== "string") return "instance must be a string";
+      site.instance = o.instance;
     } else if (key === "seeds") {
       if (!isStringArray(o.seeds)) return "seeds must be an array of strings";
       site.seeds = o.seeds;
@@ -84,6 +88,16 @@ export async function makeContext(root: string = Deno.cwd()): Promise<RoomContex
     commentsDir: join(abs, "comments"),
     site: await loadSite(abs),
   };
+}
+
+/** The name this instance advertises and shows: site.instance if a non-empty
+ * string, else the bare hostname (first dot-label). hostnameFn is injectable
+ * so tests never call the real Deno.hostname(). Serve-only — build never calls
+ * this, so the build needs no --allow-sys and never learns the name. */
+export function resolveInstanceName(site: Site, hostnameFn: () => string = Deno.hostname): string {
+  const explicit = site.instance?.trim();
+  if (explicit) return explicit;
+  return hostnameFn().split(".")[0];
 }
 
 /** Resolve the content home the CLI operates on: an explicit --root flag, else
