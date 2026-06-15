@@ -84,6 +84,7 @@ export function parseTailscalePeers(raw: unknown): TailscalePeer[] {
 
 const TAILSCALE_BINS = [
   "tailscale",
+  "/usr/local/bin/tailscale",
   "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
   "/usr/bin/tailscale",
   "/opt/homebrew/bin/tailscale",
