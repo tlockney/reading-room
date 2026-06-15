@@ -93,3 +93,12 @@ Deno.test("resolveHome: empty XDG_DATA_HOME falls through to HOME, not a relativ
     if (savedHome !== undefined) Deno.env.set("HOME", savedHome);
   }
 });
+
+Deno.test("parseSite accepts a seeds array", () => {
+  const s = parseSite({ seeds: ["https://a.ts.net/", "https://b.ts.net/"] });
+  assertEquals(typeof s === "string" ? s : s.seeds, ["https://a.ts.net/", "https://b.ts.net/"]);
+});
+
+Deno.test("parseSite rejects non-string seeds", () => {
+  assertEquals(parseSite({ seeds: [1, 2] }), "seeds must be an array of strings");
+});

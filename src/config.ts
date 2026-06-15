@@ -14,6 +14,7 @@ export interface Site {
   eyebrow: string;
   lede: string;
   footer: string[];
+  seeds?: string[]; // optional discovery escape-hatch: base URLs of peers the auto-sources can't see
 }
 
 export const DEFAULT_SITE: Site = {
@@ -51,6 +52,9 @@ export function parseSite(raw: unknown): Site | string {
     } else if (key === "footer") {
       if (!isStringArray(o.footer)) return "footer must be an array of strings";
       site.footer = o.footer;
+    } else if (key === "seeds") {
+      if (!isStringArray(o.seeds)) return "seeds must be an array of strings";
+      site.seeds = o.seeds;
     } else {
       return `unknown field: ${key}`;
     }
