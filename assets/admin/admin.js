@@ -75,7 +75,7 @@ async function initSwitcher() {
   here.value = "";
   select.appendChild(here);
   for (const p of peers) {
-    const opt = el("option", null, (p.identity && p.identity.title) || p.name || p.url);
+    const opt = el("option", null, (p.identity && p.identity.name) || p.name || p.url);
     opt.value = p.url;
     select.appendChild(opt);
   }
