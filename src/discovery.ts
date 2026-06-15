@@ -8,11 +8,10 @@
  * The tailscale call and the HTTP probe are injected so the suite runs without
  * a real tailnet or network.
  */
-import type { Site } from "./config.ts";
 import type { Topic } from "./render.ts";
 
 export interface PeerIdentity {
-  title: string;
+  name: string;
   version: string;
   topics: number;
   docs: number;
@@ -41,9 +40,9 @@ export interface DiscoverOptions {
 export type RunFn = (cmd: string, args: string[]) => Promise<{ code: number; stdout: string }>;
 
 /** The identity this instance advertises at /.well-known/reading-room.json. */
-export function buildIdentity(site: Site, corpus: Topic[], version: string): PeerIdentity {
+export function buildIdentity(name: string, corpus: Topic[], version: string): PeerIdentity {
   return {
-    title: site.title,
+    name,
     version,
     topics: corpus.length,
     docs: corpus.reduce((n, t) => n + t.docs.length, 0),
@@ -55,10 +54,10 @@ function asIdentity(raw: unknown): PeerIdentity | null {
   if (typeof raw !== "object" || raw === null) return null;
   const o = raw as Record<string, unknown>;
   if (
-    typeof o.title !== "string" || typeof o.version !== "string" ||
+    typeof o.name !== "string" || typeof o.version !== "string" ||
     typeof o.topics !== "number" || typeof o.docs !== "number"
   ) return null;
-  return { title: o.title, version: o.version, topics: o.topics, docs: o.docs };
+  return { name: o.name, version: o.version, topics: o.topics, docs: o.docs };
 }
 
 /** Parse `tailscale status --json` into candidate hosts. Self is reported

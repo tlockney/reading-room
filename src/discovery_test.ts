@@ -9,7 +9,6 @@ import {
   type TailscalePeer,
 } from "./discovery.ts";
 import type { Topic } from "./render.ts";
-import { DEFAULT_SITE } from "./config.ts";
 
 const STATUS = {
   Self: { HostName: "laptop", DNSName: "laptop.tail-scale.ts.net.", Online: true },
@@ -44,8 +43,8 @@ Deno.test("buildIdentity counts topics and docs", () => {
       docs: [{ slug: "y" }, { slug: "z" }] as Topic["docs"],
     },
   ];
-  assertEquals(buildIdentity(DEFAULT_SITE, corpus, "9.9.9"), {
-    title: DEFAULT_SITE.title,
+  assertEquals(buildIdentity("Studio", corpus, "9.9.9"), {
+    name: "Studio",
     version: "9.9.9",
     topics: 2,
     docs: 3,
@@ -53,7 +52,7 @@ Deno.test("buildIdentity counts topics and docs", () => {
 });
 
 Deno.test("probePeer returns identity on a valid response, null otherwise", async () => {
-  const good: PeerIdentity = { title: "Studio", version: "0.2.0", topics: 2, docs: 5 };
+  const good: PeerIdentity = { name: "Studio", version: "0.2.0", topics: 2, docs: 5 };
   const okFetch =
     ((_u: string | URL | Request) =>
       Promise.resolve(new Response(JSON.stringify(good)))) as typeof fetch;
@@ -76,8 +75,8 @@ Deno.test("discoverPeers unions tailnet+seeds, dedupes, drops non-answering", as
       { name: "nas", dnsName: "nas.ts.net", online: false },
     ]);
   const idents: Record<string, PeerIdentity> = {
-    "https://studio.ts.net/": { title: "Studio", version: "0.2.0", topics: 1, docs: 1 },
-    "https://seed.ts.net/": { title: "Seed", version: "0.2.0", topics: 0, docs: 0 },
+    "https://studio.ts.net/": { name: "Studio", version: "0.2.0", topics: 1, docs: 1 },
+    "https://seed.ts.net/": { name: "Seed", version: "0.2.0", topics: 0, docs: 0 },
   };
   const probe = (url: string): Promise<PeerIdentity | null> => Promise.resolve(idents[url] ?? null);
 
@@ -97,7 +96,7 @@ Deno.test("makeCachedDiscover serves from cache within TTL", async () => {
     return Promise.resolve([{ name: "s", dnsName: "s.ts.net", online: true }]);
   };
   const probe = (): Promise<PeerIdentity | null> =>
-    Promise.resolve({ title: "S", version: "0.2.0", topics: 0, docs: 0 });
+    Promise.resolve({ name: "S", version: "0.2.0", topics: 0, docs: 0 });
   const discover = makeCachedDiscover({ listPeers, probe }, 30_000);
   await discover();
   await discover();
@@ -110,7 +109,7 @@ Deno.test("discoverPeers dedupes a no-slash seed against the canonical tailnet u
   const probe = (url: string): Promise<PeerIdentity | null> =>
     Promise.resolve(
       url === "https://studio.ts.net/"
-        ? { title: "Studio", version: "0.2.0", topics: 1, docs: 1 }
+        ? { name: "Studio", version: "0.2.0", topics: 1, docs: 1 }
         : null,
     );
   const peers = await discoverPeers({
@@ -120,4 +119,12 @@ Deno.test("discoverPeers dedupes a no-slash seed against the canonical tailnet u
   });
   assertEquals(peers.length, 1);
   assertEquals(peers[0].url, "https://studio.ts.net/");
+});
+
+Deno.test("probePeer rejects a response missing name", async () => {
+  const bad = (() =>
+    Promise.resolve(
+      new Response(JSON.stringify({ version: "0.2.0", topics: 0, docs: 0 })),
+    )) as typeof fetch;
+  assertEquals(await probePeer("https://x.ts.net/", bad), null);
 });

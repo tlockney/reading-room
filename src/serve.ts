@@ -19,7 +19,7 @@
 import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
-import { makeContext, resolveHome } from "./config.ts";
+import { makeContext, resolveHome, resolveInstanceName } from "./config.ts";
 import type { RoomContext } from "./config.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
@@ -235,7 +235,7 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
       if (req.method !== "GET") return jsonError("method not allowed", 405);
       try {
         const corpus = await loadCorpus(opts.ctx.registryPath);
-        return json(buildIdentity(opts.ctx.site, corpus, VERSION));
+        return json(buildIdentity(resolveInstanceName(opts.ctx.site), corpus, VERSION));
       } catch (err) {
         return jsonError(String(err), 500);
       }
@@ -255,7 +255,7 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
         }
         const ctx: AdminContext = { page: "index", readonly: opts.readonly, docs };
         const index = injectLocalSlots(
-          renderIndex(opts.ctx.site, corpus),
+          renderIndex(opts.ctx.site, corpus, resolveInstanceName(opts.ctx.site)),
           await loadSlots(opts.ctx.root),
         );
         return page(injectAdmin(index, ctx));
