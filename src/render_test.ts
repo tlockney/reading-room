@@ -72,3 +72,21 @@ Deno.test("renderIndex omits the instance tag with no name (build purity)", () =
   const html = renderIndex(DEFAULT_SITE, []);
   assertStringIncludes(html, `<div class="eyebrow">${DEFAULT_SITE.eyebrow}</div>`);
 });
+
+Deno.test("editorial head includes theme-opt-out CSS rule", () => {
+  const out = injectEditorialHead(MINIMAL);
+  assertStringIncludes(out, '[data-ed-theme="off"] .edtheme{display:none !important;}');
+});
+
+Deno.test("editorial head no-flash script forces light when opted out", () => {
+  const dossier = MINIMAL.replace("<html>", '<html data-ed-theme="off">');
+  const out = injectEditorialHead(dossier);
+  // The opt-out guard must appear before the localStorage / dark-pref logic
+  assertStringIncludes(out, "data-ed-theme");
+  assertStringIncludes(out, "setAttribute('data-theme','light')");
+});
+
+Deno.test("editorial body toggle script bails out when opted out", () => {
+  const out = injectEditorialBody(MINIMAL);
+  assertStringIncludes(out, "getAttribute('data-ed-theme')==='off'");
+});

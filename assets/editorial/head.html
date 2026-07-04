@@ -78,6 +78,7 @@
   .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
   @media print{.edtheme{display:none;}}
   :root.edzoom-open .edtheme{display:none !important;}
+  :root[data-ed-theme="off"] .edtheme{display:none !important;}
   @media(max-width:720px){
     pre{overflow-x:auto;}
     code{overflow-wrap:anywhere;}
@@ -86,6 +87,10 @@
 </style>
 <script>
 (function(){
+  if(document.documentElement.getAttribute('data-ed-theme')==='off'){
+    document.documentElement.setAttribute('data-theme','light');
+    return;
+  }
   var KEY='editorial-theme',s=null;
   try{s=localStorage.getItem(KEY);}catch(_){}
   var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');

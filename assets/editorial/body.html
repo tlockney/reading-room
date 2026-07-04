@@ -76,7 +76,9 @@
 <script>
 (function(){
   if(window.__edtheme)return;window.__edtheme=true;
-  var KEY='editorial-theme',root=document.documentElement;
+  var root=document.documentElement;
+  if(root.getAttribute('data-ed-theme')==='off')return;
+  var KEY='editorial-theme';
   function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
   label();
   var b=document.querySelector('.edtheme');
