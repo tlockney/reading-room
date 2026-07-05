@@ -243,3 +243,53 @@ Deno.test("agent install exits 1 on an invalid --port instead of throwing", asyn
   }
   assertStringIncludes(errs.join("\n"), "invalid port");
 });
+
+Deno.test("agent uninstall boots out, resets tailscale, removes the plist", async () => {
+  const f = fakeDeps();
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    assertEquals(await agentMain(["uninstall"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  const lc = f.calls.find((c) => c.cmd === "launchctl");
+  assertEquals(lc?.args, ["bootout", "gui/501/local.reading-room"]);
+  const ts = f.calls.find((c) => c.cmd === "tailscale");
+  assertEquals(ts?.args, ["serve", "reset"]);
+  assertEquals(f.removed, ["/Users/t/Library/LaunchAgents/local.reading-room.plist"]);
+});
+
+Deno.test("agent status queries launchctl print and tailscale serve status", async () => {
+  const f = fakeDeps();
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    assertEquals(await agentMain(["status"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  const lc = f.calls.find((c) => c.cmd === "launchctl");
+  assertEquals(lc?.args, ["print", "gui/501/local.reading-room"]);
+  const ts = f.calls.find((c) => c.cmd === "tailscale");
+  assertEquals(ts?.args, ["serve", "status"]);
+});
+
+Deno.test("agent logs tails the two log files under the state dir", async () => {
+  const reads: string[] = [];
+  const f = fakeDeps({
+    env: (k) => (k === "XDG_STATE_HOME" ? "/s" : k === "HOME" ? "/Users/t" : undefined),
+    readTextFile: (p) => {
+      reads.push(p);
+      return Promise.resolve("line1\nline2\n");
+    },
+  });
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    assertEquals(await agentMain(["logs"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  assertEquals(reads, ["/s/reading-room/agent.out.log", "/s/reading-room/agent.err.log"]);
+});

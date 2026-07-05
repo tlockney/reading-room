@@ -200,6 +200,12 @@ export async function agentMain(args: string[], deps: AgentDeps = realDeps()): P
     switch (sub) {
       case "install":
         return await install(a, deps);
+      case "uninstall":
+        return await uninstall(deps);
+      case "status":
+        return await status(deps);
+      case "logs":
+        return await logs(deps);
       default:
         console.error(AGENT_USAGE);
         return 1;
@@ -254,5 +260,38 @@ async function install(
   }
   console.log(`reading-room agent installed (${LABEL}), serving ${home} on :${port}.`);
   console.log(`Logs: ${out}`);
+  return 0;
+}
+
+async function uninstall(deps: AgentDeps): Promise<number> {
+  const homeDir = deps.env("HOME") ?? "";
+  const u = await uid(deps);
+  await deps.run("launchctl", ["bootout", `gui/${u}/${LABEL}`]);
+  await deps.run("tailscale", ["serve", "reset"]);
+  await deps.remove(plistPath(homeDir));
+  console.log(`reading-room agent uninstalled (${LABEL}).`);
+  return 0;
+}
+
+async function status(deps: AgentDeps): Promise<number> {
+  const u = await uid(deps);
+  const svc = await deps.run("launchctl", ["print", `gui/${u}/${LABEL}`]);
+  console.log(svc.stdout.trim() || svc.stderr.trim() || "(service not loaded)");
+  const ts = await deps.run("tailscale", ["serve", "status"]);
+  console.log(ts.stdout.trim() || ts.stderr.trim() || "(tailscale serve not configured)");
+  return 0;
+}
+
+async function logs(deps: AgentDeps): Promise<number> {
+  const { out, err } = logPaths(resolveStateDir(deps.env));
+  for (const [label, p] of [["stdout", out], ["stderr", err]] as const) {
+    console.log(`--- ${label} (${p}) ---`);
+    try {
+      const text = await deps.readTextFile(p);
+      console.log(text.split("\n").slice(-40).join("\n"));
+    } catch {
+      console.log("(no log yet)");
+    }
+  }
   return 0;
 }
