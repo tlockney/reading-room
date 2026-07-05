@@ -735,22 +735,26 @@ Expected: FAIL — `uninstall`/`status`/`logs` hit the `default` case and return
 
 - [ ] **Step 3: Write minimal implementation**
 
-In `src/agent.ts`, replace the `switch (sub)` block inside `agentMain` with:
+In `src/agent.ts`, `agentMain` wraps its dispatch `switch (sub)` in a
+`try { ... } catch (err) { console.error(...); return 1; }` (added as a Task 3
+follow-up so a thrown `parsePort` error routes through the print-and-exit
+convention). Replace ONLY the inner `switch (sub) { ... }` statement — keep the
+surrounding try/catch — with:
 
 ```ts
-  switch (sub) {
-    case "install":
-      return await install(a, deps);
-    case "uninstall":
-      return await uninstall(deps);
-    case "status":
-      return await status(deps);
-    case "logs":
-      return await logs(deps);
-    default:
-      console.error(AGENT_USAGE);
-      return 1;
-  }
+    switch (sub) {
+      case "install":
+        return await install(a, deps);
+      case "uninstall":
+        return await uninstall(deps);
+      case "status":
+        return await status(deps);
+      case "logs":
+        return await logs(deps);
+      default:
+        console.error(AGENT_USAGE);
+        return 1;
+    }
 ```
 
 Append the three functions to `src/agent.ts`:
