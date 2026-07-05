@@ -1,41 +1,66 @@
 # Reading Room `agent` command — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a `reading-room agent {install,uninstall,status,logs}` subcommand to the engine that manages a macOS launchd login service serving the content home over the tailnet, so the per-machine dev checkout (`~/src/personal/reading-room` + its `agent.sh`) can be deleted.
+**Goal:** Add a `reading-room agent {install,uninstall,status,logs}` subcommand to the engine that
+manages a macOS launchd login service serving the content home over the tailnet, so the per-machine
+dev checkout (`~/src/personal/reading-room` + its `agent.sh`) can be deleted.
 
-**Architecture:** One new module `src/agent.ts` split into pure helpers (path/deno resolution, serve-arg and launchd-plist construction) and an `agentMain(args, deps)` orchestrator whose side effects (`launchctl`/`tailscale`/`id` execution and filesystem writes) go through an injectable `AgentDeps` bag — mirroring how `src/discovery.ts` injects its `tailscale` runner so tests need no real launchd. `src/cli.ts` gains an `agent` case. macOS-only behind a platform guard.
+**Architecture:** One new module `src/agent.ts` split into pure helpers (path/deno resolution,
+serve-arg and launchd-plist construction) and an `agentMain(args, deps)` orchestrator whose side
+effects (`launchctl`/`tailscale`/`id` execution and filesystem writes) go through an injectable
+`AgentDeps` bag — mirroring how `src/discovery.ts` injects its `tailscale` runner so tests need no
+real launchd. `src/cli.ts` gains an `agent` case. macOS-only behind a platform guard.
 
-**Tech Stack:** Deno 2.x, TypeScript (strict, no `any`), `jsr:@std/cli` (`parseArgs`), `jsr:@std/path` (`join`, `dirname`), `jsr:@std/assert` for tests. Published to JSR as `@tlockney/reading-room`.
+**Tech Stack:** Deno 2.x, TypeScript (strict, no `any`), `jsr:@std/cli` (`parseArgs`),
+`jsr:@std/path` (`join`, `dirname`), `jsr:@std/assert` for tests. Published to JSR as
+`@tlockney/reading-room`.
 
 ## Global Constraints
 
 - **TypeScript: never `any`.** Use `unknown` + narrowing; wrap untyped shapes with interfaces.
-- **Tests colocated** as `src/agent_test.ts`; `deno.jsonc` `publish.exclude` (`src/**/*_test.ts`) keeps them out of the package. Do not add tests at repo root.
-- **`deno task test`, `deno fmt --check`, and `deno lint` must all pass before every commit.** `fmt` lineWidth is 100.
+- **Tests colocated** as `src/agent_test.ts`; `deno.jsonc` `publish.exclude` (`src/**/*_test.ts`)
+  keeps them out of the package. Do not add tests at repo root.
+- **`deno task test`, `deno fmt --check`, and `deno lint` must all pass before every commit.** `fmt`
+  lineWidth is 100.
 - **Never mention AI/Claude in commit messages.**
-- **The launchd plist permission union is verbatim and load-bearing:** `--allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME` plus `--minimum-dependency-age=0`. `--allow-run` (tailscale) and `--minimum-dependency-age=0` (fresh-release crashloop, land mine #1) are NOT optional.
-- **Fixed values:** launchd label `local.reading-room`; default port `8413`; plist `PATH` = `/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`; JSR module base `jsr:@tlockney/reading-room`.
-- **Content home resolution** reuses `resolveHome` from `src/config.ts` (`--root` → `$READING_ROOM_HOME` → `${XDG_DATA_HOME:-~/.local/share}/reading-room`). The agent baked into the plist always passes an explicit `--root`.
-- **The generated plist must never reference the `deno install -g` shim** (it calls bare `deno`, which launchd's minimal PATH can't find). Bake an absolute deno binary + the pinned engine version.
+- **The launchd plist permission union is verbatim and load-bearing:**
+  `--allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME`
+  plus `--minimum-dependency-age=0`. `--allow-run` (tailscale) and `--minimum-dependency-age=0`
+  (fresh-release crashloop, land mine #1) are NOT optional.
+- **Fixed values:** launchd label `local.reading-room`; default port `8413`; plist `PATH` =
+  `/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin`; JSR module base `jsr:@tlockney/reading-room`.
+- **Content home resolution** reuses `resolveHome` from `src/config.ts` (`--root` →
+  `$READING_ROOM_HOME` → `${XDG_DATA_HOME:-~/.local/share}/reading-room`). The agent baked into the
+  plist always passes an explicit `--root`.
+- **The generated plist must never reference the `deno install -g` shim** (it calls bare `deno`,
+  which launchd's minimal PATH can't find). Bake an absolute deno binary + the pinned engine
+  version.
 
 ## File Structure
 
-- **Create `src/agent.ts`** — the whole feature: pure helpers + `agentMain` + `realDeps`. One responsibility (the launchd login service), so one file.
+- **Create `src/agent.ts`** — the whole feature: pure helpers + `agentMain` + `realDeps`. One
+  responsibility (the launchd login service), so one file.
 - **Create `src/agent_test.ts`** — colocated tests.
 - **Modify `src/cli.ts`** — add the `agent` dispatch case and usage line.
-- **Modify `deno.jsonc`** — add `XDG_STATE_HOME` to the `cli` task's `--allow-env` allowlist (the agent reads it for the log dir).
-- **Modify `CLAUDE.md` / `README.md`** — document the `agent` command and the `XDG_STATE_HOME` addition to the install one-liner.
+- **Modify `deno.jsonc`** — add `XDG_STATE_HOME` to the `cli` task's `--allow-env` allowlist (the
+  agent reads it for the log dir).
+- **Modify `CLAUDE.md` / `README.md`** — document the `agent` command and the `XDG_STATE_HOME`
+  addition to the install one-liner.
 
 ---
 
 ### Task 1: Path resolution and deno-binary resolution (pure helpers)
 
 **Files:**
+
 - Create: `src/agent.ts`
 - Test: `src/agent_test.ts`
 
 **Interfaces:**
+
 - Consumes: `join` from `jsr:@std/path@1`.
 - Produces:
   - `export const LABEL = "local.reading-room"`
@@ -53,13 +78,7 @@ Add to a new `src/agent_test.ts`:
 
 ```ts
 import { assertEquals } from "jsr:@std/assert@1";
-import {
-  logPaths,
-  plistPath,
-  resolveDenoPath,
-  resolveStateDir,
-  type RunFn,
-} from "./agent.ts";
+import { logPaths, plistPath, resolveDenoPath, resolveStateDir, type RunFn } from "./agent.ts";
 
 const noRun: RunFn = () => Promise.resolve({ code: 1, stdout: "", stderr: "" });
 
@@ -121,8 +140,8 @@ Deno.test("resolveDenoPath precedence: flag > homebrew > mise > execPath", async
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: FAIL — `Module not found` / `./agent.ts` has no such exports.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: FAIL
+— `Module not found` / `./agent.ts` has no such exports.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -179,8 +198,8 @@ export async function resolveDenoPath(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: PASS (4 tests).
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: PASS
+(4 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -194,10 +213,12 @@ git commit -m "feat(agent): path and deno-binary resolution helpers"
 ### Task 2: Serve-arg and launchd-plist construction (pure)
 
 **Files:**
+
 - Modify: `src/agent.ts`
 - Test: `src/agent_test.ts`
 
 **Interfaces:**
+
 - Consumes: `VERSION` from `src/version.ts`; `LABEL`, `AGENT_PATH_ENV` from Task 1.
 - Produces:
   - `export function buildServeArgs(o: { version: string; home: string; port: number }): string[]`
@@ -209,28 +230,28 @@ git commit -m "feat(agent): path and deno-binary resolution helpers"
 Append to `src/agent_test.ts`:
 
 ```ts
-import {
-  buildServeArgs,
-  renderPlist,
-} from "./agent.ts";
+import { buildServeArgs, renderPlist } from "./agent.ts";
 import { assertStringIncludes } from "jsr:@std/assert@1";
 
 Deno.test("buildServeArgs bakes the permission union, min-dep-age, pinned target, root, port", () => {
-  assertEquals(buildServeArgs({ version: "9.9.9", home: "/home/t/.local/share/reading-room", port: 8413 }), [
-    "run",
-    "--allow-read",
-    "--allow-write",
-    "--allow-net",
-    "--allow-run",
-    "--allow-sys=hostname",
-    "--allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME",
-    "--minimum-dependency-age=0",
-    "jsr:@tlockney/reading-room@9.9.9/serve",
-    "--root",
-    "/home/t/.local/share/reading-room",
-    "--port",
-    "8413",
-  ]);
+  assertEquals(
+    buildServeArgs({ version: "9.9.9", home: "/home/t/.local/share/reading-room", port: 8413 }),
+    [
+      "run",
+      "--allow-read",
+      "--allow-write",
+      "--allow-net",
+      "--allow-run",
+      "--allow-sys=hostname",
+      "--allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME",
+      "--minimum-dependency-age=0",
+      "jsr:@tlockney/reading-room@9.9.9/serve",
+      "--root",
+      "/home/t/.local/share/reading-room",
+      "--port",
+      "8413",
+    ],
+  );
 });
 
 Deno.test("renderPlist emits a binary-direct plist with no WorkingDirectory", () => {
@@ -246,9 +267,15 @@ Deno.test("renderPlist emits a binary-direct plist with no WorkingDirectory", ()
   assertStringIncludes(xml, "<string>/opt/homebrew/bin/deno</string>");
   assertStringIncludes(xml, "<string>--minimum-dependency-age=0</string>");
   assertStringIncludes(xml, "<string>jsr:@tlockney/reading-room@9.9.9/serve</string>");
-  assertStringIncludes(xml, "<key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>");
+  assertStringIncludes(
+    xml,
+    "<key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>",
+  );
   assertStringIncludes(xml, "<key>HOME</key><string>/Users/t</string>");
-  assertStringIncludes(xml, "<key>StandardOutPath</key><string>/s/reading-room/agent.out.log</string>");
+  assertStringIncludes(
+    xml,
+    "<key>StandardOutPath</key><string>/s/reading-room/agent.out.log</string>",
+  );
   assertStringIncludes(xml, "<key>RunAtLoad</key><true/>");
   assertStringIncludes(xml, "<key>KeepAlive</key><true/>");
   assertEquals(xml.includes("WorkingDirectory"), false);
@@ -273,8 +300,8 @@ Deno.test("renderPlist adds READONLY=1 to the env when readonly", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: FAIL — `buildServeArgs`/`renderPlist` not exported.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: FAIL
+— `buildServeArgs`/`renderPlist` not exported.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -356,8 +383,8 @@ ${envXml}
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: PASS.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected:
+PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -371,11 +398,14 @@ git commit -m "feat(agent): serve-arg and launchd plist construction"
 ### Task 3: `agentMain` dispatch, platform guard, and `install`
 
 **Files:**
+
 - Modify: `src/agent.ts`
 - Test: `src/agent_test.ts`
 
 **Interfaces:**
-- Consumes: everything from Tasks 1–2; `resolveHome` from `src/config.ts`; `parseArgs` from `jsr:@std/cli@1`.
+
+- Consumes: everything from Tasks 1–2; `resolveHome` from `src/config.ts`; `parseArgs` from
+  `jsr:@std/cli@1`.
 - Produces:
   - `export interface AgentDeps { run: RunFn; writeTextFile: (p: string, d: string) => Promise<void>; mkdir: (p: string) => Promise<void>; remove: (p: string) => Promise<void>; readTextFile: (p: string) => Promise<string>; exists: (p: string) => boolean; execPath: () => string; env: (k: string) => string | undefined; os: string }`
   - `export function realDeps(): AgentDeps`
@@ -494,8 +524,8 @@ Deno.test("agent install honors --port and --root", async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: FAIL — `agentMain`/`AgentDeps` not exported.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: FAIL
+— `agentMain`/`AgentDeps` not exported.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -650,8 +680,8 @@ async function install(
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: PASS.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected:
+PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -665,11 +695,14 @@ git commit -m "feat(agent): install subcommand with platform guard"
 ### Task 4: `uninstall`, `status`, and `logs` subcommands
 
 **Files:**
+
 - Modify: `src/agent.ts`
 - Test: `src/agent_test.ts`
 
 **Interfaces:**
-- Consumes: `agentMain`, `AgentDeps`, `uid`, `plistPath`, `resolveStateDir`, `logPaths`, `LABEL` from Task 3.
+
+- Consumes: `agentMain`, `AgentDeps`, `uid`, `plistPath`, `resolveStateDir`, `logPaths`, `LABEL`
+  from Task 3.
 - Produces: extends `agentMain`'s switch with `uninstall`, `status`, `logs` cases (no new exports).
 
 - [ ] **Step 1: Write the failing test**
@@ -730,31 +763,30 @@ Deno.test("agent logs tails the two log files under the state dir", async () => 
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: FAIL — `uninstall`/`status`/`logs` hit the `default` case and return 1.
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: FAIL
+— `uninstall`/`status`/`logs` hit the `default` case and return 1.
 
 - [ ] **Step 3: Write minimal implementation**
 
 In `src/agent.ts`, `agentMain` wraps its dispatch `switch (sub)` in a
-`try { ... } catch (err) { console.error(...); return 1; }` (added as a Task 3
-follow-up so a thrown `parsePort` error routes through the print-and-exit
-convention). Replace ONLY the inner `switch (sub) { ... }` statement — keep the
-surrounding try/catch — with:
+`try { ... } catch (err) { console.error(...); return 1; }` (added as a Task 3 follow-up so a thrown
+`parsePort` error routes through the print-and-exit convention). Replace ONLY the inner
+`switch (sub) { ... }` statement — keep the surrounding try/catch — with:
 
 ```ts
-    switch (sub) {
-      case "install":
-        return await install(a, deps);
-      case "uninstall":
-        return await uninstall(deps);
-      case "status":
-        return await status(deps);
-      case "logs":
-        return await logs(deps);
-      default:
-        console.error(AGENT_USAGE);
-        return 1;
-    }
+switch (sub) {
+  case "install":
+    return await install(a, deps);
+  case "uninstall":
+    return await uninstall(deps);
+  case "status":
+    return await status(deps);
+  case "logs":
+    return await logs(deps);
+  default:
+    console.error(AGENT_USAGE);
+    return 1;
+}
 ```
 
 Append the three functions to `src/agent.ts`:
@@ -796,8 +828,8 @@ async function logs(deps: AgentDeps): Promise<number> {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts`
-Expected: PASS (all agent tests).
+Run: `deno test --allow-read --allow-write --allow-env --allow-run src/agent_test.ts` Expected: PASS
+(all agent tests).
 
 - [ ] **Step 5: Commit**
 
@@ -811,10 +843,12 @@ git commit -m "feat(agent): uninstall, status, and logs subcommands"
 ### Task 5: Wire `agent` into the CLI dispatcher
 
 **Files:**
+
 - Modify: `src/cli.ts`
 - Test: `src/cli_test.ts`
 
 **Interfaces:**
+
 - Consumes: `agentMain` from `src/agent.ts`.
 - Produces: `cli(["agent", ...])` routes to `agentMain`; USAGE lists `agent`.
 
@@ -850,7 +884,8 @@ Deno.test("cli usage lists the agent command", async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname src/cli_test.ts`
+Run:
+`deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname src/cli_test.ts`
 Expected: FAIL — `cli(["agent","--help"])` hits the default case (exit 1); USAGE lacks `agent`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -864,19 +899,20 @@ import { agentMain } from "./agent.ts";
 Add a line to the `USAGE` template's command list, after the `init` line:
 
 ```
-  agent     <install|uninstall|status|logs>  Manage the launchd login service (macOS)
+agent     <install|uninstall|status|logs>  Manage the launchd login service (macOS)
 ```
 
 Add a case to the `switch (sub)` block, after `case "init":`:
 
 ```ts
-      case "agent":
-        return await agentMain(rest);
+case "agent":
+  return await agentMain(rest);
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname src/cli_test.ts`
+Run:
+`deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname src/cli_test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -891,12 +927,16 @@ git commit -m "feat(cli): route the agent subcommand"
 ### Task 6: Permission allowlist + documentation
 
 **Files:**
+
 - Modify: `deno.jsonc` (the `cli` task)
 - Modify: `CLAUDE.md`
 - Modify: `README.md`
 
 **Interfaces:**
-- Consumes: nothing new. This task makes the *installed* CLI able to read `XDG_STATE_HOME` (the agent's log dir) and documents the command. Unit tests already pass (`deno task test` uses unscoped `--allow-env`).
+
+- Consumes: nothing new. This task makes the _installed_ CLI able to read `XDG_STATE_HOME` (the
+  agent's log dir) and documents the command. Unit tests already pass (`deno task test` uses
+  unscoped `--allow-env`).
 
 - [ ] **Step 1: Add `XDG_STATE_HOME` to the `cli` task's env allowlist**
 
@@ -912,19 +952,21 @@ Change it to add `XDG_STATE_HOME`:
 --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME
 ```
 
-(Leave the `serve`, `build`, `add-doc`, `publish` tasks unchanged — the served process never reads `XDG_STATE_HOME`; only the `agent` command, reached through `cli`, does.)
+(Leave the `serve`, `build`, `add-doc`, `publish` tasks unchanged — the served process never reads
+`XDG_STATE_HOME`; only the `agent` command, reached through `cli`, does.)
 
 - [ ] **Step 2: Verify the full suite, fmt, and lint pass**
 
-Run: `deno task test && deno fmt --check && deno lint`
-Expected: all pass. (If `deno fmt --check` flags `src/agent.ts`, run `deno fmt src/agent.ts` and re-run.)
+Run: `deno task test && deno fmt --check && deno lint` Expected: all pass. (If `deno fmt --check`
+flags `src/agent.ts`, run `deno fmt src/agent.ts` and re-run.)
 
 - [ ] **Step 3: Document the command in `CLAUDE.md`**
 
-In `CLAUDE.md`, under the "Installed CLI" section, update the install one-liner's `--allow-env` to include `XDG_STATE_HOME`:
+In `CLAUDE.md`, under the "Installed CLI" section, update the install one-liner's `--allow-env` to
+include `XDG_STATE_HOME`:
 
 ```sh
-  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
+--allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
 ```
 
 Then add this subsection immediately after the install one-liner block:
@@ -932,27 +974,30 @@ Then add this subsection immediately after the install one-liner block:
 ```markdown
 ### Agent (login service, macOS)
 
-`reading-room agent install` writes `~/Library/LaunchAgents/local.reading-room.plist`
-and boots it (`launchctl bootstrap gui/$UID`), then `tailscale serve --bg <port>`.
-The plist runs an **absolute deno binary** (resolved: `--deno` → `/opt/homebrew/bin/deno`
-→ `mise which deno` → the installing deno) against the **version-pinned**
-`jsr:@tlockney/reading-room@<version>/serve` with the full permission union and
-`--minimum-dependency-age=0` (land mine #1) and an explicit `--root <home>`. It does
-**not** use the `deno install -g` shim — launchd's minimal PATH can't resolve bare
-`deno`. Logs go to `$XDG_STATE_HOME/reading-room` (else `~/.local/state/reading-room`).
+`reading-room agent install` writes `~/Library/LaunchAgents/local.reading-room.plist` and boots it
+(`launchctl bootstrap gui/$UID`), then `tailscale serve --bg <port>`. The plist runs an **absolute
+deno binary** (resolved: `--deno` → `/opt/homebrew/bin/deno` → `mise which deno` → the installing
+deno) against the **version-pinned** `jsr:@tlockney/reading-room@<version>/serve` with the full
+permission union and `--minimum-dependency-age=0` (land mine #1) and an explicit `--root <home>`. It
+does **not** use the `deno install -g` shim — launchd's minimal PATH can't resolve bare `deno`. Logs
+go to `$XDG_STATE_HOME/reading-room` (else `~/.local/state/reading-room`).
 
 - `reading-room agent install [--root <dir>] [--port <n>] [--readonly] [--deno <path>]`
 - `reading-room agent uninstall` — bootout, `tailscale serve reset`, remove the plist
 - `reading-room agent status` — `launchctl print` + `tailscale serve status`
 - `reading-room agent logs` — tail the two log files
 
-Upgrading the running agent after a CLI upgrade is an explicit `reading-room agent install`
-re-run (the pinned version in the plist does not float). macOS-only for now.
+Upgrading the running agent after a CLI upgrade is an explicit `reading-room agent install` re-run
+(the pinned version in the plist does not float). macOS-only for now.
 ```
 
 - [ ] **Step 4: Document the command in `README.md`**
 
-In `README.md`, find where the CLI subcommands or `deno install` instructions are described and add a short entry for `agent` mirroring the CLAUDE.md summary (one paragraph: what `agent install` does, that it's macOS-only, and that logs live under `~/.local/state/reading-room`). Match the surrounding prose style. If the README has a `deno install -g` snippet with `--allow-env`, add `XDG_STATE_HOME` there too.
+In `README.md`, find where the CLI subcommands or `deno install` instructions are described and add
+a short entry for `agent` mirroring the CLAUDE.md summary (one paragraph: what `agent install` does,
+that it's macOS-only, and that logs live under `~/.local/state/reading-room`). Match the surrounding
+prose style. If the README has a `deno install -g` snippet with `--allow-env`, add `XDG_STATE_HOME`
+there too.
 
 - [ ] **Step 5: Commit**
 
@@ -966,16 +1011,30 @@ git commit -m "docs(agent): document the agent command; allow XDG_STATE_HOME in 
 ## Self-Review
 
 **Spec coverage:**
+
 - New `src/agent.ts` + `cli.ts` wiring → Tasks 1–5. ✓
-- Backend seam for later systemd → the `AgentDeps`/pure-helper split plus the `os !== "darwin"` guard in Task 3 is the seam; a systemd backend would add cases without reshaping the command. (The spec's named `ServiceBackend` interface is satisfied in substance by `AgentDeps` + the platform guard; no separate interface is introduced because there is only one backend today — YAGNI.) ✓
-- Binary-direct plist, permission union, `--minimum-dependency-age=0`, pinned `@version`, explicit `--root`, PATH/HOME env, no WorkingDirectory → Task 2, asserted in tests. ✓
+- Backend seam for later systemd → the `AgentDeps`/pure-helper split plus the `os !== "darwin"`
+  guard in Task 3 is the seam; a systemd backend would add cases without reshaping the command. (The
+  spec's named `ServiceBackend` interface is satisfied in substance by `AgentDeps` + the platform
+  guard; no separate interface is introduced because there is only one backend today — YAGNI.) ✓
+- Binary-direct plist, permission union, `--minimum-dependency-age=0`, pinned `@version`, explicit
+  `--root`, PATH/HOME env, no WorkingDirectory → Task 2, asserted in tests. ✓
 - deno-path resolution order (`--deno` → homebrew → mise → execPath) → Task 1. ✓
 - Logs under `$XDG_STATE_HOME`/`~/.local/state` → Tasks 1, 4. ✓
 - Injectable-runner testing without mutating the machine → `AgentDeps`, Tasks 3–4. ✓
-- Drift test dropped → nothing to do in-repo (it lives only in the deleted checkout); the engine's own `src/drift_test.ts` is untouched. ✓
-- Docs (CLAUDE.md, README) → Task 6. The `reading-room` **skill** update lands outside this repo and is tracked in the spec, not this plan. ✓
-- Discovered addition not in the spec: `XDG_STATE_HOME` must join the installed CLI's `--allow-env` allowlist → Task 6.
+- Drift test dropped → nothing to do in-repo (it lives only in the deleted checkout); the engine's
+  own `src/drift_test.ts` is untouched. ✓
+- Docs (CLAUDE.md, README) → Task 6. The `reading-room` **skill** update lands outside this repo and
+  is tracked in the spec, not this plan. ✓
+- Discovered addition not in the spec: `XDG_STATE_HOME` must join the installed CLI's `--allow-env`
+  allowlist → Task 6.
 
-**Placeholder scan:** No TBD/TODO; every code step shows complete code; the only prose-only step is Task 6 Step 4 (README), which is inherently repo-specific editing, bounded by an explicit mirror of the CLAUDE.md text.
+**Placeholder scan:** No TBD/TODO; every code step shows complete code; the only prose-only step is
+Task 6 Step 4 (README), which is inherently repo-specific editing, bounded by an explicit mirror of
+the CLAUDE.md text.
 
-**Type consistency:** `RunFn`/`RunResult`, `AgentDeps`, `PlistPlan`, `buildServeArgs`, `renderPlist`, `resolveDenoPath`, `resolveStateDir`, `logPaths`, `plistPath`, `agentMain` names are used identically across tasks and tests. `agentMain(args, deps?)` signature is stable from Task 3; Task 4 only extends its internal switch. `parsePort` and `uid` are internal (not exported), consistent with their single-file use.
+**Type consistency:** `RunFn`/`RunResult`, `AgentDeps`, `PlistPlan`, `buildServeArgs`,
+`renderPlist`, `resolveDenoPath`, `resolveStateDir`, `logPaths`, `plistPath`, `agentMain` names are
+used identically across tasks and tests. `agentMain(args, deps?)` signature is stable from Task 3;
+Task 4 only extends its internal switch. `parsePort` and `uid` are internal (not exported),
+consistent with their single-file use.

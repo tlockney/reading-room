@@ -11,8 +11,8 @@
 Delete the per-machine dev checkout at `~/src/personal/reading-room` entirely. Everything it
 uniquely provides moves into the engine as a new `reading-room agent` subcommand, so that operating
 a machine's Reading Room becomes: install the CLI once, run `reading-room agent install`. This is
-the engine/content-home philosophy this repo already commits to — *features land in the engine once;
-every machine picks them up with a CLI upgrade* — applied to the one piece (`agent.sh`) that was
+the engine/content-home philosophy this repo already commits to — _features land in the engine once;
+every machine picks them up with a CLI upgrade_ — applied to the one piece (`agent.sh`) that was
 still living as a per-machine script.
 
 ## Background: why the checkout can go
@@ -55,12 +55,12 @@ Add `agent` to the `cli.ts` dispatcher alongside `serve | build | add-doc | publ
 update `--help`. `src/agent.ts` exports `async function agentMain(args: string[]): Promise<number>`
 returning an exit code, matching the shape of `serveMain`. Subcommands:
 
-| Subcommand | Behavior |
-|---|---|
+| Subcommand  | Behavior                                                                                                                                                                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `install`   | Resolve deno path, content home, port; generate the launchd plist; write it; `launchctl bootstrap gui/$UID`; `tailscale serve --bg <port>`. Idempotent: bootout the existing label first so reinstall cleanly replaces a prior job (including today's checkout-anchored one — same label). |
-| `uninstall` | `launchctl bootout gui/$UID/<label>`; `tailscale serve reset`; remove the plist. |
-| `status`    | `launchctl print gui/$UID/<label>` (state/pid) + `tailscale serve status`. |
-| `logs`      | `tail -n <N>` the two agent log files (default 40). |
+| `uninstall` | `launchctl bootout gui/$UID/<label>`; `tailscale serve reset`; remove the plist.                                                                                                                                                                                                           |
+| `status`    | `launchctl print gui/$UID/<label>` (state/pid) + `tailscale serve status`.                                                                                                                                                                                                                 |
+| `logs`      | `tail -n <N>` the two agent log files (default 40).                                                                                                                                                                                                                                        |
 
 Label stays `local.reading-room` (so a reinstall replaces the current agent in place). Flags on
 `install`: `--port <n>` (default 8413), `--root <dir>` (content home; else resolved via the standard
@@ -71,18 +71,18 @@ precedence and baked in explicitly — see below), `--readonly` (sets `READONLY=
 
 `agentMain` selects a platform backend by `Deno.build.os`. Define a small interface — e.g.
 `ServiceBackend { install(plan): Promise<void>; uninstall(): Promise<void>; status(): Promise<...>;
-logPaths(): {out,err} }` — with a `LaunchdBackend` implementation. On non-`darwin`, `agentMain`
-returns a non-zero exit with the "macOS only" message. This is the seam; no systemd code is written
-now.
+logPaths(): {out,err} }`
+— with a `LaunchdBackend` implementation. On non-`darwin`, `agentMain` returns a non-zero exit with
+the "macOS only" message. This is the seam; no systemd code is written now.
 
 ### Plist generation (the core change)
 
-The generated plist must **not** reference the `deno install -g` shim
-(`~/.deno/bin/reading-room`). That shim is `#!/bin/sh … exec deno run … "$@"` and calls **bare
-`deno` from PATH**; launchd boots with a minimal PATH that excludes both mise shims and Homebrew, so
-a shim-based `ProgramArguments` would fail with `deno: not found`. Instead, replicate the pattern the
-current live plist already proves works: bake an absolute real `deno` binary and run the pinned JSR
-module directly, with an explicit PATH.
+The generated plist must **not** reference the `deno install -g` shim (`~/.deno/bin/reading-room`).
+That shim is `#!/bin/sh … exec deno run … "$@"` and calls **bare `deno` from PATH**; launchd boots
+with a minimal PATH that excludes both mise shims and Homebrew, so a shim-based `ProgramArguments`
+would fail with `deno: not found`. Instead, replicate the pattern the current live plist already
+proves works: bake an absolute real `deno` binary and run the pinned JSR module directly, with an
+explicit PATH.
 
 `ProgramArguments` (all values resolved at install time):
 
@@ -106,8 +106,8 @@ Rationale for each non-obvious piece:
   packages published < ~6 days ago; without this flag a freshly released engine version fails to
   resolve and **crashloops the launchd `serve` agent** (a 502-over-Tailscale outage that has already
   happened once). It is safe here — the engine is first-party and `deno.lock` pins exact versions.
-- **`@<engine-version>` is pinned** to the engine's current `version` (read from `deno.jsonc`) so the
-  login agent doesn't float to latest on every boot; upgrading the agent is an explicit
+- **`@<engine-version>` is pinned** to the engine's current `version` (read from `deno.jsonc`) so
+  the login agent doesn't float to latest on every boot; upgrading the agent is an explicit
   `agent install` re-run after a CLI upgrade. Per the CLI-distribution spec, agent version is
   knowingly per-machine ambient state.
 - **`--root <resolved-home>` is baked explicitly.** `install` resolves the effective content home
@@ -143,8 +143,8 @@ directory; `logs` tails these; `status` reports them. This replaces the checkout
 
 The `launchctl` / `tailscale` / `mise` / filesystem-probe calls are wrapped behind an **injectable
 runner** (a `CommandRunner` interface, dependency-injected exactly as peer discovery already injects
-its `tailscale` call and HTTP probe) so tests assert behavior without mutating the machine. Following
-this repo's colocated-test convention (`src/agent_test.ts`, kept out of the package by
+its `tailscale` call and HTTP probe) so tests assert behavior without mutating the machine.
+Following this repo's colocated-test convention (`src/agent_test.ts`, kept out of the package by
 `publish.exclude`), cover the application logic:
 
 - **Plist generation:** given (deno path, engine version, resolved home, port, readonly, log paths)
@@ -152,9 +152,9 @@ this repo's colocated-test convention (`src/agent_test.ts`, kept out of the pack
   pinned `@<version>/serve` target, `--root`, and the PATH/HOME env. This is the load-bearing logic.
 - **deno-path resolution order:** each precedence tier selected given a stubbed runner/filesystem.
 - **Platform guard:** non-`darwin` returns the expected non-zero exit and message.
-- **Command construction** for `install`/`uninstall`/`status`/`logs`: assert the exact
-  `launchctl` / `tailscale` / `tail` argv the runner is asked to execute (bootout-before-bootstrap
-  ordering on install; reset on uninstall).
+- **Command construction** for `install`/`uninstall`/`status`/`logs`: assert the exact `launchctl` /
+  `tailscale` / `tail` argv the runner is asked to execute (bootout-before-bootstrap ordering on
+  install; reset on uninstall).
 
 `deno task test`, `deno fmt --check`, and `deno lint` must pass before commit (CI also runs
 `deno publish --dry-run`).
@@ -174,20 +174,21 @@ released:
 
 ## Docs to update (in this change)
 
-- **`README.md` / `CLAUDE.md` (engine):** document `reading-room agent {install,uninstall,status,
-  logs}` and its flags; note the plist bakes an absolute deno + pinned version + `--root` and why
-  (land mines #1 and #7).
-- **The `reading-room` Claude skill (`~/.claude/skills/reading-room/SKILL.md`):** the three-directory
-  story collapses to two (engine source repo + content home; the dev checkout is gone). The
-  Operations table changes from `deno task serve` / `./agent.sh install` to `reading-room serve` /
-  `reading-room agent install`, and "Adding a document" from
+- **`README.md` / `CLAUDE.md` (engine):** document
+  `reading-room agent {install,uninstall,status,
+  logs}` and its flags; note the plist bakes an
+  absolute deno + pinned version + `--root` and why (land mines #1 and #7).
+- **The `reading-room` Claude skill (`~/.claude/skills/reading-room/SKILL.md`):** the
+  three-directory story collapses to two (engine source repo + content home; the dev checkout is
+  gone). The Operations table changes from `deno task serve` / `./agent.sh install` to
+  `reading-room serve` / `reading-room agent install`, and "Adding a document" from
   `cd ~/src/personal/reading-room && deno task add-doc` to `reading-room add-doc`. (This skill edit
   lands outside the repo, so it is done as part of the same work but is not part of the engine PR.)
 
 ## What gets deleted
 
 Nothing inside the engine repo is deleted by this change (the checkout is a separate, unversioned
-directory). The engine PR only *adds* `src/agent.ts` + `src/agent_test.ts`, the `cli.ts` wiring, and
+directory). The engine PR only _adds_ `src/agent.ts` + `src/agent_test.ts`, the `cli.ts` wiring, and
 doc updates. The `~/src/personal/reading-room` directory is removed by hand in cutover step 4, after
 the new agent is verified running.
 
