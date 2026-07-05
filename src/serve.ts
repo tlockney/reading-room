@@ -38,12 +38,14 @@ import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 import { buildIdentity, listTailscalePeers, makeCachedDiscover, probePeer } from "./discovery.ts";
 import type { Peer } from "./discovery.ts";
 import { VERSION } from "./version.ts";
+import { parseReceivedPayload, receiveDoc, sendDoc } from "./transfer.ts";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
 const DOC_RE = /^\/docs\/([A-Za-z0-9_-]+)\/?$/; // canonical: /docs/<slug> (S3 also serves /docs/<slug>/)
 const DOC_HTML_RE = /^\/docs\/([A-Za-z0-9._-]+)\.html$/; // legacy: redirect to extensionless
 const API_DOC_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)$/;
+const API_DOC_SEND_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/send$/;
 const API_COMMENTS_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments$/;
 const API_COMMENT_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments\/([A-Za-z0-9-]+)$/;
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
@@ -52,6 +54,7 @@ export interface ServeOptions {
   ctx: RoomContext;
   readonly: boolean;
   discover?: () => Promise<Peer[]>;
+  sendFetch?: typeof fetch; // injected in tests; prod uses sendDoc's default fetch
 }
 
 function page(body: string, status = 200): Response {
@@ -196,6 +199,38 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
         return ok ? json({ ok: true }) : jsonError("no such comment", 404);
       }
       return jsonError("method not allowed", 405);
+    }
+
+    const sendMatch = path.match(API_DOC_SEND_RE);
+    if (sendMatch) {
+      if (req.method !== "POST") return jsonError("method not allowed", 405);
+      const raw = await readJson(req);
+      if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+      if (typeof raw !== "object" || raw === null) {
+        return jsonError("body must be a JSON object", 400);
+      }
+      const o = raw as Record<string, unknown>;
+      if (typeof o.target !== "string") return jsonError("target must be a string", 400);
+      const corpus = await loadCorpus(opts.ctx.registryPath);
+      const result = await sendDoc(
+        opts.ctx,
+        corpus,
+        sendMatch[1],
+        o.target,
+        { withComments: o.withComments === true },
+        opts.sendFetch,
+      );
+      return result.ok ? json(result) : jsonError(result.error ?? "send failed", 502);
+    }
+
+    if (path === "/api/receive") {
+      if (req.method !== "POST") return jsonError("method not allowed", 405);
+      const raw = await readJson(req);
+      if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+      const payload = parseReceivedPayload(raw);
+      if (typeof payload === "string") return jsonError(payload, 400);
+      const filed = await receiveDoc(opts.ctx, payload);
+      return json({ ok: true, slug: filed.slug }, 201);
     }
 
     return jsonError("not found", 404);

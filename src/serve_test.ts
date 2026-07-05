@@ -329,3 +329,109 @@ Deno.test("served index masthead carries the instance eyebrow tag", async () => 
     await cleanup();
   }
 });
+
+const XFER_REGISTRY = `[
+  { "num": "§ 01", "id": "essays", "name": "Essays", "short": "Essays",
+    "docs": [
+      { "slug": "alpha", "title": "Alpha", "kind": "Essay", "desc": "First.",
+        "footLeft": "2026", "footRight": "src", "src": "home/_migrated/alpha.html", "visibility": "private" }
+    ] }
+]`;
+
+async function xferRoom(): Promise<Awaited<ReturnType<typeof makeContext>>> {
+  const parent = await Deno.makeTempDir();
+  const root = join(parent, "home");
+  await Deno.mkdir(join(root, "_migrated"), { recursive: true });
+  await Deno.writeTextFile(join(root, "registry.jsonc"), XFER_REGISTRY);
+  await Deno.writeTextFile(
+    join(root, "_migrated", "alpha.html"),
+    "<html><body>ALPHA</body></html>",
+  );
+  return await makeContext(root);
+}
+
+async function emptyRoom(): Promise<Awaited<ReturnType<typeof makeContext>>> {
+  const parent = await Deno.makeTempDir();
+  const root = join(parent, "home");
+  await Deno.mkdir(root, { recursive: true });
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "[]");
+  return await makeContext(root);
+}
+
+Deno.test("POST /api/receive files a doc; READONLY rejects it", async () => {
+  const ctx = await emptyRoom();
+  const body = JSON.stringify({
+    html: "<p>hi</p>",
+    meta: {
+      slug: "gamma",
+      title: "Gamma",
+      kind: "Note",
+      desc: "",
+      footLeft: "L",
+      footRight: "R",
+      originTopic: "x",
+      visibility: "private",
+      origin: "Box",
+    },
+  });
+  const ro = makeHandler({ ctx, readonly: true });
+  assertEquals(
+    (await ro(new Request("http://127.0.0.1/api/receive", { method: "POST", body }))).status,
+    403,
+  );
+
+  const rw = makeHandler({ ctx, readonly: false });
+  const res = await rw(
+    new Request("http://127.0.0.1/api/receive", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    }),
+  );
+  assertEquals(res.status, 201);
+  assertEquals((await res.json() as { slug: string }).slug, "gamma");
+});
+
+Deno.test("send → receive round-trip between two in-memory instances", async () => {
+  const sender = await xferRoom();
+  const receiver = await emptyRoom();
+  const receiverHandler = makeHandler({ ctx: receiver, readonly: false });
+
+  // fake fetch: route the sender's outbound POST straight into the receiver's handler
+  const wire = ((url: string | URL | Request, init?: RequestInit) =>
+    receiverHandler(
+      new Request(String(url), {
+        method: init?.method,
+        headers: init?.headers,
+        body: init?.body as BodyInit,
+      }),
+    )) as typeof fetch;
+
+  const senderHandler = makeHandler({ ctx: sender, readonly: false, sendFetch: wire });
+  const res = await senderHandler(
+    new Request("http://127.0.0.1/api/docs/alpha/send", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ target: "http://127.0.0.1/" }),
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json() as { ok: boolean }).ok, true);
+
+  const receiverRegistry = await Deno.readTextFile(receiver.registryPath);
+  assertEquals(receiverRegistry.includes(`"id": "received"`), true);
+  assertEquals(receiverRegistry.includes(`"review": true`), true);
+});
+
+Deno.test("send with a non-string target is 400", async () => {
+  const ctx = await xferRoom();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/docs/alpha/send", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
