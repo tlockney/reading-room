@@ -87,6 +87,17 @@ be exposed via `tailscale serve`. Set `instance` in `site.jsonc` (e.g. `"instanc
 name a machine's library — it shows in the masthead eyebrow and the library switcher, and defaults
 to the hostname.
 
+### Sending a doc to another instance
+
+Push a curated doc to another of your Reading Room libraries over the tailnet:
+
+    reading-room send <slug> <peer>       # peer = a discovered library's name, or its URL
+    reading-room send <slug> <peer> --with-comments
+
+It arrives quarantined (`review: true`) in the peer's "Received" topic for you to vet and re-file.
+In the browser, use the "send ▸" control in § Manage mode; the target list is the same peer
+discovery that powers the library switcher.
+
 ## Add or change a document
 
 Author a doc with the skill (start from

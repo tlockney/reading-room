@@ -148,6 +148,20 @@ probe are dependency-injected, so the suite needs no real tailnet.
 mDNS (for LAN-only hosts not on a tailnet) is a deferred Phase 2 source — not in this change. See
 `_specs/2026-06-14-peer-discovery-design.md` for the design rationale.
 
+## Document transfer (serve-only)
+
+Send a curated doc to another Reading Room instance over the tailnet-exposed server APIs (no
+Taildrop). `src/transfer.ts` builds a JSON payload (`{ html, meta, comments? }`), `sendDoc` POSTs it
+to a peer's `POST /api/receive`, and `receiveDoc` files it `review: true` into a reserved "Received"
+topic (id `received`), sanitizing + deduping the slug (never trusting the payload's raw slug) and
+appending provenance to `desc`. Driven from the admin "Send to" control (target from `/api/peers`,
+the same discovery list as the library switcher) and the `reading-room send <slug> <peer>` CLI. Both
+routes are serve-only and READONLY-gated; the outbound `fetch` is injected in tests
+(`ServeOptions.sendFetch`), so the round-trip suite needs no network. `build.ts` must never import
+`src/transfer.ts` (pinned in `admin_test.ts`). Security: `POST /api/receive` is a new inbound write
+reachable by any tailnet member — mitigated by review-quarantine + READONLY. See
+`_specs/2026-07-05-doc-transfer-design.md`.
+
 ## Skill relationship
 
 The `editorial-longform-html` Claude skill authors standalone docs and bakes the same editorial
