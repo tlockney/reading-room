@@ -102,14 +102,20 @@ export function resolveInstanceName(site: Site, hostnameFn: () => string = Deno.
 
 /** Resolve the content home the CLI operates on: an explicit --root flag, else
  * $READING_ROOM_HOME, else ${XDG_DATA_HOME:-~/.local/share}/reading-room. The
- * library API (makeContext) stays root-agnostic; only the CLI uses this. */
-export function resolveHome(flagRoot?: string): string {
+ * library API (makeContext) stays root-agnostic; only the CLI uses this.
+ * `env` is injectable (defaults to Deno.env.get) so callers with their own
+ * dependency bag — e.g. agent.ts's AgentDeps — can resolve against it without
+ * touching the real environment. */
+export function resolveHome(
+  flagRoot?: string,
+  env: (k: string) => string | undefined = Deno.env.get,
+): string {
   if (flagRoot) return resolve(flagRoot);
-  const env = Deno.env.get("READING_ROOM_HOME");
-  if (env) return resolve(env);
+  const home = env("READING_ROOM_HOME");
+  if (home) return resolve(home);
   // `||` (not `??`) so an empty-string env var falls through rather than
   // resolving a cwd-relative path like "reading-room".
-  const xdg = Deno.env.get("XDG_DATA_HOME") ||
-    join(Deno.env.get("HOME") || ".", ".local", "share");
+  const xdg = env("XDG_DATA_HOME") ||
+    join(env("HOME") || ".", ".local", "share");
   return join(xdg, "reading-room");
 }
