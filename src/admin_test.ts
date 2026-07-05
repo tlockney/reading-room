@@ -79,6 +79,7 @@ Deno.test("the static build path's import closure never touches admin.ts or comm
   assert(!seen.has("admin.ts"), "build path must not import admin.ts");
   assert(!seen.has("comments.ts"), "build path must not import comments.ts");
   assert(!seen.has("discovery.ts"), "build path must not import discovery.ts");
+  assert(!seen.has("artifacts.ts"), "build path must not import artifacts.ts");
   assert(!seen.has("transfer.ts"), "build path must not import transfer.ts");
   assert(seen.has("render.ts")); // sanity: the walker actually walked
 });

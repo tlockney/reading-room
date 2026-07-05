@@ -136,3 +136,9 @@ Deno.test("resolveInstanceName treats a blank instance as unset", () => {
     "host",
   );
 });
+
+Deno.test("makeContext exposes artifacts paths", async () => {
+  const ctx = await makeContext("/tmp/room");
+  assertEquals(ctx.artifactsDir, join("/tmp/room", "artifacts"));
+  assertEquals(ctx.artifactsManifest, join("/tmp/room", "artifacts.json"));
+});

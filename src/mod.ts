@@ -48,6 +48,18 @@ export {
   setCommentReviewed,
 } from "./comments.ts";
 export type { Comment, CommentInput } from "./comments.ts";
+export {
+  artifactUrl,
+  deriveSlug,
+  extractTitle,
+  loadManifest,
+  publishArtifact,
+  removeArtifact,
+  renderGallery,
+  setArtifactTitle,
+  updateArtifact,
+} from "./artifacts.ts";
+export type { Artifact, Manifest } from "./artifacts.ts";
 export { parsePublishConfig, resolveCmd } from "./publish.ts";
 export type { PublishConfig } from "./publish.ts";
 export { EDITORIAL_BODY, EDITORIAL_HEAD } from "./assets_gen.ts";

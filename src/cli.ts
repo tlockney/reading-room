@@ -10,6 +10,7 @@ import { buildMain } from "./build.ts";
 import { addDocMain } from "./add-doc.ts";
 import { publishMain } from "./publish.ts";
 import { initMain } from "./init.ts";
+import { artifactMain } from "./artifact-cli.ts";
 import { sendMain } from "./transfer-cli.ts";
 import { VERSION } from "./version.ts";
 
@@ -22,6 +23,7 @@ Commands:
   build     [--root <dir>]                Static build of the full corpus
   publish   [--root <dir>] [--dry-run]    Build the shared subset and run publish.jsonc
   add-doc   [--root <dir>] --src <f> ...  Register a standalone editorial doc
+  artifact  <path> | list | update <slug> <p> | rm <slug>   Manage raw-served artifacts
   send      <slug> <peer> [--with-comments]   Send a doc to another RR instance
   init      [--root <dir>]                Scaffold a content home
 
@@ -42,6 +44,8 @@ export async function cli(args: string[]): Promise<number> {
         return await buildMain(rest);
       case "add-doc":
         return await addDocMain(rest);
+      case "artifact":
+        return await artifactMain(rest);
       case "send":
         return await sendMain(rest);
       case "publish":
