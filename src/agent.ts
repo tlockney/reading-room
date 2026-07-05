@@ -138,6 +138,7 @@ export interface AgentDeps {
   execPath: () => string;
   env: (k: string) => string | undefined;
   os: string;
+  sleep: (ms: number) => Promise<void>;
 }
 
 export function realDeps(): AgentDeps {
@@ -172,6 +173,7 @@ export function realDeps(): AgentDeps {
     execPath: () => Deno.execPath(),
     env: (k) => Deno.env.get(k),
     os: Deno.build.os,
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
   };
 }
 
@@ -249,9 +251,18 @@ async function install(
   await deps.mkdir(dirname(pPath));
   await deps.writeTextFile(pPath, plist);
   await deps.run("launchctl", ["bootout", `gui/${u}/${LABEL}`]); // ignore if not loaded
-  const boot = await deps.run("launchctl", ["bootstrap", `gui/${u}`, pPath]);
+  // bootout is asynchronous: an immediate bootstrap can lose the race with the
+  // still-tearing-down old job and fail with "Bootstrap failed: 5: Input/output
+  // error". Retry a few times, giving the old job time to fully unload.
+  let boot = await deps.run("launchctl", ["bootstrap", `gui/${u}`, pPath]);
+  for (let attempt = 1; boot.code !== 0 && attempt < 5; attempt++) {
+    await deps.sleep(300);
+    boot = await deps.run("launchctl", ["bootstrap", `gui/${u}`, pPath]);
+  }
   if (boot.code !== 0) {
-    console.error(`reading-room agent: launchctl bootstrap failed: ${boot.stderr.trim()}`);
+    console.error(
+      `reading-room agent: launchctl bootstrap failed after retries: ${boot.stderr.trim()}`,
+    );
     return 1;
   }
   const ts = await deps.run("tailscale", ["serve", "--bg", String(port)]);
