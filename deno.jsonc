@@ -35,7 +35,7 @@
     // configured in publish.jsonc ({out} → the output dir). --dry-run to preview.
     "publish": "deno run --allow-read --allow-write --allow-run --allow-env=READING_ROOM_HOME,XDG_DATA_HOME,HOME src/publish.ts --root .",
     // Run the CLI dispatcher (serve | build | add-doc | publish | init).
-    "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME src/cli.ts",
+    "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME src/cli.ts",
     // Run the test suite (render injection, registry surgery, comments, skill drift).
     "test": "deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname"
   },

@@ -75,3 +75,27 @@ Deno.test("cli with no subcommand exits 1", async () => {
     console.error = orig;
   }
 });
+
+Deno.test("cli agent --help prints agent usage and exits 0", async () => {
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (m?: unknown) => void lines.push(String(m));
+  try {
+    assertEquals(await cli(["agent", "--help"]), 0);
+  } finally {
+    console.log = orig;
+  }
+  assertStringIncludes(lines.join("\n"), "reading-room agent");
+});
+
+Deno.test("cli usage lists the agent command", async () => {
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (m?: unknown) => void lines.push(String(m));
+  try {
+    await cli(["--help"]);
+  } finally {
+    console.log = orig;
+  }
+  assertStringIncludes(lines.join("\n"), "agent");
+});
