@@ -189,3 +189,53 @@ export async function removeArtifact(opts: {
 export function artifactUrl(dnsName: string, slug: string): string {
   return `https://${dnsName}/artifacts/${slug}/`;
 }
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function humanBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** A light standalone gallery page — deliberately not the editorial bundle, so
+ * it stays visually distinct from the curated library index. */
+export function renderGallery(artifacts: Artifact[]): string {
+  const cards = artifacts
+    .slice()
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map((a) => `
+      <a class="card" href="/artifacts/${a.slug}/">
+        <h2>${escHtml(a.title)}</h2>
+        <p class="meta">${escHtml(a.updatedAt.slice(0, 10))} · ${humanBytes(a.bytes)}${
+      a.isDir ? " · directory" : ""
+    }</p>
+        <code>/artifacts/${a.slug}/</code>
+      </a>`)
+    .join("");
+  const body = artifacts.length
+    ? `<div class="grid">${cards}</div>`
+    : `<p class="empty">No artifacts yet. Publish one with <code>reading-room artifact &lt;path&gt;</code>.</p>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artifacts — Reading Room</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.5 system-ui, sans-serif; max-width: 60rem; margin: 3rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 1.5rem; }
+  .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+  .card { display: block; padding: 1rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+          border-radius: 10px; text-decoration: none; color: inherit; }
+  .card:hover { border-color: color-mix(in srgb, currentColor 45%, transparent); }
+  .card h2 { font-size: 1.05rem; margin: 0 0 .35rem; }
+  .meta { font-size: .8rem; opacity: .7; margin: 0 0 .5rem; }
+  code { font-size: .8rem; opacity: .85; }
+  .empty { opacity: .7; }
+</style></head><body>
+<h1>Artifacts</h1>
+${body}
+</body></html>`;
+}

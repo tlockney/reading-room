@@ -7,6 +7,7 @@ import {
   loadManifest,
   publishArtifact,
   removeArtifact,
+  renderGallery,
   saveManifest,
   setArtifactTitle,
   slugify,
@@ -163,4 +164,24 @@ Deno.test("artifactUrl builds a tailnet content URL", () => {
     artifactUrl("studio.tail1.ts.net", "mockup"),
     "https://studio.tail1.ts.net/artifacts/mockup/",
   );
+});
+
+Deno.test("gallery renders a card per artifact with a content link", () => {
+  const html = renderGallery([{
+    slug: "mockup",
+    title: "Landing <Page>",
+    entry: "index.html",
+    isDir: true,
+    createdAt: "2026-07-04T00:00:00.000Z",
+    updatedAt: "2026-07-04T12:00:00.000Z",
+    bytes: 2048,
+  }]);
+  assertEquals(html.includes(`href="/artifacts/mockup/"`), true);
+  assertEquals(html.includes("Landing &lt;Page&gt;"), true); // title is escaped
+  assertEquals(html.includes("Landing <Page>"), false);
+});
+
+Deno.test("gallery shows an empty state when there are no artifacts", () => {
+  const html = renderGallery([]);
+  assertEquals(html.toLowerCase().includes("no artifacts"), true);
 });
