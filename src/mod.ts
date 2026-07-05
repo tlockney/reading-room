@@ -51,3 +51,5 @@ export type { Comment, CommentInput } from "./comments.ts";
 export { parsePublishConfig, resolveCmd } from "./publish.ts";
 export type { PublishConfig } from "./publish.ts";
 export { EDITORIAL_BODY, EDITORIAL_HEAD } from "./assets_gen.ts";
+export { buildDocPayload, parseReceivedPayload, receiveDoc, sendDoc } from "./transfer.ts";
+export type { DocMeta, DocPayload } from "./transfer.ts";
