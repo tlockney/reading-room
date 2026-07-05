@@ -435,3 +435,16 @@ Deno.test("send with a non-string target is 400", async () => {
   );
   assertEquals(res.status, 400);
 });
+
+Deno.test("send for an unknown local slug is 404", async () => {
+  const ctx = await xferRoom();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/docs/does-not-exist/send", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ target: "http://127.0.0.1/" }),
+    }),
+  );
+  assertEquals(res.status, 404);
+});

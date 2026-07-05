@@ -23,7 +23,7 @@ export function resolvePort(flag: string | undefined, env: string | undefined): 
 export function matchPeer(peers: PeerLike[], needle: string): string | null {
   if (/^https?:\/\//.test(needle)) return needle;
   for (const p of peers) {
-    if (p.identity?.name === needle || p.name === needle || p.url === needle) return p.url;
+    if (p.identity?.name === needle || p.name === needle) return p.url;
   }
   return null;
 }
@@ -52,11 +52,17 @@ export async function sendMain(args: string[]): Promise<number> {
     return 1;
   }
 
-  const res = await fetch(`${base}/api/docs/${slug}/send`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ target, withComments: a["with-comments"] === true }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}/api/docs/${slug}/send`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ target, withComments: a["with-comments"] === true }),
+    });
+  } catch {
+    console.error(`reading-room: no running Reading Room agent on :${port} — is it installed?`);
+    return 1;
+  }
   const text = await res.text();
   if (!res.ok) {
     console.error(`reading-room: ${res.status} ${text}`);

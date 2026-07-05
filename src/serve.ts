@@ -212,6 +212,9 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
       const o = raw as Record<string, unknown>;
       if (typeof o.target !== "string") return jsonError("target must be a string", 400);
       const corpus = await loadCorpus(opts.ctx.registryPath);
+      if (!corpus.some((t) => t.docs.some((d) => d.slug === sendMatch[1]))) {
+        return jsonError(`unknown doc: ${sendMatch[1]}`, 404);
+      }
       const result = await sendDoc(
         opts.ctx,
         corpus,
