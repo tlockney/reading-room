@@ -392,3 +392,88 @@ Deno.test("path traversal out of an artifact is rejected", async () => {
   assertEquals(res.status === 404 || res.status === 403, true);
   await res.body?.cancel();
 });
+
+Deno.test("POST /api/artifacts publishes and returns urls", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const src = join(root, "m.html");
+  await Deno.writeTextFile(src, "<title>M</title>");
+  const h = makeHandler({ ctx, readonly: false, selfDns: () => Promise.resolve("h.tail1.ts.net") });
+
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: src }),
+    }),
+  );
+  assertEquals(res.status, 201);
+  const body = await res.json() as { slug: string; url: string; localUrl: string };
+  assertEquals(body.slug, "m");
+  assertEquals(body.url, "https://h.tail1.ts.net/artifacts/m/");
+  assertEquals(body.localUrl.endsWith("/artifacts/m/"), true);
+});
+
+Deno.test("POST /api/artifacts with a missing path is 400", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: join(root, "does-not-exist.html") }),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("PATCH /api/artifacts/<slug> edits the title", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const rw = makeHandler({ ctx, readonly: false });
+  const res = await rw(
+    new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Renamed" }),
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json() as { title: string }).title, "Renamed");
+});
+
+Deno.test("GET/DELETE /api/artifacts round-trip; mutations blocked under READONLY", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+
+  const ro = makeHandler({ ctx, readonly: true });
+  assertEquals(
+    (await ro(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    403,
+  );
+  assertEquals(
+    (await ro(
+      new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "x" }),
+      }),
+    )).status,
+    403,
+  );
+
+  const rw = makeHandler({ ctx, readonly: false });
+  const list = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
+  assertEquals(list.some((a) => a.slug === slug), true);
+  assertEquals(
+    (await rw(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    200,
+  );
+  const after = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
+  assertEquals(after.some((a) => a.slug === slug), false);
+});

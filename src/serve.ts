@@ -35,11 +35,26 @@ import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
 import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
-import { buildIdentity, listTailscalePeers, makeCachedDiscover, probePeer } from "./discovery.ts";
+import {
+  buildIdentity,
+  listTailscalePeers,
+  makeCachedDiscover,
+  probePeer,
+  selfDnsName,
+} from "./discovery.ts";
 import type { Peer } from "./discovery.ts";
 import { VERSION } from "./version.ts";
 import { serveDir, serveFile } from "jsr:@std/http@1/file-server";
-import { loadManifest, renderGallery } from "./artifacts.ts";
+import {
+  artifactUrl,
+  loadManifest,
+  publishArtifact,
+  removeArtifact,
+  renderGallery,
+  setArtifactTitle,
+  updateArtifact,
+} from "./artifacts.ts";
+import { exists } from "jsr:@std/fs@1";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
@@ -50,6 +65,8 @@ const API_COMMENTS_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments$/;
 const API_COMMENT_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments\/([A-Za-z0-9-]+)$/;
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
 const ARTIFACT_RE = /^\/artifacts\/([A-Za-z0-9_-]+)(\/.*)?$/;
+const API_ARTIFACTS_RE = /^\/api\/artifacts\/?$/;
+const API_ARTIFACT_RE = /^\/api\/artifacts\/([A-Za-z0-9_-]+)$/;
 
 export interface ServeOptions {
   ctx: RoomContext;
@@ -202,6 +219,75 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
       return jsonError("method not allowed", 405);
     }
 
+    if (API_ARTIFACTS_RE.test(path)) {
+      if (req.method === "GET") return json(await loadManifest(opts.ctx.artifactsManifest));
+      if (req.method === "POST") {
+        const raw = await readJson(req);
+        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        const o = raw as Record<string, unknown>;
+        if (typeof o.path !== "string") return jsonError("path must be a string", 400);
+        if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
+        const name = typeof o.name === "string" ? o.name : undefined;
+        const title = typeof o.title === "string" ? o.title : undefined;
+        const art = await publishArtifact({
+          artifactsDir: opts.ctx.artifactsDir,
+          manifestPath: opts.ctx.artifactsManifest,
+          srcPath: o.path,
+          name,
+          title,
+        });
+        const dns = opts.selfDns ? await opts.selfDns() : null;
+        return json({
+          slug: art.slug,
+          url: dns ? artifactUrl(dns, art.slug) : null,
+          localUrl: `/artifacts/${art.slug}/`,
+        }, 201);
+      }
+      return jsonError("method not allowed", 405);
+    }
+
+    const artMatch = path.match(API_ARTIFACT_RE);
+    if (artMatch) {
+      const slug = artMatch[1];
+      if (req.method === "PUT") {
+        const raw = await readJson(req);
+        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        const o = raw as Record<string, unknown>;
+        if (typeof o.path !== "string") return jsonError("path must be a string", 400);
+        if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
+        const updated = await updateArtifact({
+          artifactsDir: opts.ctx.artifactsDir,
+          manifestPath: opts.ctx.artifactsManifest,
+          slug,
+          srcPath: o.path,
+        });
+        return updated ? json(updated) : jsonError(`unknown artifact: ${slug}`, 404);
+      }
+      if (req.method === "PATCH") {
+        const raw = await readJson(req);
+        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        const o = raw as Record<string, unknown>;
+        if (typeof o.title !== "string" || o.title.trim() === "") {
+          return jsonError("title must be a non-empty string", 400);
+        }
+        const renamed = await setArtifactTitle({
+          manifestPath: opts.ctx.artifactsManifest,
+          slug,
+          title: o.title,
+        });
+        return renamed ? json(renamed) : jsonError(`unknown artifact: ${slug}`, 404);
+      }
+      if (req.method === "DELETE") {
+        const ok = await removeArtifact({
+          artifactsDir: opts.ctx.artifactsDir,
+          manifestPath: opts.ctx.artifactsManifest,
+          slug,
+        });
+        return ok ? json({ ok: true, removed: slug }) : jsonError(`unknown artifact: ${slug}`, 404);
+      }
+      return jsonError("method not allowed", 405);
+    }
+
     return jsonError("not found", 404);
   } catch (err) {
     if (err instanceof UnknownSlugError) return jsonError(err.message, 404);
@@ -335,7 +421,7 @@ export async function serveMain(args: string[]): Promise<number> {
     probe: (url) => probePeer(url),
     seeds: ctx.site.seeds,
   });
-  const handler = makeHandler({ ctx, readonly, discover });
+  const handler = makeHandler({ ctx, readonly, discover, selfDns: () => selfDnsName() });
 
   console.log(`\n  Reading Room — rendered live on http://127.0.0.1:${port}/ (localhost only).`);
   console.log(`  Expose over your tailnet (HTTPS):  tailscale serve --bg ${port}`);
