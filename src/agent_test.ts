@@ -164,6 +164,7 @@ function fakeDeps(over: Partial<AgentDeps> = {}): {
     execPath: () => "/exec/deno",
     env: (k) => ({ HOME: "/Users/t", READING_ROOM_HOME: "/room" } as Record<string, string>)[k],
     os: "darwin",
+    sleep: () => Promise.resolve(),
     ...over,
   };
   return { deps, calls, files, mkdirs, removed };
@@ -308,4 +309,31 @@ Deno.test("agent logs prints '(no log yet)' when a log file is unreadable", asyn
     console.log = orig;
   }
   assertStringIncludes(lines.join("\n"), "(no log yet)");
+});
+
+Deno.test("agent install retries bootstrap when the first attempt loses the bootout race", async () => {
+  let bootstraps = 0;
+  const f = fakeDeps({
+    run: (cmd, args) => {
+      if (cmd === "id") return Promise.resolve({ code: 0, stdout: "501\n", stderr: "" });
+      if (cmd === "launchctl" && args[0] === "bootstrap") {
+        bootstraps++;
+        // the first bootstrap loses the race with the still-tearing-down bootout
+        return Promise.resolve(
+          bootstraps === 1
+            ? { code: 5, stdout: "", stderr: "Bootstrap failed: 5: Input/output error" }
+            : { code: 0, stdout: "", stderr: "" },
+        );
+      }
+      return Promise.resolve({ code: 0, stdout: "", stderr: "" });
+    },
+  });
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    assertEquals(await agentMain(["install"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  assertEquals(bootstraps, 2); // retried once, then succeeded — not a hard failure on the first EIO
 });
