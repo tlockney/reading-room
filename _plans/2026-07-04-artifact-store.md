@@ -1,38 +1,60 @@
 # Reading Room Artifact Store — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
+> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
+> checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a persistent, raw-served, tailnet-native artifact store to the Reading Room engine — publish any web document or directory, get a durable `/artifacts/<slug>/` tailnet URL, browse a gallery, and manage it via a localhost API and `reading-room artifact` CLI.
+**Goal:** Add a persistent, raw-served, tailnet-native artifact store to the Reading Room engine —
+publish any web document or directory, get a durable `/artifacts/<slug>/` tailnet URL, browse a
+gallery, and manage it via a localhost API and `reading-room artifact` CLI.
 
-**Architecture:** A serve-only subsystem, mechanically parallel to peer discovery. A pure store module (`src/artifacts.ts`) owns the content-home manifest (`artifacts.json`) and copy-in snapshots (`artifacts/<slug>/…`); `serve.ts` gains a raw content route, a gallery route, and an `/api/artifacts` management surface; `discovery.ts` gains a self-DNSName lookup for URL construction; `cli.ts` gains an `artifact` subcommand that drives the API over `127.0.0.1`. Content is served byte-for-byte — no editorial/admin transform. Nothing touches the build path.
+**Architecture:** A serve-only subsystem, mechanically parallel to peer discovery. A pure store
+module (`src/artifacts.ts`) owns the content-home manifest (`artifacts.json`) and copy-in snapshots
+(`artifacts/<slug>/…`); `serve.ts` gains a raw content route, a gallery route, and an
+`/api/artifacts` management surface; `discovery.ts` gains a self-DNSName lookup for URL
+construction; `cli.ts` gains an `artifact` subcommand that drives the API over `127.0.0.1`. Content
+is served byte-for-byte — no editorial/admin transform. Nothing touches the build path.
 
-**Tech Stack:** Deno, TypeScript (strict, no `any`), `@std/http@1` (`serveDir`/`serveFile`), `@std/fs@1` (`copy`/`walk`/`ensureDir`/`exists`), `@std/path@1`, `@std/assert@1` for tests. Published to JSR as `@tlockney/reading-room`.
+**Tech Stack:** Deno, TypeScript (strict, no `any`), `@std/http@1` (`serveDir`/`serveFile`),
+`@std/fs@1` (`copy`/`walk`/`ensureDir`/`exists`), `@std/path@1`, `@std/assert@1` for tests.
+Published to JSR as `@tlockney/reading-room`.
 
 ## Global Constraints
 
 Every task's requirements implicitly include these:
 
 - **No `any`.** Use `unknown` and narrow with type guards (project rule).
-- **Serve-only isolation.** `build.ts` / `render.ts` must never import `artifacts.ts`. Pinned by the import-closure walk in `src/admin_test.ts` (extend it in Task 7).
-- **No new runtime permissions.** `serve` already carries unrestricted `--allow-read`/`--allow-write` and `--allow-run`. Do not add permission flags to the agent, the installed CLI, or the direct-run shebangs.
-- **`READONLY=1` gates all mutation** (`POST`/`PUT`/`PATCH`/`DELETE`). Routing artifact mutations through the existing `api()` function inherits this automatically (it returns `403` for any non-`GET` under readonly).
-- **Slugs are readable, deduped, and immutable** once created. Slug charset must satisfy the route regex `[A-Za-z0-9_-]+`.
+- **Serve-only isolation.** `build.ts` / `render.ts` must never import `artifacts.ts`. Pinned by the
+  import-closure walk in `src/admin_test.ts` (extend it in Task 7).
+- **No new runtime permissions.** `serve` already carries unrestricted
+  `--allow-read`/`--allow-write` and `--allow-run`. Do not add permission flags to the agent, the
+  installed CLI, or the direct-run shebangs.
+- **`READONLY=1` gates all mutation** (`POST`/`PUT`/`PATCH`/`DELETE`). Routing artifact mutations
+  through the existing `api()` function inherits this automatically (it returns `403` for any
+  non-`GET` under readonly).
+- **Slugs are readable, deduped, and immutable** once created. Slug charset must satisfy the route
+  regex `[A-Za-z0-9_-]+`.
 - **Raw serving.** No `transformDoc` / `injectAdmin` / editorial bundle on artifact content.
 - **Tailnet-only.** No Funnel, no public exposure paths.
-- **Manifest is machine-managed plain JSON** (`artifacts.json`), written with `writeAtomic` — not JSONC, no comment-preservation surgery.
+- **Manifest is machine-managed plain JSON** (`artifacts.json`), written with `writeAtomic` — not
+  JSONC, no comment-preservation surgery.
 - **Commit messages never mention Claude/AI/automation.**
-- **Before every commit:** `deno task test`, `deno fmt --check`, and `deno lint` must pass. Run `deno fmt` freely — the `fmt.exclude` fence protects pinned content.
-- **Timestamps** use `new Date().toISOString()`; **ids/slug-dedupe** are deterministic (no randomness in slugs).
+- **Before every commit:** `deno task test`, `deno fmt --check`, and `deno lint` must pass. Run
+  `deno fmt` freely — the `fmt.exclude` fence protects pinned content.
+- **Timestamps** use `new Date().toISOString()`; **ids/slug-dedupe** are deterministic (no
+  randomness in slugs).
 
 ---
 
 ### Task 1: Artifact manifest model + pure helpers
 
 **Files:**
+
 - Create: `src/artifacts.ts`
 - Test: `src/artifacts_test.ts`
 
 **Interfaces:**
+
 - Consumes: `writeAtomic` from `./comments.ts`; `@std/path@1`.
 - Produces:
   - `interface Artifact { slug: string; title: string; entry: string | null; isDir: boolean; createdAt: string; updatedAt: string; bytes: number }`
@@ -49,13 +71,7 @@ Every task's requirements implicitly include these:
 // src/artifacts_test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
-import {
-  deriveSlug,
-  extractTitle,
-  loadManifest,
-  saveManifest,
-  slugify,
-} from "./artifacts.ts";
+import { deriveSlug, extractTitle, loadManifest, saveManifest, slugify } from "./artifacts.ts";
 
 Deno.test("slugify lowercases and hyphenates", () => {
   assertEquals(slugify("Landing Page Mockup!"), "landing-page-mockup");
@@ -100,8 +116,8 @@ Deno.test("manifest round-trips; missing file loads as empty", async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: FAIL — `Module not found` / `artifacts.ts` does not exist.
+Run: `deno task test src/artifacts_test.ts` Expected: FAIL — `Module not found` / `artifacts.ts`
+does not exist.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -178,8 +194,7 @@ export async function saveManifest(path: string, list: Artifact[]): Promise<void
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: PASS (5 tests).
+Run: `deno task test src/artifacts_test.ts` Expected: PASS (5 tests).
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -194,11 +209,14 @@ git commit -m "feat(artifacts): manifest model + slug/title helpers"
 ### Task 2: Copy-in publish / update / remove
 
 **Files:**
+
 - Modify: `src/artifacts.ts`
 - Test: `src/artifacts_test.ts`
 
 **Interfaces:**
-- Consumes: Task 1 exports; `@std/fs@1` (`copy`, `ensureDir`, `exists`, `walk`), `@std/path@1` (`basename`, `join`).
+
+- Consumes: Task 1 exports; `@std/fs@1` (`copy`, `ensureDir`, `exists`, `walk`), `@std/path@1`
+  (`basename`, `join`).
 - Produces:
   - `publishArtifact(opts: { artifactsDir: string; manifestPath: string; srcPath: string; name?: string; title?: string }): Promise<Artifact>`
   - `updateArtifact(opts: { artifactsDir: string; manifestPath: string; slug: string; srcPath: string }): Promise<Artifact | null>`
@@ -228,7 +246,10 @@ async function scratch(): Promise<{ artifactsDir: string; manifestPath: string; 
 Deno.test("publish a single HTML file: copy-in, title from <title>, entry=basename", async () => {
   const { artifactsDir, manifestPath, srcDir } = await scratch();
   const file = join(srcDir, "report.html");
-  await Deno.writeTextFile(file, "<html><head><title>Q3 Report</title></head><body>x</body></html>");
+  await Deno.writeTextFile(
+    file,
+    "<html><head><title>Q3 Report</title></head><body>x</body></html>",
+  );
 
   const art = await publishArtifact({ artifactsDir, manifestPath, srcPath: file });
 
@@ -245,10 +266,18 @@ Deno.test("publish a directory: index.html becomes entry, name overrides slug", 
   const { artifactsDir, manifestPath, srcDir } = await scratch();
   const site = join(srcDir, "site");
   await Deno.mkdir(site);
-  await Deno.writeTextFile(join(site, "index.html"), "<html><head><title>Home</title></head></html>");
+  await Deno.writeTextFile(
+    join(site, "index.html"),
+    "<html><head><title>Home</title></head></html>",
+  );
   await Deno.writeTextFile(join(site, "app.js"), "console.log(1)");
 
-  const art = await publishArtifact({ artifactsDir, manifestPath, srcPath: site, name: "My Mockup" });
+  const art = await publishArtifact({
+    artifactsDir,
+    manifestPath,
+    srcPath: site,
+    name: "My Mockup",
+  });
 
   assertEquals(art.slug, "my-mockup");
   assertEquals(art.isDir, true);
@@ -263,11 +292,22 @@ Deno.test("update re-snapshots content and bumps updatedAt; slug + title stay", 
   const first = await publishArtifact({ artifactsDir, manifestPath, srcPath: file });
   await Deno.writeTextFile(file, "<title>Two</title>");
 
-  const updated = await updateArtifact({ artifactsDir, manifestPath, slug: first.slug, srcPath: file });
+  const updated = await updateArtifact({
+    artifactsDir,
+    manifestPath,
+    slug: first.slug,
+    srcPath: file,
+  });
   assertEquals(updated?.title, "One"); // title is not re-derived on update; slug is stable
-  assertEquals(await Deno.readTextFile(join(artifactsDir, first.slug, "a.html")), "<title>Two</title>");
+  assertEquals(
+    await Deno.readTextFile(join(artifactsDir, first.slug, "a.html")),
+    "<title>Two</title>",
+  );
   assertEquals(updated!.updatedAt >= first.updatedAt, true);
-  assertEquals(await updateArtifact({ artifactsDir, manifestPath, slug: "nope", srcPath: file }), null);
+  assertEquals(
+    await updateArtifact({ artifactsDir, manifestPath, slug: "nope", srcPath: file }),
+    null,
+  );
 });
 
 Deno.test("setArtifactTitle edits the display title only", async () => {
@@ -298,8 +338,8 @@ Deno.test("remove deletes the snapshot dir and manifest entry", async () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: FAIL — `publishArtifact is not a function` (not yet exported).
+Run: `deno task test src/artifacts_test.ts` Expected: FAIL — `publishArtifact is not a function`
+(not yet exported).
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -428,8 +468,7 @@ export async function removeArtifact(opts: {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: PASS (all Task 1 + Task 2 tests).
+Run: `deno task test src/artifacts_test.ts` Expected: PASS (all Task 1 + Task 2 tests).
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -444,12 +483,15 @@ git commit -m "feat(artifacts): copy-in publish, update, and remove"
 ### Task 3: Self-DNSName lookup + tailnet URL builder
 
 **Files:**
+
 - Modify: `src/discovery.ts`
 - Modify: `src/artifacts.ts` (add `artifactUrl`)
 - Test: `src/discovery_test.ts`, `src/artifacts_test.ts`
 
 **Interfaces:**
-- Consumes: `RunFn`, `defaultRun`, `TAILSCALE_BINS` (already in `discovery.ts` — export `TAILSCALE_BINS`/`defaultRun` if not already; both currently module-private, so add exports).
+
+- Consumes: `RunFn`, `defaultRun`, `TAILSCALE_BINS` (already in `discovery.ts` — export
+  `TAILSCALE_BINS`/`defaultRun` if not already; both currently module-private, so add exports).
 - Produces:
   - `parseSelfDnsName(raw: unknown): string | null` in `discovery.ts`
   - `selfDnsName(run?: RunFn): Promise<string | null>` in `discovery.ts`
@@ -462,7 +504,10 @@ git commit -m "feat(artifacts): copy-in publish, update, and remove"
 import { parseSelfDnsName, selfDnsName } from "./discovery.ts";
 
 Deno.test("parseSelfDnsName reads Self.DNSName and strips the trailing dot", () => {
-  assertEquals(parseSelfDnsName({ Self: { DNSName: "studio.tail1234.ts.net." } }), "studio.tail1234.ts.net");
+  assertEquals(
+    parseSelfDnsName({ Self: { DNSName: "studio.tail1234.ts.net." } }),
+    "studio.tail1234.ts.net",
+  );
   assertEquals(parseSelfDnsName({ Self: {} }), null);
   assertEquals(parseSelfDnsName({}), null);
   assertEquals(parseSelfDnsName("nope"), null);
@@ -485,18 +530,22 @@ Deno.test("selfDnsName returns null when tailscale fails", async () => {
 import { artifactUrl } from "./artifacts.ts";
 
 Deno.test("artifactUrl builds a tailnet content URL", () => {
-  assertEquals(artifactUrl("studio.tail1.ts.net", "mockup"), "https://studio.tail1.ts.net/artifacts/mockup/");
+  assertEquals(
+    artifactUrl("studio.tail1.ts.net", "mockup"),
+    "https://studio.tail1.ts.net/artifacts/mockup/",
+  );
 });
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno task test src/discovery_test.ts src/artifacts_test.ts`
-Expected: FAIL — `parseSelfDnsName`/`selfDnsName`/`artifactUrl` not exported.
+Run: `deno task test src/discovery_test.ts src/artifacts_test.ts` Expected: FAIL —
+`parseSelfDnsName`/`selfDnsName`/`artifactUrl` not exported.
 
 - [ ] **Step 3: Write minimal implementations**
 
-In `src/discovery.ts` — first make the existing constants reusable, then add the lookups. Change the two `const` declarations to exported:
+In `src/discovery.ts` — first make the existing constants reusable, then add the lookups. Change the
+two `const` declarations to exported:
 
 ```ts
 // change: const TAILSCALE_BINS = [ ... ]   →   export const TAILSCALE_BINS = [ ... ]
@@ -541,8 +590,7 @@ export function artifactUrl(dnsName: string, slug: string): string {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno task test src/discovery_test.ts src/artifacts_test.ts`
-Expected: PASS.
+Run: `deno task test src/discovery_test.ts src/artifacts_test.ts` Expected: PASS.
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -558,12 +606,15 @@ git commit -m "feat(artifacts): tailnet self-DNSName lookup and URL builder"
 ### Task 4: Gallery renderer (pure)
 
 **Files:**
+
 - Modify: `src/artifacts.ts`
 - Test: `src/artifacts_test.ts`
 
 **Interfaces:**
+
 - Consumes: `Artifact` (Task 1).
-- Produces: `renderGallery(artifacts: Artifact[]): string` — a complete standalone HTML page (NOT the editorial bundle).
+- Produces: `renderGallery(artifacts: Artifact[]): string` — a complete standalone HTML page (NOT
+  the editorial bundle).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -594,8 +645,7 @@ Deno.test("gallery shows an empty state when there are no artifacts", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: FAIL — `renderGallery is not a function`.
+Run: `deno task test src/artifacts_test.ts` Expected: FAIL — `renderGallery is not a function`.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -654,8 +704,7 @@ ${body}
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `deno task test src/artifacts_test.ts`
-Expected: PASS.
+Run: `deno task test src/artifacts_test.ts` Expected: PASS.
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -670,16 +719,19 @@ git commit -m "feat(artifacts): standalone gallery renderer"
 ### Task 5: RoomContext wiring + serve content route + gallery route
 
 **Files:**
+
 - Modify: `src/config.ts` (add `artifactsDir`, `artifactsManifest` to `RoomContext` + `makeContext`)
 - Modify: `src/serve.ts` (routes + `ServeOptions`)
 - Test: `src/config_test.ts`, `src/serve_test.ts`
 
 **Interfaces:**
+
 - Consumes: `loadManifest`, `renderGallery` (artifacts.ts); `@std/http@1` `serveDir`/`serveFile`.
 - Produces:
   - `RoomContext.artifactsDir: string`, `RoomContext.artifactsManifest: string`
   - `ServeOptions.selfDns?: () => Promise<string | null>` (added; used in Task 6)
-  - Routes: `GET /artifacts` and `/artifacts/` → gallery; `GET /artifacts/<slug>` → 301 to `/artifacts/<slug>/`; `GET /artifacts/<slug>/<rest?>` → raw content.
+  - Routes: `GET /artifacts` and `/artifacts/` → gallery; `GET /artifacts/<slug>` → 301 to
+    `/artifacts/<slug>/`; `GET /artifacts/<slug>/<rest?>` → raw content.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -700,12 +752,17 @@ Deno.test("makeContext exposes artifacts paths", async () => {
 // (makeContext over a temp root + makeHandler). Add:
 import { publishArtifact } from "./artifacts.ts";
 
-async function roomWithArtifact(): Promise<{ ctx: Awaited<ReturnType<typeof makeContext>>; slug: string }> {
+async function roomWithArtifact(): Promise<
+  { ctx: Awaited<ReturnType<typeof makeContext>>; slug: string }
+> {
   const root = await Deno.makeTempDir();
   await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
   const ctx = await makeContext(root);
   const src = join(root, "page.html");
-  await Deno.writeTextFile(src, "<html><head><title>Mock</title></head><body>hello-artifact</body></html>");
+  await Deno.writeTextFile(
+    src,
+    "<html><head><title>Mock</title></head><body>hello-artifact</body></html>",
+  );
   const art = await publishArtifact({
     artifactsDir: ctx.artifactsDir,
     manifestPath: ctx.artifactsManifest,
@@ -760,8 +817,8 @@ Deno.test("path traversal out of an artifact is rejected", async () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno task test src/config_test.ts src/serve_test.ts`
-Expected: FAIL — `artifactsDir` missing / `/artifacts` returns the "Not found." notice.
+Run: `deno task test src/config_test.ts src/serve_test.ts` Expected: FAIL — `artifactsDir` missing /
+`/artifacts` returns the "Not found." notice.
 
 - [ ] **Step 3: Implement**
 
@@ -769,8 +826,8 @@ In `src/config.ts`, extend the interface and `makeContext`:
 
 ```ts
 // in interface RoomContext, after commentsDir:
-  artifactsDir: string;
-  artifactsManifest: string;
+artifactsDir: string;
+artifactsManifest: string;
 ```
 
 ```ts
@@ -827,23 +884,24 @@ async function serveArtifact(req: Request, path: string, opts: ServeOptions): Pr
 }
 ```
 
-Wire routing into `makeHandler`, **before** the `loadCorpus` block (artifacts don't need the registry). Place it right after the `if (path.startsWith("/api/")) return api(req, path, opts);` line:
+Wire routing into `makeHandler`, **before** the `loadCorpus` block (artifacts don't need the
+registry). Place it right after the `if (path.startsWith("/api/")) return api(req, path, opts);`
+line:
 
 ```ts
-    if (path === "/artifacts" || path === "/artifacts/") {
-      if (req.method !== "GET") return notice("Method not allowed.", 405);
-      return page(renderGallery(await loadManifest(opts.ctx.artifactsManifest)));
-    }
-    if (path.startsWith("/artifacts/")) {
-      if (req.method !== "GET") return notice("Method not allowed.", 405);
-      return serveArtifact(req, path, opts);
-    }
+if (path === "/artifacts" || path === "/artifacts/") {
+  if (req.method !== "GET") return notice("Method not allowed.", 405);
+  return page(renderGallery(await loadManifest(opts.ctx.artifactsManifest)));
+}
+if (path.startsWith("/artifacts/")) {
+  if (req.method !== "GET") return notice("Method not allowed.", 405);
+  return serveArtifact(req, path, opts);
+}
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno task test src/config_test.ts src/serve_test.ts`
-Expected: PASS.
+Run: `deno task test src/config_test.ts src/serve_test.ts` Expected: PASS.
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -859,12 +917,16 @@ git commit -m "feat(artifacts): serve raw content + gallery routes"
 ### Task 6: `/api/artifacts` management API
 
 **Files:**
+
 - Modify: `src/serve.ts`
 - Test: `src/serve_test.ts`
 
 **Interfaces:**
-- Consumes: `publishArtifact`, `updateArtifact`, `setArtifactTitle`, `removeArtifact`, `loadManifest`, `artifactUrl` (artifacts.ts); `selfDns` (Task 5); `exists` from `@std/fs@1`.
-- Produces: routes under `/api/artifacts` handled inside the existing `api()` function (inherits the READONLY 403 guard).
+
+- Consumes: `publishArtifact`, `updateArtifact`, `setArtifactTitle`, `removeArtifact`,
+  `loadManifest`, `artifactUrl` (artifacts.ts); `selfDns` (Task 5); `exists` from `@std/fs@1`.
+- Produces: routes under `/api/artifacts` handled inside the existing `api()` function (inherits the
+  READONLY 403 guard).
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -878,11 +940,13 @@ Deno.test("POST /api/artifacts publishes and returns urls", async () => {
   await Deno.writeTextFile(src, "<title>M</title>");
   const h = makeHandler({ ctx, readonly: false, selfDns: () => Promise.resolve("h.tail1.ts.net") });
 
-  const res = await h(new Request("http://127.0.0.1/api/artifacts", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ path: src }),
-  }));
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: src }),
+    }),
+  );
   assertEquals(res.status, 201);
   const body = await res.json() as { slug: string; url: string; localUrl: string };
   assertEquals(body.slug, "m");
@@ -895,22 +959,26 @@ Deno.test("POST /api/artifacts with a missing path is 400", async () => {
   await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
   const ctx = await makeContext(root);
   const h = makeHandler({ ctx, readonly: false });
-  const res = await h(new Request("http://127.0.0.1/api/artifacts", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ path: join(root, "does-not-exist.html") }),
-  }));
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: join(root, "does-not-exist.html") }),
+    }),
+  );
   assertEquals(res.status, 400);
 });
 
 Deno.test("PATCH /api/artifacts/<slug> edits the title", async () => {
   const { ctx, slug } = await roomWithArtifact();
   const rw = makeHandler({ ctx, readonly: false });
-  const res = await rw(new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title: "Renamed" }),
-  }));
+  const res = await rw(
+    new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Renamed" }),
+    }),
+  );
   assertEquals(res.status, 200);
   assertEquals((await res.json() as { title: string }).title, "Renamed");
 });
@@ -919,26 +987,40 @@ Deno.test("GET/DELETE /api/artifacts round-trip; mutations blocked under READONL
   const { ctx, slug } = await roomWithArtifact();
 
   const ro = makeHandler({ ctx, readonly: true });
-  assertEquals((await ro(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status, 403);
-  assertEquals((await ro(new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ title: "x" }),
-  }))).status, 403);
+  assertEquals(
+    (await ro(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    403,
+  );
+  assertEquals(
+    (await ro(
+      new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "x" }),
+      }),
+    )).status,
+    403,
+  );
 
   const rw = makeHandler({ ctx, readonly: false });
-  const list = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as { slug: string }[];
+  const list = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
   assertEquals(list.some((a) => a.slug === slug), true);
-  assertEquals((await rw(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status, 200);
-  const after = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as { slug: string }[];
+  assertEquals(
+    (await rw(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    200,
+  );
+  const after = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
   assertEquals(after.some((a) => a.slug === slug), false);
 });
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `deno task test src/serve_test.ts`
-Expected: FAIL — `/api/artifacts` returns `404 not found`.
+Run: `deno task test src/serve_test.ts` Expected: FAIL — `/api/artifacts` returns `404 not found`.
 
 - [ ] **Step 3: Implement**
 
@@ -964,80 +1046,84 @@ const API_ARTIFACTS_RE = /^\/api\/artifacts\/?$/;
 const API_ARTIFACT_RE = /^\/api\/artifacts\/([A-Za-z0-9_-]+)$/;
 ```
 
-Inside `api()`, before the final `return jsonError("not found", 404);`, add the dispatch (the top-of-`api()` guard already returns 403 for non-GET under readonly, so no per-verb readonly checks are needed here):
+Inside `api()`, before the final `return jsonError("not found", 404);`, add the dispatch (the
+top-of-`api()` guard already returns 403 for non-GET under readonly, so no per-verb readonly checks
+are needed here):
 
 ```ts
-    if (API_ARTIFACTS_RE.test(path)) {
-      if (req.method === "GET") return json(await loadManifest(opts.ctx.artifactsManifest));
-      if (req.method === "POST") {
-        const raw = await readJson(req);
-        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
-        const o = raw as Record<string, unknown>;
-        if (typeof o.path !== "string") return jsonError("path must be a string", 400);
-        if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
-        const name = typeof o.name === "string" ? o.name : undefined;
-        const title = typeof o.title === "string" ? o.title : undefined;
-        const art = await publishArtifact({
-          artifactsDir: opts.ctx.artifactsDir,
-          manifestPath: opts.ctx.artifactsManifest,
-          srcPath: o.path,
-          name,
-          title,
-        });
-        const dns = opts.selfDns ? await opts.selfDns() : null;
-        return json({
-          slug: art.slug,
-          url: dns ? artifactUrl(dns, art.slug) : null,
-          localUrl: `/artifacts/${art.slug}/`,
-        }, 201);
-      }
-      return jsonError("method not allowed", 405);
-    }
+if (API_ARTIFACTS_RE.test(path)) {
+  if (req.method === "GET") return json(await loadManifest(opts.ctx.artifactsManifest));
+  if (req.method === "POST") {
+    const raw = await readJson(req);
+    if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+    const o = raw as Record<string, unknown>;
+    if (typeof o.path !== "string") return jsonError("path must be a string", 400);
+    if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
+    const name = typeof o.name === "string" ? o.name : undefined;
+    const title = typeof o.title === "string" ? o.title : undefined;
+    const art = await publishArtifact({
+      artifactsDir: opts.ctx.artifactsDir,
+      manifestPath: opts.ctx.artifactsManifest,
+      srcPath: o.path,
+      name,
+      title,
+    });
+    const dns = opts.selfDns ? await opts.selfDns() : null;
+    return json({
+      slug: art.slug,
+      url: dns ? artifactUrl(dns, art.slug) : null,
+      localUrl: `/artifacts/${art.slug}/`,
+    }, 201);
+  }
+  return jsonError("method not allowed", 405);
+}
 
-    const artMatch = path.match(API_ARTIFACT_RE);
-    if (artMatch) {
-      const slug = artMatch[1];
-      if (req.method === "PUT") {
-        const raw = await readJson(req);
-        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
-        const o = raw as Record<string, unknown>;
-        if (typeof o.path !== "string") return jsonError("path must be a string", 400);
-        if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
-        const updated = await updateArtifact({
-          artifactsDir: opts.ctx.artifactsDir,
-          manifestPath: opts.ctx.artifactsManifest,
-          slug,
-          srcPath: o.path,
-        });
-        return updated ? json(updated) : jsonError(`unknown artifact: ${slug}`, 404);
-      }
-      if (req.method === "PATCH") {
-        const raw = await readJson(req);
-        if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
-        const o = raw as Record<string, unknown>;
-        if (typeof o.title !== "string" || o.title.trim() === "") {
-          return jsonError("title must be a non-empty string", 400);
-        }
-        const renamed = await setArtifactTitle({
-          manifestPath: opts.ctx.artifactsManifest,
-          slug,
-          title: o.title,
-        });
-        return renamed ? json(renamed) : jsonError(`unknown artifact: ${slug}`, 404);
-      }
-      if (req.method === "DELETE") {
-        const ok = await removeArtifact({
-          artifactsDir: opts.ctx.artifactsDir,
-          manifestPath: opts.ctx.artifactsManifest,
-          slug,
-        });
-        return ok ? json({ ok: true, removed: slug }) : jsonError(`unknown artifact: ${slug}`, 404);
-      }
-      return jsonError("method not allowed", 405);
+const artMatch = path.match(API_ARTIFACT_RE);
+if (artMatch) {
+  const slug = artMatch[1];
+  if (req.method === "PUT") {
+    const raw = await readJson(req);
+    if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+    const o = raw as Record<string, unknown>;
+    if (typeof o.path !== "string") return jsonError("path must be a string", 400);
+    if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
+    const updated = await updateArtifact({
+      artifactsDir: opts.ctx.artifactsDir,
+      manifestPath: opts.ctx.artifactsManifest,
+      slug,
+      srcPath: o.path,
+    });
+    return updated ? json(updated) : jsonError(`unknown artifact: ${slug}`, 404);
+  }
+  if (req.method === "PATCH") {
+    const raw = await readJson(req);
+    if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+    const o = raw as Record<string, unknown>;
+    if (typeof o.title !== "string" || o.title.trim() === "") {
+      return jsonError("title must be a non-empty string", 400);
     }
+    const renamed = await setArtifactTitle({
+      manifestPath: opts.ctx.artifactsManifest,
+      slug,
+      title: o.title,
+    });
+    return renamed ? json(renamed) : jsonError(`unknown artifact: ${slug}`, 404);
+  }
+  if (req.method === "DELETE") {
+    const ok = await removeArtifact({
+      artifactsDir: opts.ctx.artifactsDir,
+      manifestPath: opts.ctx.artifactsManifest,
+      slug,
+    });
+    return ok ? json({ ok: true, removed: slug }) : jsonError(`unknown artifact: ${slug}`, 404);
+  }
+  return jsonError("method not allowed", 405);
+}
 ```
 
-Finally, extend the existing `discovery.ts` import in `serve.ts` to add `selfDnsName` **without dropping `buildIdentity`** (it backs the `/.well-known/reading-room.json` route). The line currently reads:
+Finally, extend the existing `discovery.ts` import in `serve.ts` to add `selfDnsName` **without
+dropping `buildIdentity`** (it backs the `/.well-known/reading-room.json` route). The line currently
+reads:
 
 ```ts
 import { buildIdentity, listTailscalePeers, makeCachedDiscover, probePeer } from "./discovery.ts";
@@ -1058,13 +1144,12 @@ import {
 Then inject `selfDns` in `serveMain`, after `const discover = ...`:
 
 ```ts
-  const handler = makeHandler({ ctx, readonly, discover, selfDns: () => selfDnsName() });
+const handler = makeHandler({ ctx, readonly, discover, selfDns: () => selfDnsName() });
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno task test src/serve_test.ts`
-Expected: PASS.
+Run: `deno task test src/serve_test.ts` Expected: PASS.
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -1079,26 +1164,33 @@ git commit -m "feat(artifacts): /api/artifacts management routes"
 ### Task 7: Build-purity pin + public exports
 
 **Files:**
+
 - Modify: `src/admin_test.ts` (extend the import-closure assertion)
 - Modify: `src/mod.ts` (export the artifact public surface)
 - Test: `src/admin_test.ts`
 
 **Interfaces:**
+
 - Consumes: everything exported from `artifacts.ts`.
-- Produces: `mod.ts` re-exports `Artifact`, `Manifest`, `publishArtifact`, `updateArtifact`, `setArtifactTitle`, `removeArtifact`, `loadManifest`, `deriveSlug`, `extractTitle`, `artifactUrl`, `renderGallery`.
+- Produces: `mod.ts` re-exports `Artifact`, `Manifest`, `publishArtifact`, `updateArtifact`,
+  `setArtifactTitle`, `removeArtifact`, `loadManifest`, `deriveSlug`, `extractTitle`, `artifactUrl`,
+  `renderGallery`.
 
 - [ ] **Step 1: Extend the failing test**
 
-In `src/admin_test.ts`, add one assertion to the existing "import closure" test, after the `discovery.ts` line:
+In `src/admin_test.ts`, add one assertion to the existing "import closure" test, after the
+`discovery.ts` line:
 
 ```ts
-  assert(!seen.has("artifacts.ts"), "build path must not import artifacts.ts");
+assert(!seen.has("artifacts.ts"), "build path must not import artifacts.ts");
 ```
 
 - [ ] **Step 2: Run test to verify current state**
 
-Run: `deno task test src/admin_test.ts`
-Expected: PASS already (build.ts does not import artifacts.ts). This assertion is a **regression guard** — it locks the invariant so a future edit that routes artifacts through the build path fails loudly. If it FAILS now, a wrongful import was introduced in an earlier task — fix that import before continuing.
+Run: `deno task test src/admin_test.ts` Expected: PASS already (build.ts does not import
+artifacts.ts). This assertion is a **regression guard** — it locks the invariant so a future edit
+that routes artifacts through the build path fails loudly. If it FAILS now, a wrongful import was
+introduced in an earlier task — fix that import before continuing.
 
 - [ ] **Step 3: Add the exports**
 
@@ -1121,8 +1213,8 @@ export type { Artifact, Manifest } from "./artifacts.ts";
 
 - [ ] **Step 4: Run the full suite**
 
-Run: `deno test --allow-read --allow-write --allow-env`
-Expected: PASS (all tests, including the extended purity guard).
+Run: `deno test --allow-read --allow-write --allow-env` Expected: PASS (all tests, including the
+extended purity guard).
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -1137,17 +1229,22 @@ git commit -m "feat(artifacts): pin build-purity and export public surface"
 ### Task 8: `reading-room artifact` CLI
 
 **Files:**
+
 - Create: `src/artifact-cli.ts`
 - Create: `src/artifact-cli_test.ts`
 - Modify: `src/cli.ts` (route `artifact` + usage line)
 
 **Interfaces:**
+
 - Consumes: `parseArgs` from `@std/cli@1/parse-args`.
-- Produces: `artifactMain(args: string[]): Promise<number>` — subcommands `<path>` (publish), `list`, `update <slug> <path>`, `rm <slug>`; talks to `http://127.0.0.1:<port>/api/artifacts`. Port: `--port` → `$PORT` → `8413`.
+- Produces: `artifactMain(args: string[]): Promise<number>` — subcommands `<path>` (publish),
+  `list`, `update <slug> <path>`, `rm <slug>`; talks to `http://127.0.0.1:<port>/api/artifacts`.
+  Port: `--port` → `$PORT` → `8413`.
 
 - [ ] **Step 1: Write the failing test**
 
-The network paths need a running server, so unit-test the pure pieces: argument→request mapping and the port resolver. Factor those into exported pure helpers.
+The network paths need a running server, so unit-test the pure pieces: argument→request mapping and
+the port resolver. Factor those into exported pure helpers.
 
 ```ts
 // src/artifact-cli_test.ts
@@ -1182,7 +1279,10 @@ Deno.test("planRequest maps subcommands to method + path + body", () => {
 });
 
 Deno.test("planRequest rejects malformed invocations", () => {
-  assertEquals(planRequest([], {}), "usage: reading-room artifact <path> | list | update <slug> <path> | rm <slug>");
+  assertEquals(
+    planRequest([], {}),
+    "usage: reading-room artifact <path> | list | update <slug> <path> | rm <slug>",
+  );
   assertEquals(typeof planRequest(["rm"], {}), "string");
   assertEquals(typeof planRequest(["update", "mock"], {}), "string");
 });
@@ -1190,8 +1290,7 @@ Deno.test("planRequest rejects malformed invocations", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `deno task test src/artifact-cli_test.ts`
-Expected: FAIL — module not found.
+Run: `deno task test src/artifact-cli_test.ts` Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement**
 
@@ -1230,7 +1329,9 @@ export function planRequest(
   if (a === "list") return { method: "GET", path: "/api/artifacts" };
   if (a === "rm") return b ? { method: "DELETE", path: `/api/artifacts/${b}` } : USAGE;
   if (a === "update") {
-    return b && c ? { method: "PUT", path: `/api/artifacts/${b}`, body: { path: resolve(c) } } : USAGE;
+    return b && c
+      ? { method: "PUT", path: `/api/artifacts/${b}`, body: { path: resolve(c) } }
+      : USAGE;
   }
   // default: publish a path
   const body: Record<string, string> = { path: resolve(a) };
@@ -1288,13 +1389,12 @@ import { artifactMain } from "./artifact-cli.ts";
 And add a usage line under the Commands block in `USAGE`:
 
 ```
-  artifact  <path> | list | update <slug> <p> | rm <slug>   Manage raw-served artifacts
+artifact  <path> | list | update <slug> <p> | rm <slug>   Manage raw-served artifacts
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `deno task test src/artifact-cli_test.ts`
-Expected: PASS.
+Run: `deno task test src/artifact-cli_test.ts` Expected: PASS.
 
 - [ ] **Step 5: Format, lint, commit**
 
@@ -1309,6 +1409,7 @@ git commit -m "feat(artifacts): reading-room artifact CLI"
 ### Task 9: Docs + full-suite green
 
 **Files:**
+
 - Modify: `CLAUDE.md` (engine repo — add an artifact-store section + the serve-only invariant)
 - Modify: `README.md` (short feature blurb + CLI usage)
 - Test: full suite + fmt + lint
@@ -1336,11 +1437,14 @@ permissions (serve's existing `--allow-read`/`--allow-write`/`--allow-run` cover
 `_specs/2026-07-04-artifact-store-design.md`.
 ```
 
-Also, in land mine #7 (the `--allow-run` note), append one sentence: "`src/artifacts.ts` reuses that same `tailscale` shell-out (via `selfDnsName`) to build artifact URLs — it adds no new external calls or permissions."
+Also, in land mine #7 (the `--allow-run` note), append one sentence: "`src/artifacts.ts` reuses that
+same `tailscale` shell-out (via `selfDnsName`) to build artifact URLs — it adds no new external
+calls or permissions."
 
 - [ ] **Step 2: Update `README.md`**
 
-Locate the section documenting the `reading-room` subcommands (near `serve`/`add-doc`). Add this blurb in the matching heading style:
+Locate the section documenting the `reading-room` subcommands (near `serve`/`add-doc`). Add this
+blurb in the matching heading style:
 
 ```markdown
 ### Artifacts
@@ -1390,7 +1494,8 @@ reading-room artifact rm smoke
 kill %1
 ```
 
-Expected: publish prints a URL; the raw page has no `RR-ADMIN`; the gallery lists then drops the artifact.
+Expected: publish prints a URL; the raw page has no `RR-ADMIN`; the gallery lists then drops the
+artifact.
 
 ---
 
@@ -1406,13 +1511,17 @@ Expected: publish prints a URL; the raw page has no `RR-ADMIN`; the gallery list
 ## Notes for the implementer
 
 - The existing `src/serve_test.ts` already builds a `RoomContext` over a temp dir and calls
-  `makeHandler` — reuse that harness; the Task 5/6 snippets assume `makeContext`, `makeHandler`,
-  and `join` are already imported there (add any that are missing).
-- Deno's `serveDir`/`serveFile` set their own `content-type` and handle range requests; do not
-  wrap their responses in `page()` (that would corrupt binary/non-HTML artifacts).
+  `makeHandler` — reuse that harness; the Task 5/6 snippets assume `makeContext`, `makeHandler`, and
+  `join` are already imported there (add any that are missing).
+- Deno's `serveDir`/`serveFile` set their own `content-type` and handle range requests; do not wrap
+  their responses in `page()` (that would corrupt binary/non-HTML artifacts).
 - Keep `deno fmt`'s `fmt.exclude` fence intact; none of the new files are excluded, so format them
   normally.
-- `deno task test <file>` runs the repo's test task (`deno test --allow-read --allow-write
-  --allow-env`) scoped to that file — Deno forwards the trailing path argument. Use it rather than a
-  bare `deno test <file>`, which would fail on missing permissions (temp dirs, env reads).
+- `deno task test <file>` runs the repo's test task
+  (`deno test --allow-read --allow-write
+  --allow-env`) scoped to that file — Deno forwards the
+  trailing path argument. Use it rather than a bare `deno test <file>`, which would fail on missing
+  permissions (temp dirs, env reads).
+
+```
 ```

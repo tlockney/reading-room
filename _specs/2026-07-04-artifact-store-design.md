@@ -16,18 +16,18 @@ any device on the tailnet.
 
 The enabling insight the user identified: **only the open-source Tailscale client on macOS can
 `tailscale serve` a filesystem path**; the App Store / standalone client can only proxy to a
-localhost port. But the Reading Room agent is *already* that localhost port, already fronted by
+localhost port. But the Reading Room agent is _already_ that localhost port, already fronted by
 `tailscale serve <port>`. So if the agent can serve arbitrary snapshotted content, arbitrary files
-become reachable over the tailnet through the port-proxy the App Store client *can* do — with no
+become reachable over the tailnet through the port-proxy the App Store client _can_ do — with no
 open-source client and no second static server per share.
 
 ## Decisions (from the design conversation)
 
 1. **A separate, raw-served store — a sibling to the curated library, not part of it.** The library
    already persists standalone HTML at stable `/docs/<slug>` tailnet URLs with a management API, so
-   the real distinguishing line is **rendering + curation**: library docs are *curated and
-   transformed* (editorial authoring, a topic, title/kind/desc, and the server heals them + injects
-   the editorial/admin/comments chrome); artifacts are *persisted and served verbatim* — any web
+   the real distinguishing line is **rendering + curation**: library docs are _curated and
+   transformed_ (editorial authoring, a topic, title/kind/desc, and the server heals them + injects
+   the editorial/admin/comments chrome); artifacts are _persisted and served verbatim_ — any web
    document, no chrome, no topic, low ceremony. That raw-serving requirement is precisely why
    artifacts cannot just be registry docs served through `/docs/` (that path transforms everything).
    The two subsystems **share the serving substrate** (running server, `tailscale serve` proxy,
@@ -37,9 +37,9 @@ open-source client and no second static server per share.
 2. **Content is snapshotted (copy-in), not referenced.** On publish, content is copied into the
    content home and served from there — immutable until an explicit `update`. Durable (the source
    can move, change, or be deleted), a self-contained payload (which sets up taildrop transfer
-   cleanly — see the tie-in below), and consistent with the `_migrated/` precedent and the
-   "redeploy to update" model. A live-reference mode was **rejected** for v1 (fragile, not a real
-   snapshot, awkward to taildrop).
+   cleanly — see the tie-in below), and consistent with the `_migrated/` precedent and the "redeploy
+   to update" model. A live-reference mode was **rejected** for v1 (fragile, not a real snapshot,
+   awkward to taildrop).
 
 3. **Ephemeral-vs-persistent: persistent.** An earlier iteration scoped this as ephemeral in-memory
    shares; the design was deliberately reopened and moved to a durable store precisely to make it an
@@ -49,12 +49,14 @@ open-source client and no second static server per share.
    in static builds (`build.ts` must not import it), and its management routes are disabled under
    `READONLY=1`.
 
-5. **Readable, stable slugs.** The URL slug is derived from the document `<title>` (or the basename),
-   overridable with `--name`, and auto-deduped on collision (`mockup` → `mockup-2`). The slug is
-   **immutable** once created, so published URLs never break; only the display `title` is editable.
+5. **Readable, stable slugs.** The URL slug is derived from the document `<title>` (or the
+   basename), overridable with `--name`, and auto-deduped on collision (`mockup` → `mockup-2`). The
+   slug is **immutable** once created, so published URLs never break; only the display `title` is
+   editable.
 
 6. **The tailnet is the trust boundary — no Funnel.** Reachability is tailnet-only, exactly like the
-   rest of the Reading Room. Public exposure stays the job of the existing `tailscale-share
+   rest of the Reading Room. Public exposure stays the job of the existing
+   `tailscale-share
    --funnel` skill, not this feature.
 
 7. **A browsable gallery.** The store gets a serve-only gallery page (like the artifacts gallery),
@@ -112,12 +114,12 @@ engine code stays generic.
     "artifacts": [
       {
         "slug": "mockup",
-        "title": "Landing Page Mockup",   // from <title>, else basename; editable
-        "entry": "index.html",             // file served at the slug root
+        "title": "Landing Page Mockup", // from <title>, else basename; editable
+        "entry": "index.html", // file served at the slug root
         "isDir": true,
         "createdAt": "2026-07-04T…Z",
         "updatedAt": "2026-07-04T…Z",
-        "bytes": 48213                      // total snapshot size, for the gallery
+        "bytes": 48213 // total snapshot size, for the gallery
       }
     ]
   }
@@ -141,9 +143,9 @@ engine code stays generic.
 ### Content route — `GET /artifacts/<slug>/<rest?>`
 
 - Resolve `<slug>` in the manifest → 404 if unknown.
-- Serve **raw**, with **no editorial/admin transform**, via `@std/http/file-server`
-  (`serveDir` for `isDir` with `showIndex` + `showDirListing`; `serveFile` for single-file, mapping
-  the slug root to `entry`).
+- Serve **raw**, with **no editorial/admin transform**, via `@std/http/file-server` (`serveDir` for
+  `isDir` with `showIndex` + `showDirListing`; `serveFile` for single-file, mapping the slug root to
+  `entry`).
 - **Path containment is enforced** — resolve the requested path against `artifacts/<slug>/` and
   reject anything that escapes it (the one security-sensitive path). `serveDir`'s own root-jail is
   the mechanism; a test pins a `../` rejection.
@@ -166,19 +168,19 @@ engine code stays generic.
 Mounted under `/api/artifacts`, mirroring the existing `/api/docs` dispatch and its `READONLY`
 guard.
 
-| Method + path | Body | Effect |
-|---|---|---|
-| `POST /api/artifacts` | `{ path, name?, title? }` | validate + copy-in, write manifest, `201 { slug, url, localUrl }` |
-| `GET /api/artifacts` | — | list all entries |
-| `GET /api/artifacts/<slug>` | — | one entry |
-| `PUT /api/artifacts/<slug>` | `{ path }` | re-snapshot content, bump `updatedAt` (redeploy-to-same-URL) |
-| `PATCH /api/artifacts/<slug>` | `{ title }` | edit display title (slug immutable) |
-| `DELETE /api/artifacts/<slug>` | — | drop manifest entry + delete `artifacts/<slug>/` |
+| Method + path                  | Body                      | Effect                                                            |
+| ------------------------------ | ------------------------- | ----------------------------------------------------------------- |
+| `POST /api/artifacts`          | `{ path, name?, title? }` | validate + copy-in, write manifest, `201 { slug, url, localUrl }` |
+| `GET /api/artifacts`           | —                         | list all entries                                                  |
+| `GET /api/artifacts/<slug>`    | —                         | one entry                                                         |
+| `PUT /api/artifacts/<slug>`    | `{ path }`                | re-snapshot content, bump `updatedAt` (redeploy-to-same-URL)      |
+| `PATCH /api/artifacts/<slug>`  | `{ title }`               | edit display title (slug immutable)                               |
+| `DELETE /api/artifacts/<slug>` | —                         | drop manifest entry + delete `artifacts/<slug>/`                  |
 
 `POST`/`PUT` read an arbitrary source path server-side (already within serve's unrestricted
 `--allow-read`) and write only into the content home. Validation: the source path must exist and be
-readable — a missing or unreadable path returns a clear `400`. No path-jail on the *source* is
-needed (read is already unrestricted); the jail that matters is on *serving* (containment, above).
+readable — a missing or unreadable path returns a clear `400`. No path-jail on the _source_ is
+needed (read is already unrestricted); the jail that matters is on _serving_ (containment, above).
 
 ### CLI (`src/cli.ts` → new `src/artifact.ts` command module)
 
@@ -207,7 +209,7 @@ print the localhost URL plus a hint that the tailnet URL needs `tailscale serve 
 2. **Content-home storage, generic engine.** Artifacts and their manifest live in the content home;
    engine code hardcodes no machine identity or path. The split holds.
 3. **Raw serving.** No `transformDoc`, no `injectAdmin`, no editorial bundle on `/artifacts/<slug>/`
-   content. The gallery is UI and may be styled, but artifact *content* is byte-for-byte what was
+   content. The gallery is UI and may be styled, but artifact _content_ is byte-for-byte what was
    snapshotted.
 4. **`READONLY=1` gates all mutation** (`POST`/`PUT`/`PATCH`/`DELETE`), consistent with `/api/docs`.
 5. **No new permissions.** serve already carries unrestricted `--allow-read` / `--allow-write` and
@@ -227,8 +229,8 @@ print the localhost URL plus a hint that the tailnet URL needs `tailscale serve 
   listing); `/artifacts/<slug>` → `/artifacts/<slug>/` redirect; 404 unknown slug; **containment
   rejection** (`../` escape); `READONLY` 403 on each mutation verb.
 - **Store / manifest (unit):** slug derivation + dedupe; `<title>` extraction (and basename
-  fallback); copy-in of a file and of a directory tree; `update` re-snapshots and bumps
-  `updatedAt`; `delete` removes both the manifest entry and `artifacts/<slug>/`.
+  fallback); copy-in of a file and of a directory tree; `update` re-snapshots and bumps `updatedAt`;
+  `delete` removes both the manifest entry and `artifacts/<slug>/`.
 - **Gallery:** renders one card per entry; empty state.
 - **CLI:** arg parsing for each subcommand; the "no server running" error path.
 - The tailscale hostname lookup is injected/faked, like the discovery suite.
@@ -253,5 +255,5 @@ not done silently as part of the code work.
 A snapshotted artifact directory is a self-contained payload — exactly what enhancement #2 (transfer
 Reading Room files between machines via `tailscale file cp`) would move. Designing copy-in now means
 that feature can taildrop an artifact (or a library doc) without a separate packaging step. That
-enhancement remains a **separate** spec/plan cycle; this note only records that the two are no longer
-fully independent, and that copy-in was chosen partly with it in mind.
+enhancement remains a **separate** spec/plan cycle; this note only records that the two are no
+longer fully independent, and that copy-in was chosen partly with it in mind.
