@@ -6,13 +6,16 @@
  * "Received" topic. No Taildrop, no shell-out. build.ts MUST NOT import this
  * module (serve-only, like discovery.ts; pinned in admin_test.ts).
  */
-import { exists } from "jsr:@std/fs@1";
-import { join } from "jsr:@std/path@1";
+import { ensureDir, exists } from "jsr:@std/fs@1";
+import { basename, join } from "jsr:@std/path@1";
+import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { resolveInstanceName } from "./config.ts";
 import type { RoomContext } from "./config.ts";
 import type { Doc, Topic } from "./render.ts";
-import { loadComments } from "./comments.ts";
+import { loadComments, writeAtomic } from "./comments.ts";
 import type { Comment } from "./comments.ts";
+import { insertDoc, insertTopic, slugExists } from "./registry-edit.ts";
+import type { DocEntry } from "./registry-edit.ts";
 
 export interface DocMeta {
   slug: string;
@@ -117,4 +120,61 @@ export function parseReceivedPayload(raw: unknown): DocPayload | string {
     payload.comments = o.comments as Comment[];
   }
   return payload;
+}
+
+/** A safe, unique slug: strip to the route charset, fall back if empty, then
+ * suffix -2, -3, … until it clears the registry. Never trusts the raw slug. */
+function safeUniqueSlug(registry: string, raw: string): string {
+  const base = raw.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") ||
+    "received-doc";
+  let slug = base;
+  for (let n = 2; slugExists(registry, slug); n++) slug = `${base}-${n}`;
+  return slug;
+}
+
+function topicExists(registry: string, id: string): boolean {
+  const corpus = parseJsonc(registry) as unknown as Array<{ id?: unknown }>;
+  return Array.isArray(corpus) && corpus.some((t) => t?.id === id);
+}
+
+export async function receiveDoc(
+  ctx: RoomContext,
+  payload: DocPayload,
+): Promise<{ slug: string; topic: string }> {
+  const registry = await Deno.readTextFile(ctx.registryPath);
+  const slug = safeUniqueSlug(registry, payload.meta.slug);
+
+  await ensureDir(ctx.migratedDir);
+  await Deno.writeTextFile(join(ctx.migratedDir, `${slug}.html`), payload.html);
+  if (payload.comments && payload.comments.length) {
+    await ensureDir(ctx.commentsDir);
+    await writeAtomic(
+      join(ctx.commentsDir, `${slug}.json`),
+      JSON.stringify(payload.comments, null, 2) + "\n",
+    );
+  }
+
+  const m = payload.meta;
+  const entry: DocEntry = {
+    slug,
+    title: m.title,
+    kind: m.kind,
+    desc: m.desc ? `${m.desc} (received from ${m.origin})` : `Received from ${m.origin}`,
+    footLeft: m.footLeft,
+    footRight: m.footRight,
+    src: `${basename(ctx.root)}/_migrated/${slug}.html`,
+    visibility: m.visibility,
+    review: true,
+  };
+  const next = topicExists(registry, "received")
+    ? insertDoc(registry, "received", entry)
+    : insertTopic(registry, {
+      num: "§ 99",
+      id: "received",
+      name: "Received",
+      short: "Inbox",
+      docs: [entry],
+    });
+  await writeAtomic(ctx.registryPath, next);
+  return { slug, topic: "received" };
 }
