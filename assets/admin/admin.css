@@ -426,3 +426,21 @@
   background: transparent;
   cursor: pointer;
 }
+
+.rradmin-send {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--rule-strong, #8a7e5e);
+  border-radius: 2px;
+  color: var(--ink-soft, #3a3a36);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.rradmin-send:hover {
+  color: var(--copper, #a85a1a);
+  border-color: var(--copper, #a85a1a);
+}
