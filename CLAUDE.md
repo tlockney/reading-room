@@ -183,7 +183,7 @@ Install once per machine:
 ```sh
 deno install -g -f -n reading-room \
   --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
-  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME \
+  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
   --minimum-dependency-age=0 \
   jsr:@tlockney/reading-room/cli
 ```
@@ -195,6 +195,24 @@ yet. The content home is resolved: `--root <dir>` → `$READING_ROOM_HOME` →
 
 See `_specs/2026-06-13-cli-distribution-design.md` and `_specs/2026-06-13-content-home-design.md`
 for the design rationale.
+
+### Agent (login service, macOS)
+
+`reading-room agent install` writes `~/Library/LaunchAgents/local.reading-room.plist` and boots it
+(`launchctl bootstrap gui/$UID`), then `tailscale serve --bg <port>`. The plist runs an **absolute
+deno binary** (resolved: `--deno` → `/opt/homebrew/bin/deno` → `mise which deno` → the installing
+deno) against the **version-pinned** `jsr:@tlockney/reading-room@<version>/serve` with the full
+permission union and `--minimum-dependency-age=0` (land mine #1) and an explicit `--root <home>`. It
+does **not** use the `deno install -g` shim — launchd's minimal PATH can't resolve bare `deno`. Logs
+go to `$XDG_STATE_HOME/reading-room` (else `~/.local/state/reading-room`).
+
+- `reading-room agent install [--root <dir>] [--port <n>] [--readonly] [--deno <path>]`
+- `reading-room agent uninstall` — bootout, `tailscale serve reset`, remove the plist
+- `reading-room agent status` — `launchctl print` + `tailscale serve status`
+- `reading-room agent logs` — tail the two log files
+
+Upgrading the running agent after a CLI upgrade is an explicit `reading-room agent install` re-run
+(the pinned version in the plist does not float). macOS-only for now.
 
 ## Repo-specific notes
 

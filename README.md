@@ -28,7 +28,7 @@ Three pieces, one visual language:
 ```sh
 deno install -g -f -n reading-room \
   --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
-  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,HOME \
+  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
   --minimum-dependency-age=0 \
   jsr:@tlockney/reading-room/cli
 
@@ -76,6 +76,17 @@ never needs restarting when you add or edit docs. The agent does not need a `Wor
 
 > Access is gated by your Tailscale ACLs (tailnet-only) — no separate login. It serves the full
 > local set, including private docs.
+
+## Agent (login service, macOS)
+
+`reading-room agent install` sets up the always-on setup above for you: it writes and boots a
+launchd agent running `reading-room serve` (a version-pinned, absolute-path invocation — not the
+`deno install -g` shim, since launchd's minimal PATH can't resolve bare `deno`), then runs
+`tailscale serve --bg` to front it. `reading-room agent uninstall` tears both back down,
+`reading-room agent status` reports on them, and `reading-room agent logs` tails the log files
+(under `$XDG_STATE_HOME/reading-room`, else `~/.local/state/reading-room`). Re-run
+`reading-room agent install` after upgrading the CLI — the plist pins a version and doesn't float on
+its own. macOS-only for now.
 
 ## Discover other instances
 
