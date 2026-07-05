@@ -230,3 +230,16 @@ Deno.test("agent install honors --port and --root", async () => {
   const ts = f.calls.find((c) => c.cmd === "tailscale");
   assertEquals(ts?.args, ["serve", "--bg", "9000"]);
 });
+
+Deno.test("agent install exits 1 on an invalid --port instead of throwing", async () => {
+  const f = fakeDeps();
+  const errs: string[] = [];
+  const orig = console.error;
+  console.error = (m?: unknown) => void errs.push(String(m));
+  try {
+    assertEquals(await agentMain(["install", "--port", "abc"], f.deps), 1);
+  } finally {
+    console.error = orig;
+  }
+  assertStringIncludes(errs.join("\n"), "invalid port");
+});

@@ -196,12 +196,17 @@ export async function agentMain(args: string[], deps: AgentDeps = realDeps()): P
     return 1;
   }
   const a = parseArgs(rest, { string: ["root", "port", "deno"], boolean: ["readonly"] });
-  switch (sub) {
-    case "install":
-      return await install(a, deps);
-    default:
-      console.error(AGENT_USAGE);
-      return 1;
+  try {
+    switch (sub) {
+      case "install":
+        return await install(a, deps);
+      default:
+        console.error(AGENT_USAGE);
+        return 1;
+    }
+  } catch (err) {
+    console.error(`reading-room agent: ${err instanceof Error ? err.message : err}`);
+    return 1;
   }
 }
 
