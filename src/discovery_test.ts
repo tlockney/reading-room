@@ -3,9 +3,11 @@ import {
   buildIdentity,
   discoverPeers,
   makeCachedDiscover,
+  parseSelfDnsName,
   parseTailscalePeers,
   type PeerIdentity,
   probePeer,
+  selfDnsName,
   type TailscalePeer,
 } from "./discovery.ts";
 import type { Topic } from "./render.ts";
@@ -127,4 +129,28 @@ Deno.test("probePeer rejects a response missing name", async () => {
       new Response(JSON.stringify({ version: "0.2.0", topics: 0, docs: 0 })),
     )) as typeof fetch;
   assertEquals(await probePeer("https://x.ts.net/", bad), null);
+});
+
+Deno.test("parseSelfDnsName reads Self.DNSName and strips the trailing dot", () => {
+  assertEquals(
+    parseSelfDnsName({ Self: { DNSName: "studio.tail1234.ts.net." } }),
+    "studio.tail1234.ts.net",
+  );
+  assertEquals(parseSelfDnsName({ Self: {} }), null);
+  assertEquals(parseSelfDnsName({}), null);
+  assertEquals(parseSelfDnsName("nope"), null);
+});
+
+Deno.test("selfDnsName runs tailscale status and parses Self", async () => {
+  const fakeRun = (_cmd: string, _args: string[]) =>
+    Promise.resolve({
+      code: 0,
+      stdout: JSON.stringify({ Self: { DNSName: "h.tail1.ts.net." } }),
+    });
+  assertEquals(await selfDnsName(fakeRun), "h.tail1.ts.net");
+});
+
+Deno.test("selfDnsName returns null when tailscale fails", async () => {
+  const fail = (_c: string, _a: string[]) => Promise.resolve({ code: 1, stdout: "" });
+  assertEquals(await selfDnsName(fail), null);
 });

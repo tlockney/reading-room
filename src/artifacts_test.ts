@@ -1,6 +1,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import {
+  artifactUrl,
   deriveSlug,
   extractTitle,
   loadManifest,
@@ -155,4 +156,11 @@ Deno.test("remove deletes the snapshot dir and manifest entry", async () => {
   assertEquals(await exists(join(artifactsDir, art.slug)), false);
   assertEquals(await loadManifest(manifestPath), []);
   assertEquals(await removeArtifact({ artifactsDir, manifestPath, slug: "gone" }), false);
+});
+
+Deno.test("artifactUrl builds a tailnet content URL", () => {
+  assertEquals(
+    artifactUrl("studio.tail1.ts.net", "mockup"),
+    "https://studio.tail1.ts.net/artifacts/mockup/",
+  );
 });

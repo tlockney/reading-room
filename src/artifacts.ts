@@ -184,3 +184,8 @@ export async function removeArtifact(opts: {
   await saveManifest(opts.manifestPath, keep);
   return true;
 }
+
+/** Tailnet URL for an artifact's content root. */
+export function artifactUrl(dnsName: string, slug: string): string {
+  return `https://${dnsName}/artifacts/${slug}/`;
+}

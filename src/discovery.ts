@@ -81,7 +81,7 @@ export function parseTailscalePeers(raw: unknown): TailscalePeer[] {
   return out;
 }
 
-const TAILSCALE_BINS = [
+export const TAILSCALE_BINS = [
   "tailscale",
   "/usr/local/bin/tailscale",
   "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
@@ -89,7 +89,7 @@ const TAILSCALE_BINS = [
   "/opt/homebrew/bin/tailscale",
 ];
 
-const defaultRun: RunFn = async (cmd, args) => {
+export const defaultRun: RunFn = async (cmd, args) => {
   const out = await new Deno.Command(cmd, { args, stdout: "piped", stderr: "null" }).output();
   return { code: out.code, stdout: new TextDecoder().decode(out.stdout) };
 };
@@ -181,4 +181,27 @@ export function makeCachedDiscover(
       });
     return inflight;
   };
+}
+
+/** Read Self.DNSName from `tailscale status --json`, trailing dot stripped. */
+export function parseSelfDnsName(raw: unknown): string | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const self = (raw as Record<string, unknown>).Self;
+  if (typeof self !== "object" || self === null) return null;
+  const dns = (self as Record<string, unknown>).DNSName;
+  return typeof dns === "string" && dns ? dns.replace(/\.$/, "") : null;
+}
+
+/** This node's tailnet DNS name, or null if tailscale is unavailable. */
+export async function selfDnsName(run: RunFn = defaultRun): Promise<string | null> {
+  for (const bin of TAILSCALE_BINS) {
+    try {
+      const { code, stdout } = await run(bin, ["status", "--json"]);
+      if (code !== 0) continue;
+      return parseSelfDnsName(JSON.parse(stdout));
+    } catch {
+      // try the next candidate binary path
+    }
+  }
+  return null;
 }
