@@ -874,7 +874,7 @@ git add .github && git commit -m "ci: test + JSR publish workflows"
 
 ```html
 <style>
-  /* local customization rides along via the RR-LOCAL-HEAD slot */
+/* local customization rides along via the RR-LOCAL-HEAD slot */
 </style>
 ```
 

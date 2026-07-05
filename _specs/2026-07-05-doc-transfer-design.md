@@ -8,10 +8,10 @@
 
 ## Goal
 
-Let a user **send a curated library document to another of their Reading Room instances** — from
-the web UI or the CLI — picking the destination from the same peer list the masthead library
-switcher already shows. The doc arrives on the far end quarantined for review, so it never silently
-appears as curated.
+Let a user **send a curated library document to another of their Reading Room instances** — from the
+web UI or the CLI — picking the destination from the same peer list the masthead library switcher
+already shows. The doc arrives on the far end quarantined for review, so it never silently appears
+as curated.
 
 ## The pivotal decision: HTTP over the server APIs, not Taildrop
 
@@ -20,7 +20,7 @@ The idea began as "transfer files with `tailscale file cp`" (Taildrop). That was
 exposed over the tailnet via `tailscale serve` (HTTPS, tailnet-authenticated), and discovery already
 knows each peer's base URL. So a transfer is just **the local server POSTing the doc to the peer's
 own API** — no `tailscale file cp`/`get` shell-out, no tar bundle, no OS Taildrop inbox, no drain
-step, and no resolving peers down to tailnet node names (the discovered peer's `url` *is* the
+step, and no resolving peers down to tailnet node names (the discovered peer's `url` _is_ the
 target).
 
 What Taildrop would have bought, and why we don't need it:
@@ -34,10 +34,10 @@ So the mechanism is a synchronous HTTP push between two RR instances over the ta
 
 ## Decisions (from the design conversation)
 
-1. **Push, initiated from the source.** `POST /api/docs/<slug>/send { target }` on the sender's
-   own server. Sending reads a doc and copies it out; it does not mutate the sender's library.
-2. **Docs only.** Curated library docs (`_migrated/<slug>.html` + registry metadata). Artifacts
-   (the 2026-07-04 store) are out of scope; that store can grow its own transfer later.
+1. **Push, initiated from the source.** `POST /api/docs/<slug>/send { target }` on the sender's own
+   server. Sending reads a doc and copies it out; it does not mutate the sender's library.
+2. **Docs only.** Curated library docs (`_migrated/<slug>.html` + registry metadata). Artifacts (the
+   2026-07-04 store) are out of scope; that store can grow its own transfer later.
 3. **JSON payload, not an archive.** The wire format is `{ html, meta, comments? }` — no `.rrbundle`
    tar. The engine already models a doc as standalone HTML + registry metadata + an optional
    comments sidecar; the payload mirrors that split as JSON fields.
@@ -112,8 +112,8 @@ export interface DocPayload {
 
 ### `sendDoc(ctx, corpus, slug, target, opts, fetchFn): Promise<{ ok: boolean; slug?: string; error?: string }>`
 
-- `buildDocPayload(...)`, then `POST new URL("api/receive", target)` with the JSON body (`target`
-  is a peer base URL like `https://host.tailnet.ts.net/`, so relative resolution yields
+- `buildDocPayload(...)`, then `POST new URL("api/receive", target)` with the JSON body (`target` is
+  a peer base URL like `https://host.tailnet.ts.net/`, so relative resolution yields
   `…/api/receive`).
 - `fetchFn` defaults to `fetch`, injected for tests. On success, `slug` is the slug the receiver
   assigned; a non-2xx or network failure returns `{ ok: false, error }` (surfaced as the route's
@@ -122,15 +122,14 @@ export interface DocPayload {
 ### `parseReceivedPayload(raw: unknown): DocPayload | string`
 
 - Narrow `unknown` → validated `DocPayload` (every `meta` field type-checked; `comments` optional
-  array), or a message string. Same validate-or-explain idiom as `parseCommentInput` /
-  `parsePatch`.
+  array), or a message string. Same validate-or-explain idiom as `parseCommentInput` / `parsePatch`.
 
 ### `receiveDoc(ctx, payload): Promise<{ slug; topic: "received" }>`
 
 - Ensure the **"Received"** topic exists (reserved id `received`; create via `insertTopic` if
   absent).
 - Derive a unique slug from `meta.title`/incoming slug, **deduped** against the registry (a
-  re-received doc becomes a *new* For-Review entry — it never overwrites an existing slug).
+  re-received doc becomes a _new_ For-Review entry — it never overwrites an existing slug).
 - Write `_migrated/<slug>.html` (the payload html), and if `payload.comments`, write the
   `comments/<slug>.json` sidecar.
 - Insert a registry entry via `insertDoc(registry, "received", entry)` with the payload's
@@ -195,7 +194,7 @@ peer name is unknown, or if the peer is unreachable.
   comments sidecar only when comments are present.
 - **Send:** `sendDoc` posts to `<target>api/receive` with the correct body (injected `fetchFn`); a
   non-2xx / network error surfaces as a clear failure.
-- **Round-trip integration:** a faked `fetchFn` that routes the send straight into a *second*
+- **Round-trip integration:** a faked `fetchFn` that routes the send straight into a _second_
   in-memory `makeHandler`'s `/api/receive`, asserting the doc lands filed on the "receiver".
 - **Routes:** `POST /api/docs/<slug>/send` and `POST /api/receive` incl. `READONLY` 403, unknown
   slug 404, malformed body 400, unreachable/absent target error.
