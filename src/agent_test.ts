@@ -337,3 +337,19 @@ Deno.test("agent install retries bootstrap when the first attempt loses the boot
   }
   assertEquals(bootstraps, 2); // retried once, then succeeded — not a hard failure on the first EIO
 });
+
+Deno.test("agent install resolves an absolute tailscale path when tailscale isn't on PATH", async () => {
+  const f = fakeDeps({
+    // tailscale is installed at a known location but not on the (launchd/ssh) PATH
+    exists: (p) => p === "/opt/homebrew/bin/deno" || p === "/usr/local/bin/tailscale",
+  });
+  const orig = console.log;
+  console.log = () => {};
+  try {
+    assertEquals(await agentMain(["install"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  const serve = f.calls.find((c) => c.args[0] === "serve" && c.args[1] === "--bg");
+  assertEquals(serve?.cmd, "/usr/local/bin/tailscale"); // not bare "tailscale"
+});

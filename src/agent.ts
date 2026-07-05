@@ -10,7 +10,15 @@
 import { dirname, join } from "jsr:@std/path@1";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { resolveHome } from "./config.ts";
+import { TAILSCALE_BINS } from "./discovery.ts";
 import { VERSION } from "./version.ts";
+
+/** Resolve an absolute tailscale binary the agent can invoke under launchd (and
+ * over a non-interactive shell), where bare `tailscale` is often not on PATH.
+ * Falls back to bare `tailscale` if none of the known paths exist. */
+function resolveTailscale(exists: (p: string) => boolean): string {
+  return TAILSCALE_BINS.find((b) => b.startsWith("/") && exists(b)) ?? "tailscale";
+}
 
 export const LABEL = "local.reading-room";
 export const AGENT_PATH_ENV = "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin";
@@ -265,7 +273,7 @@ async function install(
     );
     return 1;
   }
-  const ts = await deps.run("tailscale", ["serve", "--bg", String(port)]);
+  const ts = await deps.run(resolveTailscale(deps.exists), ["serve", "--bg", String(port)]);
   if (ts.code !== 0) {
     console.error(`reading-room agent: warning — tailscale serve failed: ${ts.stderr.trim()}`);
   }
@@ -278,7 +286,7 @@ async function uninstall(deps: AgentDeps): Promise<number> {
   const homeDir = deps.env("HOME") ?? "";
   const u = await uid(deps);
   await deps.run("launchctl", ["bootout", `gui/${u}/${LABEL}`]);
-  await deps.run("tailscale", ["serve", "reset"]);
+  await deps.run(resolveTailscale(deps.exists), ["serve", "reset"]);
   await deps.remove(plistPath(homeDir));
   console.log(`reading-room agent uninstalled (${LABEL}).`);
   return 0;
@@ -288,7 +296,7 @@ async function status(deps: AgentDeps): Promise<number> {
   const u = await uid(deps);
   const svc = await deps.run("launchctl", ["print", `gui/${u}/${LABEL}`]);
   console.log(svc.stdout.trim() || svc.stderr.trim() || "(service not loaded)");
-  const ts = await deps.run("tailscale", ["serve", "status"]);
+  const ts = await deps.run(resolveTailscale(deps.exists), ["serve", "status"]);
   console.log(ts.stdout.trim() || ts.stderr.trim() || "(tailscale serve not configured)");
   return 0;
 }

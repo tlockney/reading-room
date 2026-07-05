@@ -4,7 +4,7 @@
   // jsr: specifiers; this repo's own content doubles as the dev environment
   // until the content split.
   "name": "@tlockney/reading-room",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "license": "MIT",
   "exports": {
     ".": "./src/mod.ts",
