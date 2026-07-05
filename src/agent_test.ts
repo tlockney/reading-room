@@ -293,3 +293,19 @@ Deno.test("agent logs tails the two log files under the state dir", async () => 
   }
   assertEquals(reads, ["/s/reading-room/agent.out.log", "/s/reading-room/agent.err.log"]);
 });
+
+Deno.test("agent logs prints '(no log yet)' when a log file is unreadable", async () => {
+  const f = fakeDeps({
+    env: (k) => (k === "XDG_STATE_HOME" ? "/s" : k === "HOME" ? "/Users/t" : undefined),
+    readTextFile: () => Promise.reject(new Error("ENOENT")),
+  });
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (m?: unknown) => void lines.push(String(m));
+  try {
+    assertEquals(await agentMain(["logs"], f.deps), 0);
+  } finally {
+    console.log = orig;
+  }
+  assertStringIncludes(lines.join("\n"), "(no log yet)");
+});
