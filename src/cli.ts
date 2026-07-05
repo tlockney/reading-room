@@ -10,6 +10,7 @@ import { buildMain } from "./build.ts";
 import { addDocMain } from "./add-doc.ts";
 import { publishMain } from "./publish.ts";
 import { initMain } from "./init.ts";
+import { agentMain } from "./agent.ts";
 import { VERSION } from "./version.ts";
 
 const USAGE = `reading-room — editorial document library engine (v${VERSION})
@@ -22,6 +23,7 @@ Commands:
   publish   [--root <dir>] [--dry-run]    Build the shared subset and run publish.jsonc
   add-doc   [--root <dir>] --src <f> ...  Register a standalone editorial doc
   init      [--root <dir>]                Scaffold a content home
+  agent     <install|uninstall|status|logs>  Manage the launchd login service (macOS)
 
 The content home is --root, else $READING_ROOM_HOME, else
 \${XDG_DATA_HOME:-~/.local/share}/reading-room.
@@ -44,6 +46,8 @@ export async function cli(args: string[]): Promise<number> {
         return await publishMain(rest);
       case "init":
         return await initMain(rest);
+      case "agent":
+        return await agentMain(rest);
       case "--version":
       case "-V":
         console.log(VERSION);
