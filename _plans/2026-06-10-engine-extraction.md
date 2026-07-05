@@ -189,7 +189,10 @@ Replace the `asset()` helper and its two call sites:
 ```ts
 if (path === "/favicon.svg") {
   return new Response(FAVICON_SVG, {
-    headers: { "content-type": "image/svg+xml", "cache-control": "max-age=3600" },
+    headers: {
+      "content-type": "image/svg+xml",
+      "cache-control": "max-age=3600",
+    },
   });
 }
 if (path === "/apple-touch-icon.png") {
@@ -209,7 +212,9 @@ if (adminAsset) {
   const type = adminAsset[1].endsWith(".css")
     ? "text/css; charset=utf-8"
     : "text/javascript; charset=utf-8";
-  return new Response(body, { headers: { "content-type": type, "cache-control": "no-cache" } });
+  return new Response(body, {
+    headers: { "content-type": type, "cache-control": "no-cache" },
+  });
 }
 ```
 
@@ -225,7 +230,10 @@ import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 // in build(), after writing index.html:
 await Deno.writeTextFile(join(outDir, "favicon.svg"), FAVICON_SVG);
-await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TOUCH_ICON_B64));
+await Deno.writeFile(
+  join(outDir, "apple-touch-icon.png"),
+  decodeBase64(APPLE_TOUCH_ICON_B64),
+);
 ```
 
 - [ ] **Step 8: Verify + commit**
@@ -272,7 +280,10 @@ Deno.test("loadSite: partial site.jsonc merges over defaults", async () => {
 
 Deno.test("loadSite: wrong field type is a clear error", async () => {
   const dir = await Deno.makeTempDir();
-  await Deno.writeTextFile(join(dir, "site.jsonc"), `{ "footer": "not an array" }`);
+  await Deno.writeTextFile(
+    join(dir, "site.jsonc"),
+    `{ "footer": "not an array" }`,
+  );
   const err = await assertRejects(() => loadSite(dir));
   assert(String(err).includes("footer"));
 });
@@ -305,7 +316,11 @@ export const DEFAULT_SITE: Site = {
   eyebrow: "Reference Library",
   lede: "Every long-form document, gathered and grouped. Browse by topic, " +
     "or jump straight to what you came for.",
-  footer: ["Reference Library", "Local · Not for Distribution", "The Reading Room"],
+  footer: [
+    "Reference Library",
+    "Local · Not for Distribution",
+    "The Reading Room",
+  ],
 };
 
 /** Everything path- or identity-shaped the engine needs about one environment. */
@@ -324,7 +339,9 @@ function isStringArray(v: unknown): v is string[] {
 
 /** Merge a parsed site.jsonc over the defaults; explain the first bad field. */
 export function parseSite(raw: unknown): Site | string {
-  if (typeof raw !== "object" || raw === null) return "site.jsonc must be a JSON object";
+  if (typeof raw !== "object" || raw === null) {
+    return "site.jsonc must be a JSON object";
+  }
   const o = raw as Record<string, unknown>;
   const site = { ...DEFAULT_SITE };
   for (const key of Object.keys(o)) {
@@ -353,7 +370,9 @@ export async function loadSite(root: string): Promise<Site> {
   return site;
 }
 
-export async function makeContext(root: string = Deno.cwd()): Promise<RoomContext> {
+export async function makeContext(
+  root: string = Deno.cwd(),
+): Promise<RoomContext> {
   const abs = resolve(root);
   return {
     root: abs,
@@ -535,13 +554,25 @@ Deno.test("loadSlots: absent files load as empty slots", async () => {
 Deno.test("loadSlots: reads assets/head-extra.html and body-extra.html", async () => {
   const root = await Deno.makeTempDir();
   await Deno.mkdir(join(root, "assets"));
-  await Deno.writeTextFile(join(root, "assets/head-extra.html"), "<style>.x{}</style>");
-  await Deno.writeTextFile(join(root, "assets/body-extra.html"), "<script>1</script>");
-  assertEquals(await loadSlots(root), { head: "<style>.x{}</style>", body: "<script>1</script>" });
+  await Deno.writeTextFile(
+    join(root, "assets/head-extra.html"),
+    "<style>.x{}</style>",
+  );
+  await Deno.writeTextFile(
+    join(root, "assets/body-extra.html"),
+    "<script>1</script>",
+  );
+  assertEquals(await loadSlots(root), {
+    head: "<style>.x{}</style>",
+    body: "<script>1</script>",
+  });
 });
 
 Deno.test("injectLocalSlots: wraps content in markers before </head> and </body>", () => {
-  const out = injectLocalSlots(PAGE, { head: "<style>.x{}</style>", body: "<script>1</script>" });
+  const out = injectLocalSlots(PAGE, {
+    head: "<style>.x{}</style>",
+    body: "<script>1</script>",
+  });
   assert(
     out.includes(
       "<!-- RR-LOCAL-HEAD:start -->\n<style>.x{}</style>\n<!-- RR-LOCAL-HEAD:end -->\n</head>",
@@ -560,7 +591,10 @@ Deno.test("injectLocalSlots: idempotent and healing — stale regions are replac
   assert(!twice.includes("OLD"));
   assert(twice.includes("<b>new</b>"));
   assert(!twice.includes("RR-LOCAL-BODY")); // empty slot leaves no region behind
-  assertEquals(injectLocalSlots(twice, { head: "<b>new</b>", body: "" }), twice);
+  assertEquals(
+    injectLocalSlots(twice, { head: "<b>new</b>", body: "" }),
+    twice,
+  );
 });
 ```
 
@@ -609,7 +643,10 @@ export async function loadSlots(root: string): Promise<LocalSlots> {
 
 /** Strip-then-inject both slot regions (idempotent, healing, empty = absent). */
 export function injectLocalSlots(html: string, slots: LocalSlots): string {
-  let out = html.replace(EXISTING_LOCAL_HEAD_RE, "").replace(EXISTING_LOCAL_BODY_RE, "");
+  let out = html.replace(EXISTING_LOCAL_HEAD_RE, "").replace(
+    EXISTING_LOCAL_BODY_RE,
+    "",
+  );
   if (slots.head && HEAD_END_RE.test(out)) {
     const block = `${LOCAL_HEAD_START}\n${slots.head}\n${LOCAL_HEAD_END}`;
     out = out.replace(HEAD_END_RE, (): string => block + "\n</head>");
@@ -874,7 +911,7 @@ git add .github && git commit -m "ci: test + JSR publish workflows"
 
 ```html
 <style>
-  /* local customization rides along via the RR-LOCAL-HEAD slot */
+/* local customization rides along via the RR-LOCAL-HEAD slot */
 </style>
 ```
 

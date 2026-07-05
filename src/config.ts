@@ -33,6 +33,8 @@ export interface RoomContext {
   registryPath: string;
   migratedDir: string;
   commentsDir: string;
+  artifactsDir: string;
+  artifactsManifest: string;
   site: Site;
 }
 
@@ -86,6 +88,8 @@ export async function makeContext(root: string = Deno.cwd()): Promise<RoomContex
     registryPath: join(abs, "registry.jsonc"),
     migratedDir: join(abs, "_migrated"),
     commentsDir: join(abs, "comments"),
+    artifactsDir: join(abs, "artifacts"),
+    artifactsManifest: join(abs, "artifacts.json"),
     site: await loadSite(abs),
   };
 }

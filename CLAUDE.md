@@ -113,7 +113,9 @@ rejected in design.
    mouseup.)
 
 7. **Peer discovery shells `tailscale` — that is why serve carries `--allow-run`.** Do not remove
-   that flag from the install snippet or the launchd agent; it is not incidental.
+   that flag from the install snippet or the launchd agent; it is not incidental. `src/artifacts.ts`
+   reuses that same `tailscale` shell-out (via `selfDnsName`) to build artifact URLs — it adds no
+   new external calls or permissions.
 
 ## Annotations & management (serve-only)
 
@@ -147,6 +149,35 @@ probe are dependency-injected, so the suite needs no real tailnet.
 
 mDNS (for LAN-only hosts not on a tailnet) is a deferred Phase 2 source — not in this change. See
 `_specs/2026-06-14-peer-discovery-design.md` for the design rationale.
+
+## Artifact store (serve-only)
+
+A persistent, raw-served sibling to the curated library: `reading-room artifact <path>` snapshots an
+arbitrary web document or directory into the content home (`artifacts/<slug>/…`, recorded in a
+machine-managed `artifacts.json`), and the server exposes it verbatim at `/artifacts/<slug>/` with a
+gallery at `/artifacts`. Management rides the localhost `/api/artifacts` routes (READONLY-gated like
+`/api/docs`); the tailnet URL is built from `selfDnsName()` (a `tailscale status --json` lookup,
+injected in tests). Content is served with **no** editorial/admin transform — it is the bytes that
+were snapshotted.
+
+Invariants: (1) serve-only — `build.ts` must never import `src/artifacts.ts` (pinned in
+`admin_test.ts` alongside `discovery.ts`); (2) content-home storage, generic engine; (3) no new
+permissions (serve's existing `--allow-read`/`--allow-write`/`--allow-run` cover it). See
+`_specs/2026-07-04-artifact-store-design.md`.
+
+## Document transfer (serve-only)
+
+Send a curated doc to another Reading Room instance over the tailnet-exposed server APIs (no
+Taildrop). `src/transfer.ts` builds a JSON payload (`{ html, meta, comments? }`), `sendDoc` POSTs it
+to a peer's `POST /api/receive`, and `receiveDoc` files it `review: true` into a reserved "Received"
+topic (id `received`), sanitizing + deduping the slug (never trusting the payload's raw slug) and
+appending provenance to `desc`. Driven from the admin "Send to" control (target from `/api/peers`,
+the same discovery list as the library switcher) and the `reading-room send <slug> <peer>` CLI. Both
+routes are serve-only and READONLY-gated; the outbound `fetch` is injected in tests
+(`ServeOptions.sendFetch`), so the round-trip suite needs no network. `build.ts` must never import
+`src/transfer.ts` (pinned in `admin_test.ts`). Security: `POST /api/receive` is a new inbound write
+reachable by any tailnet member — mitigated by review-quarantine + READONLY. See
+`_specs/2026-07-05-doc-transfer-design.md`.
 
 ## Skill relationship
 
