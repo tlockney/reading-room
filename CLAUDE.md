@@ -113,7 +113,9 @@ rejected in design.
    mouseup.)
 
 7. **Peer discovery shells `tailscale` — that is why serve carries `--allow-run`.** Do not remove
-   that flag from the install snippet or the launchd agent; it is not incidental.
+   that flag from the install snippet or the launchd agent; it is not incidental. `src/artifacts.ts`
+   reuses that same `tailscale` shell-out (via `selfDnsName`) to build artifact URLs — it adds no
+   new external calls or permissions.
 
 ## Annotations & management (serve-only)
 
@@ -147,6 +149,21 @@ probe are dependency-injected, so the suite needs no real tailnet.
 
 mDNS (for LAN-only hosts not on a tailnet) is a deferred Phase 2 source — not in this change. See
 `_specs/2026-06-14-peer-discovery-design.md` for the design rationale.
+
+## Artifact store (serve-only)
+
+A persistent, raw-served sibling to the curated library: `reading-room artifact <path>` snapshots an
+arbitrary web document or directory into the content home (`artifacts/<slug>/…`, recorded in a
+machine-managed `artifacts.json`), and the server exposes it verbatim at `/artifacts/<slug>/` with a
+gallery at `/artifacts`. Management rides the localhost `/api/artifacts` routes (READONLY-gated like
+`/api/docs`); the tailnet URL is built from `selfDnsName()` (a `tailscale status --json` lookup,
+injected in tests). Content is served with **no** editorial/admin transform — it is the bytes that
+were snapshotted.
+
+Invariants: (1) serve-only — `build.ts` must never import `src/artifacts.ts` (pinned in
+`admin_test.ts` alongside `discovery.ts`); (2) content-home storage, generic engine; (3) no new
+permissions (serve's existing `--allow-read`/`--allow-write`/`--allow-run` cover it). See
+`_specs/2026-07-04-artifact-store-design.md`.
 
 ## Skill relationship
 

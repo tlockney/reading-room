@@ -105,6 +105,20 @@ not relied upon. Flags:
 - `review`: `true` — surfaces the doc in a pinned **For Review** section at the top of the index,
   with a chip on its card.
 
+## Artifacts
+
+Publish an arbitrary web document or directory over your tailnet without filing it into the curated
+library:
+
+    reading-room artifact ./mockup.html        # snapshot + print the tailnet URL
+    reading-room artifact ./site --name demo    # a whole directory
+    reading-room artifact list
+    reading-room artifact update demo ./site    # re-snapshot in place
+    reading-room artifact rm demo
+
+Content is served verbatim at `/artifacts/<slug>/` (no editorial chrome) and browsable at
+`/artifacts`. Tailnet-only, like the rest of the Reading Room.
+
 ## Manage from the browser
 
 The live server is also the management surface (the static publish never carries any of this):

@@ -3,6 +3,7 @@ import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
 import { makeHandler, serveMain } from "./serve.ts";
 import { makeContext } from "./config.ts";
+import { publishArtifact } from "./artifacts.ts";
 
 const FIXTURE = `// fixture registry
 [
@@ -328,4 +329,178 @@ Deno.test("served index masthead carries the instance eyebrow tag", async () => 
   } finally {
     await cleanup();
   }
+});
+
+async function roomWithArtifact(): Promise<
+  { ctx: Awaited<ReturnType<typeof makeContext>>; slug: string }
+> {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const src = join(root, "page.html");
+  await Deno.writeTextFile(
+    src,
+    "<html><head><title>Mock</title></head><body>hello-artifact</body></html>",
+  );
+  const art = await publishArtifact({
+    artifactsDir: ctx.artifactsDir,
+    manifestPath: ctx.artifactsManifest,
+    srcPath: src,
+  });
+  return { ctx, slug: art.slug };
+}
+
+Deno.test("GET /artifacts renders the gallery", async () => {
+  const { ctx } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request("http://127.0.0.1/artifacts"));
+  assertEquals(res.status, 200);
+  assertEquals((await res.text()).includes("Artifacts"), true);
+});
+
+Deno.test("GET /artifacts/<slug> redirects to trailing slash", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}`));
+  assertEquals(res.status, 301);
+  assertEquals(res.headers.get("location"), `/artifacts/${slug}/`);
+  await res.body?.cancel();
+});
+
+Deno.test("GET /artifacts/<slug>/ serves the raw file, no admin/editorial chrome", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}/`));
+  const body = await res.text();
+  assertEquals(res.status, 200);
+  assertEquals(body.includes("hello-artifact"), true);
+  assertEquals(body.includes("RR-ADMIN"), false);
+});
+
+Deno.test("GET unknown artifact slug is 404", async () => {
+  const { ctx } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request("http://127.0.0.1/artifacts/nope/"));
+  assertEquals(res.status, 404);
+  await res.body?.cancel();
+});
+
+Deno.test("path traversal out of an artifact is rejected", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}/..%2f..%2fregistry.jsonc`));
+  assertEquals(res.status === 404 || res.status === 403, true);
+  await res.body?.cancel();
+});
+
+Deno.test("POST /api/artifacts publishes and returns urls", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const src = join(root, "m.html");
+  await Deno.writeTextFile(src, "<title>M</title>");
+  const h = makeHandler({ ctx, readonly: false, selfDns: () => Promise.resolve("h.tail1.ts.net") });
+
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: src }),
+    }),
+  );
+  assertEquals(res.status, 201);
+  const body = await res.json() as { slug: string; url: string; localUrl: string };
+  assertEquals(body.slug, "m");
+  assertEquals(body.url, "https://h.tail1.ts.net/artifacts/m/");
+  assertEquals(body.localUrl.endsWith("/artifacts/m/"), true);
+});
+
+Deno.test("POST /api/artifacts with a missing path is 400", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: join(root, "does-not-exist.html") }),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("POST /api/artifacts with a non-object JSON body is 400, not 500", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(null),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("GET /api/artifacts/<slug> returns the entry; unknown slug is 404", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+
+  const res = await h(new Request(`http://127.0.0.1/api/artifacts/${slug}`));
+  assertEquals(res.status, 200);
+  assertEquals((await res.json() as { slug: string }).slug, slug);
+
+  const missing = await h(new Request("http://127.0.0.1/api/artifacts/does-not-exist"));
+  assertEquals(missing.status, 404);
+});
+
+Deno.test("PATCH /api/artifacts/<slug> edits the title", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const rw = makeHandler({ ctx, readonly: false });
+  const res = await rw(
+    new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Renamed" }),
+    }),
+  );
+  assertEquals(res.status, 200);
+  assertEquals((await res.json() as { title: string }).title, "Renamed");
+});
+
+Deno.test("GET/DELETE /api/artifacts round-trip; mutations blocked under READONLY", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+
+  const ro = makeHandler({ ctx, readonly: true });
+  assertEquals(
+    (await ro(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    403,
+  );
+  assertEquals(
+    (await ro(
+      new Request(`http://127.0.0.1/api/artifacts/${slug}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "x" }),
+      }),
+    )).status,
+    403,
+  );
+
+  const rw = makeHandler({ ctx, readonly: false });
+  const list = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
+  assertEquals(list.some((a) => a.slug === slug), true);
+  assertEquals(
+    (await rw(new Request(`http://127.0.0.1/api/artifacts/${slug}`, { method: "DELETE" }))).status,
+    200,
+  );
+  const after = await (await rw(new Request("http://127.0.0.1/api/artifacts"))).json() as {
+    slug: string;
+  }[];
+  assertEquals(after.some((a) => a.slug === slug), false);
 });
