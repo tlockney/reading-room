@@ -134,6 +134,24 @@ Deno.test("update re-snapshots content and bumps updatedAt; slug + title stay", 
   );
 });
 
+Deno.test("update cleans up orphaned files from the prior snapshot", async () => {
+  const { artifactsDir, manifestPath, srcDir } = await scratch();
+  const site = join(srcDir, "site");
+  await Deno.mkdir(site);
+  await Deno.writeTextFile(join(site, "index.html"), "<title>Home</title>");
+  await Deno.writeTextFile(join(site, "old.js"), "console.log(1)");
+  const first = await publishArtifact({ artifactsDir, manifestPath, srcPath: site });
+  assertEquals(await exists(join(artifactsDir, first.slug, "old.js")), true);
+
+  const nextSrc = join(srcDir, "site2");
+  await Deno.mkdir(nextSrc);
+  await Deno.writeTextFile(join(nextSrc, "index.html"), "<title>Home 2</title>");
+
+  await updateArtifact({ artifactsDir, manifestPath, slug: first.slug, srcPath: nextSrc });
+  assertEquals(await exists(join(artifactsDir, first.slug, "old.js")), false);
+  assertEquals(await exists(join(artifactsDir, first.slug, "index.html")), true);
+});
+
 Deno.test("setArtifactTitle edits the display title only", async () => {
   const { artifactsDir, manifestPath, srcDir } = await scratch();
   const file = join(srcDir, "a.html");

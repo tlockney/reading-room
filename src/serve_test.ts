@@ -430,6 +430,33 @@ Deno.test("POST /api/artifacts with a missing path is 400", async () => {
   assertEquals(res.status, 400);
 });
 
+Deno.test("POST /api/artifacts with a non-object JSON body is 400, not 500", async () => {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(
+    new Request("http://127.0.0.1/api/artifacts", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(null),
+    }),
+  );
+  assertEquals(res.status, 400);
+});
+
+Deno.test("GET /api/artifacts/<slug> returns the entry; unknown slug is 404", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+
+  const res = await h(new Request(`http://127.0.0.1/api/artifacts/${slug}`));
+  assertEquals(res.status, 200);
+  assertEquals((await res.json() as { slug: string }).slug, slug);
+
+  const missing = await h(new Request("http://127.0.0.1/api/artifacts/does-not-exist"));
+  assertEquals(missing.status, 404);
+});
+
 Deno.test("PATCH /api/artifacts/<slug> edits the title", async () => {
   const { ctx, slug } = await roomWithArtifact();
   const rw = makeHandler({ ctx, readonly: false });

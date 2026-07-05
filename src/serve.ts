@@ -55,6 +55,7 @@ import {
   updateArtifact,
 } from "./artifacts.ts";
 import { exists } from "jsr:@std/fs@1";
+import { join } from "jsr:@std/path@1";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
@@ -224,6 +225,9 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
       if (req.method === "POST") {
         const raw = await readJson(req);
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        if (typeof raw !== "object" || raw === null) {
+          return jsonError("body must be a JSON object", 400);
+        }
         const o = raw as Record<string, unknown>;
         if (typeof o.path !== "string") return jsonError("path must be a string", 400);
         if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
@@ -249,9 +253,17 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
     const artMatch = path.match(API_ARTIFACT_RE);
     if (artMatch) {
       const slug = artMatch[1];
+      if (req.method === "GET") {
+        const list = await loadManifest(opts.ctx.artifactsManifest);
+        const found = list.find((a) => a.slug === slug);
+        return found ? json(found) : jsonError(`unknown artifact: ${slug}`, 404);
+      }
       if (req.method === "PUT") {
         const raw = await readJson(req);
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        if (typeof raw !== "object" || raw === null) {
+          return jsonError("body must be a JSON object", 400);
+        }
         const o = raw as Record<string, unknown>;
         if (typeof o.path !== "string") return jsonError("path must be a string", 400);
         if (!(await exists(o.path))) return jsonError(`path not found: ${o.path}`, 400);
@@ -266,6 +278,9 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
       if (req.method === "PATCH") {
         const raw = await readJson(req);
         if (raw === NOT_JSON) return jsonError("body must be JSON", 400);
+        if (typeof raw !== "object" || raw === null) {
+          return jsonError("body must be a JSON object", 400);
+        }
         const o = raw as Record<string, unknown>;
         if (typeof o.title !== "string" || o.title.trim() === "") {
           return jsonError("title must be a non-empty string", 400);
@@ -303,7 +318,7 @@ async function serveArtifact(req: Request, path: string, opts: ServeOptions): Pr
   const art = artifacts.find((a) => a.slug === slug);
   if (!art) return notice(`No such artifact: <b>${esc(slug)}</b>`, 404);
 
-  const dir = `${opts.ctx.artifactsDir}/${slug}`;
+  const dir = join(opts.ctx.artifactsDir, slug);
   if (!rest) return redirect(`/artifacts/${slug}/`); // ensure a base for relative links
   if (rest === "/" && !art.isDir && art.entry) {
     return await serveFile(req, `${dir}/${art.entry}`);

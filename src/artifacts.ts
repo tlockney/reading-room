@@ -81,6 +81,15 @@ export async function dirSize(path: string): Promise<number> {
 
 const HTML_RE = /\.html?$/i;
 
+/** Remove a path if it exists; ignore only "not found", surface real errors. */
+async function removeIfExists(path: string): Promise<void> {
+  try {
+    await Deno.remove(path, { recursive: true });
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) throw err;
+  }
+}
+
 /** After content is at `dest`, decide the entry file + a title. */
 async function resolveEntryAndTitle(
   dest: string,
@@ -145,7 +154,7 @@ export async function updateArtifact(opts: {
   const fileName = basename(opts.srcPath);
   const dest = join(opts.artifactsDir, opts.slug);
 
-  await Deno.remove(dest, { recursive: true }).catch(() => {});
+  await removeIfExists(dest);
   await ensureDir(dest);
   await copy(opts.srcPath, isDir ? dest : join(dest, fileName), { overwrite: true });
 
@@ -180,7 +189,7 @@ export async function removeArtifact(opts: {
   const list = await loadManifest(opts.manifestPath);
   const keep = list.filter((a) => a.slug !== opts.slug);
   if (keep.length === list.length) return false;
-  await Deno.remove(join(opts.artifactsDir, opts.slug), { recursive: true }).catch(() => {});
+  await removeIfExists(join(opts.artifactsDir, opts.slug));
   await saveManifest(opts.manifestPath, keep);
   return true;
 }
