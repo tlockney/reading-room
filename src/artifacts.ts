@@ -7,6 +7,8 @@
  * discovery.ts; build-purity is pinned in admin_test.ts).
  */
 import { writeAtomic } from "./comments.ts";
+import { copy, ensureDir, exists, walk } from "jsr:@std/fs@1";
+import { basename, join } from "jsr:@std/path@1";
 
 export interface Artifact {
   slug: string;
@@ -64,4 +66,121 @@ export async function loadManifest(path: string): Promise<Artifact[]> {
 export async function saveManifest(path: string, list: Artifact[]): Promise<void> {
   const manifest: Manifest = { artifacts: list };
   await writeAtomic(path, JSON.stringify(manifest, null, 2) + "\n");
+}
+
+/** Total size in bytes of a file or directory tree. */
+export async function dirSize(path: string): Promise<number> {
+  const stat = await Deno.stat(path);
+  if (stat.isFile) return stat.size;
+  let total = 0;
+  for await (const entry of walk(path, { includeDirs: false, includeSymlinks: false })) {
+    total += (await Deno.stat(entry.path)).size;
+  }
+  return total;
+}
+
+const HTML_RE = /\.html?$/i;
+
+/** After content is at `dest`, decide the entry file + a title. */
+async function resolveEntryAndTitle(
+  dest: string,
+  isDir: boolean,
+  fileName: string,
+  explicitTitle: string | undefined,
+  slug: string,
+): Promise<{ entry: string | null; title: string }> {
+  const entry = isDir ? (await exists(join(dest, "index.html")) ? "index.html" : null) : fileName;
+  if (explicitTitle) return { entry, title: explicitTitle };
+  if (entry && HTML_RE.test(entry)) {
+    const fromTitle = extractTitle(await Deno.readTextFile(join(dest, entry)));
+    if (fromTitle) return { entry, title: fromTitle };
+  }
+  return { entry, title: slug };
+}
+
+export async function publishArtifact(opts: {
+  artifactsDir: string;
+  manifestPath: string;
+  srcPath: string;
+  name?: string;
+  title?: string;
+}): Promise<Artifact> {
+  const stat = await Deno.stat(opts.srcPath); // throws if missing → surfaced as 400 by the API
+  const isDir = stat.isDirectory;
+  const fileName = basename(opts.srcPath);
+  const list = await loadManifest(opts.manifestPath);
+  const slug = deriveSlug(opts.name ?? fileName.replace(HTML_RE, ""), list.map((a) => a.slug));
+  const dest = join(opts.artifactsDir, slug);
+
+  await ensureDir(dest);
+  await copy(opts.srcPath, isDir ? dest : join(dest, fileName), { overwrite: true });
+
+  const { entry, title } = await resolveEntryAndTitle(dest, isDir, fileName, opts.title, slug);
+  const now = new Date().toISOString();
+  const art: Artifact = {
+    slug,
+    title,
+    entry,
+    isDir,
+    createdAt: now,
+    updatedAt: now,
+    bytes: await dirSize(dest),
+  };
+  list.push(art);
+  await saveManifest(opts.manifestPath, list);
+  return art;
+}
+
+export async function updateArtifact(opts: {
+  artifactsDir: string;
+  manifestPath: string;
+  slug: string;
+  srcPath: string;
+}): Promise<Artifact | null> {
+  const list = await loadManifest(opts.manifestPath);
+  const art = list.find((a) => a.slug === opts.slug);
+  if (!art) return null;
+  const stat = await Deno.stat(opts.srcPath);
+  const isDir = stat.isDirectory;
+  const fileName = basename(opts.srcPath);
+  const dest = join(opts.artifactsDir, opts.slug);
+
+  await Deno.remove(dest, { recursive: true }).catch(() => {});
+  await ensureDir(dest);
+  await copy(opts.srcPath, isDir ? dest : join(dest, fileName), { overwrite: true });
+
+  art.isDir = isDir;
+  art.entry = isDir ? (await exists(join(dest, "index.html")) ? "index.html" : null) : fileName;
+  art.bytes = await dirSize(dest);
+  art.updatedAt = new Date().toISOString();
+  await saveManifest(opts.manifestPath, list);
+  return art;
+}
+
+/** Edit an artifact's display title in place; slug and content are untouched. */
+export async function setArtifactTitle(opts: {
+  manifestPath: string;
+  slug: string;
+  title: string;
+}): Promise<Artifact | null> {
+  const list = await loadManifest(opts.manifestPath);
+  const art = list.find((a) => a.slug === opts.slug);
+  if (!art) return null;
+  art.title = opts.title;
+  art.updatedAt = new Date().toISOString();
+  await saveManifest(opts.manifestPath, list);
+  return art;
+}
+
+export async function removeArtifact(opts: {
+  artifactsDir: string;
+  manifestPath: string;
+  slug: string;
+}): Promise<boolean> {
+  const list = await loadManifest(opts.manifestPath);
+  const keep = list.filter((a) => a.slug !== opts.slug);
+  if (keep.length === list.length) return false;
+  await Deno.remove(join(opts.artifactsDir, opts.slug), { recursive: true }).catch(() => {});
+  await saveManifest(opts.manifestPath, keep);
+  return true;
 }
