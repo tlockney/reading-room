@@ -3,7 +3,7 @@ import { exists } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
 import { makeContext } from "./config.ts";
 import { loadCorpus } from "./render.ts";
-import { buildDocPayload, parseReceivedPayload, receiveDoc } from "./transfer.ts";
+import { buildDocPayload, parseReceivedPayload, receiveDoc, sendDoc } from "./transfer.ts";
 import { slugExists } from "./registry-edit.ts";
 
 const REGISTRY = `[
@@ -141,4 +141,55 @@ Deno.test("receiveDoc writes the comments sidecar only when comments are present
   assertEquals(await exists(join(ctx.commentsDir, `${withC.slug}.json`)), true);
   const noC = await receiveDoc(ctx, payload("plain"));
   assertEquals(await exists(join(ctx.commentsDir, `${noC.slug}.json`)), false);
+});
+
+Deno.test("sendDoc POSTs the payload to <target>api/receive and returns the peer slug", async () => {
+  const ctx = await room();
+  const corpus = await loadCorpus(ctx.registryPath);
+  let seenUrl = "", seenBody: unknown = null;
+  const fakeFetch = ((url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    seenUrl = String(url);
+    seenBody = JSON.parse(String(init?.body));
+    return Promise.resolve(
+      new Response(JSON.stringify({ ok: true, slug: "alpha" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+  }) as typeof fetch;
+
+  const res = await sendDoc(ctx, corpus, "alpha", "https://peer.tail1.ts.net/", {}, fakeFetch);
+  assertEquals(res.ok, true);
+  assertEquals(res.slug, "alpha");
+  assertEquals(seenUrl, "https://peer.tail1.ts.net/api/receive");
+  assertEquals((seenBody as { meta: { slug: string } }).meta.slug, "alpha");
+});
+
+Deno.test("sendDoc reports a non-2xx peer response as a failure", async () => {
+  const ctx = await room();
+  const corpus = await loadCorpus(ctx.registryPath);
+  const fail = ((_u: string | URL | Request, _i?: RequestInit) =>
+    Promise.resolve(
+      new Response(JSON.stringify({ error: "read-only mode" }), { status: 403 }),
+    )) as typeof fetch;
+  const res = await sendDoc(ctx, corpus, "alpha", "https://peer/", {}, fail);
+  assertEquals(res.ok, false);
+  assertEquals(res.error, "read-only mode");
+});
+
+Deno.test("sendDoc surfaces an unknown local slug as a failure", async () => {
+  const ctx = await room();
+  const corpus = await loadCorpus(ctx.registryPath);
+  const res = await sendDoc(
+    ctx,
+    corpus,
+    "nope",
+    "https://peer/",
+    {},
+    (() => {
+      throw new Error("should not fetch");
+    }) as unknown as typeof fetch,
+  );
+  assertEquals(res.ok, false);
+  assert((res.error ?? "").includes("nope"));
 });

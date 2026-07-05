@@ -178,3 +178,43 @@ export async function receiveDoc(
   await writeAtomic(ctx.registryPath, next);
   return { slug, topic: "received" };
 }
+
+export async function sendDoc(
+  ctx: RoomContext,
+  corpus: Topic[],
+  slug: string,
+  target: string,
+  opts: { withComments?: boolean },
+  fetchFn: typeof fetch = fetch,
+): Promise<{ ok: boolean; slug?: string; error?: string }> {
+  let payload: DocPayload;
+  try {
+    payload = await buildDocPayload(ctx, corpus, slug, opts);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+  let url: string;
+  try {
+    url = new URL("api/receive", target).href;
+  } catch {
+    return { ok: false, error: `invalid target: ${target}` };
+  }
+  try {
+    const res = await fetchFn(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let msg = `${res.status}`;
+      try {
+        msg = ((await res.json()) as { error?: string }).error ?? msg;
+      } catch { /* keep status */ }
+      return { ok: false, error: msg };
+    }
+    const body = (await res.json()) as { slug?: string };
+    return { ok: true, slug: body.slug };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
