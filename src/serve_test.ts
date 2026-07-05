@@ -3,6 +3,7 @@ import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 import { join } from "jsr:@std/path@1";
 import { makeHandler, serveMain } from "./serve.ts";
 import { makeContext } from "./config.ts";
+import { publishArtifact } from "./artifacts.ts";
 
 const FIXTURE = `// fixture registry
 [
@@ -328,4 +329,66 @@ Deno.test("served index masthead carries the instance eyebrow tag", async () => 
   } finally {
     await cleanup();
   }
+});
+
+async function roomWithArtifact(): Promise<
+  { ctx: Awaited<ReturnType<typeof makeContext>>; slug: string }
+> {
+  const root = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(root, "registry.jsonc"), "{ topics: [] }");
+  const ctx = await makeContext(root);
+  const src = join(root, "page.html");
+  await Deno.writeTextFile(
+    src,
+    "<html><head><title>Mock</title></head><body>hello-artifact</body></html>",
+  );
+  const art = await publishArtifact({
+    artifactsDir: ctx.artifactsDir,
+    manifestPath: ctx.artifactsManifest,
+    srcPath: src,
+  });
+  return { ctx, slug: art.slug };
+}
+
+Deno.test("GET /artifacts renders the gallery", async () => {
+  const { ctx } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request("http://127.0.0.1/artifacts"));
+  assertEquals(res.status, 200);
+  assertEquals((await res.text()).includes("Artifacts"), true);
+});
+
+Deno.test("GET /artifacts/<slug> redirects to trailing slash", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}`));
+  assertEquals(res.status, 301);
+  assertEquals(res.headers.get("location"), `/artifacts/${slug}/`);
+  await res.body?.cancel();
+});
+
+Deno.test("GET /artifacts/<slug>/ serves the raw file, no admin/editorial chrome", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}/`));
+  const body = await res.text();
+  assertEquals(res.status, 200);
+  assertEquals(body.includes("hello-artifact"), true);
+  assertEquals(body.includes("RR-ADMIN"), false);
+});
+
+Deno.test("GET unknown artifact slug is 404", async () => {
+  const { ctx } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request("http://127.0.0.1/artifacts/nope/"));
+  assertEquals(res.status, 404);
+  await res.body?.cancel();
+});
+
+Deno.test("path traversal out of an artifact is rejected", async () => {
+  const { ctx, slug } = await roomWithArtifact();
+  const h = makeHandler({ ctx, readonly: false });
+  const res = await h(new Request(`http://127.0.0.1/artifacts/${slug}/..%2f..%2fregistry.jsonc`));
+  assertEquals(res.status === 404 || res.status === 403, true);
+  await res.body?.cancel();
 });

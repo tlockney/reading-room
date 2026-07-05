@@ -38,6 +38,8 @@ import { decodeBase64 } from "jsr:@std/encoding@1/base64";
 import { buildIdentity, listTailscalePeers, makeCachedDiscover, probePeer } from "./discovery.ts";
 import type { Peer } from "./discovery.ts";
 import { VERSION } from "./version.ts";
+import { serveDir, serveFile } from "jsr:@std/http@1/file-server";
+import { loadManifest, renderGallery } from "./artifacts.ts";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
@@ -47,11 +49,13 @@ const API_DOC_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)$/;
 const API_COMMENTS_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments$/;
 const API_COMMENT_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/comments\/([A-Za-z0-9-]+)$/;
 const ADMIN_ASSET_RE = /^\/assets\/admin\/([A-Za-z0-9_-]+\.(?:js|css))$/;
+const ARTIFACT_RE = /^\/artifacts\/([A-Za-z0-9_-]+)(\/.*)?$/;
 
 export interface ServeOptions {
   ctx: RoomContext;
   readonly: boolean;
   discover?: () => Promise<Peer[]>;
+  selfDns?: () => Promise<string | null>; // used by /api/artifacts to build tailnet URLs
 }
 
 function page(body: string, status = 200): Response {
@@ -205,6 +209,29 @@ async function api(req: Request, path: string, opts: ServeOptions): Promise<Resp
   }
 }
 
+async function serveArtifact(req: Request, path: string, opts: ServeOptions): Promise<Response> {
+  const m = path.match(ARTIFACT_RE);
+  if (!m) return notice("Not found.", 404);
+  const [, slug, rest] = m;
+  const artifacts = await loadManifest(opts.ctx.artifactsManifest);
+  const art = artifacts.find((a) => a.slug === slug);
+  if (!art) return notice(`No such artifact: <b>${esc(slug)}</b>`, 404);
+
+  const dir = `${opts.ctx.artifactsDir}/${slug}`;
+  if (!rest) return redirect(`/artifacts/${slug}/`); // ensure a base for relative links
+  if (rest === "/" && !art.isDir && art.entry) {
+    return await serveFile(req, `${dir}/${art.entry}`);
+  }
+  // serveDir jails within fsRoot and 404s on traversal escapes.
+  return await serveDir(req, {
+    fsRoot: dir,
+    urlRoot: `artifacts/${slug}`,
+    showIndex: true,
+    showDirListing: true,
+    quiet: true,
+  });
+}
+
 // --- handler ------------------------------------------------------------------
 
 export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Response> {
@@ -244,6 +271,14 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
     const legacy = path.match(DOC_HTML_RE);
     if (legacy) return redirect(`/docs/${legacy[1]}`);
     if (path.startsWith("/api/")) return api(req, path, opts);
+    if (path === "/artifacts" || path === "/artifacts/") {
+      if (req.method !== "GET") return notice("Method not allowed.", 405);
+      return page(renderGallery(await loadManifest(opts.ctx.artifactsManifest)));
+    }
+    if (path.startsWith("/artifacts/")) {
+      if (req.method !== "GET") return notice("Method not allowed.", 405);
+      return serveArtifact(req, path, opts);
+    }
     try {
       const corpus = await loadCorpus(opts.ctx.registryPath); // re-read per request → no restart needed
       if (path === "/") {
