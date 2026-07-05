@@ -112,7 +112,7 @@ Deno.test("renderPlist emits a binary-direct plist with no WorkingDirectory", ()
   assertStringIncludes(xml, "<key>RunAtLoad</key><true/>");
   assertStringIncludes(xml, "<key>KeepAlive</key><true/>");
   assertEquals(xml.includes("WorkingDirectory"), false);
-  assertEquals(xml.includes("READONLY"), false);
+  assertEquals(xml.includes("<key>READONLY</key>"), false);
 });
 
 Deno.test("renderPlist adds READONLY=1 to the env when readonly", () => {

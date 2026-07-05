@@ -82,14 +82,7 @@ function xmlEscape(s: string): string {
 /** A launchd plist that runs the deno binary directly (never the install shim,
  * which launchd's minimal PATH can't resolve) with an explicit PATH + HOME. */
 export function renderPlist(plan: PlistPlan): string {
-  const serveArgs = plan.serveArgs.map((s) => {
-    if (!plan.readonly && s.startsWith("--allow-env=")) {
-      return s.replace(/,?READONLY,?/, ",").replace(/,+/, ",").replace(/^(--allow-env=),/, "$1")
-        .replace(/,+$/, "");
-    }
-    return s;
-  });
-  const argv = [plan.denoPath, ...serveArgs];
+  const argv = [plan.denoPath, ...plan.serveArgs];
   const progArgs = argv.map((s) => `    <string>${xmlEscape(s)}</string>`).join("\n");
   const env: [string, string][] = [["HOME", plan.homeDir], ["PATH", AGENT_PATH_ENV]];
   if (plan.readonly) env.push(["READONLY", "1"]);
