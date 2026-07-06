@@ -1,5 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import {
+  forceDossierThemeOff,
   injectEditorialBody,
   injectEditorialHead,
   injectFavicon,
@@ -89,4 +90,33 @@ Deno.test("editorial head no-flash script forces light when opted out", () => {
 Deno.test("editorial body toggle script bails out when opted out", () => {
   const out = injectEditorialBody(MINIMAL);
   assertStringIncludes(out, "getAttribute('data-ed-theme')==='off'");
+});
+
+// A doc bearing the field-dossier signature: cover band + verdigris accent.
+const DOSSIER = `<!DOCTYPE html><html lang="en"><head><title>x</title>` +
+  `<style>:root{--verdigris:#2E6E64;}</style></head>` +
+  `<body><header class="cover reveal"><h1>x</h1></header></body></html>`;
+
+Deno.test("forceDossierThemeOff adds the opt-out to a dossier doc", () => {
+  const out = forceDossierThemeOff(DOSSIER);
+  assertStringIncludes(out, '<html lang="en" data-ed-theme="off">');
+});
+
+Deno.test("forceDossierThemeOff is idempotent and respects an existing value", () => {
+  const once = forceDossierThemeOff(DOSSIER);
+  assertEquals(forceDossierThemeOff(once), once);
+  const pinned = DOSSIER.replace('<html lang="en">', '<html lang="en" data-ed-theme="on">');
+  assertEquals(forceDossierThemeOff(pinned), pinned);
+});
+
+Deno.test("forceDossierThemeOff leaves non-dossier docs alone", () => {
+  // No cover band, no verdigris accent — the editorial style keeps its toggle.
+  assertEquals(forceDossierThemeOff(MINIMAL), MINIMAL);
+  // A `cover-inner`-style class token is not the cover band itself, and a
+  // stray --verdigris mention (e.g. a code sample) alone doesn't qualify.
+  const nearMiss = MINIMAL.replace(
+    "<p>hi</p>",
+    '<div class="cover-inner">x</div><code>--verdigris: teal</code>',
+  );
+  assertEquals(forceDossierThemeOff(nearMiss), nearMiss);
 });
