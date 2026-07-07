@@ -623,3 +623,44 @@ Deno.test("GET/DELETE /api/artifacts round-trip; mutations blocked under READONL
   }[];
   assertEquals(after.some((a) => a.slug === slug), false);
 });
+
+// --- /docs/<slug>/download ----------------------------------------------------
+
+/** A fixture whose doc has a real _migrated source, so doc routes can render. */
+async function docFixture(readonly = false) {
+  const dir = await Deno.makeTempDir();
+  await Deno.writeTextFile(join(dir, "registry.jsonc"), FIXTURE);
+  await Deno.mkdir(join(dir, "_migrated"));
+  await Deno.writeTextFile(
+    join(dir, "_migrated", "alpha.html"),
+    `<!DOCTYPE html><html><head><title>Alpha</title></head><body><p>alpha body</p></body></html>`,
+  );
+  const ctx = await makeContext(dir);
+  return makeHandler({ ctx, readonly });
+}
+
+Deno.test("GET /docs/<slug>/download returns a portable attachment", async () => {
+  const h = await docFixture();
+  const res = await h(req("/docs/alpha/download"));
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-disposition"), 'attachment; filename="alpha.html"');
+  const html = await res.text();
+  assertStringIncludes(html, "alpha body");
+  assertStringIncludes(html, "EDITORIAL-HEAD:start"); // self-contained bundle
+  assertEquals(html.includes("READING-ROOM-NAV"), false); // no server chrome
+  assertEquals(html.includes("RR-ADMIN"), false);
+  assertEquals(html.includes("favicon.svg"), false);
+});
+
+Deno.test("download of an unknown slug is 404; non-GET is 405", async () => {
+  const h = await docFixture();
+  assertEquals((await h(req("/docs/nope/download"))).status, 404);
+  assertEquals((await h(req("/docs/alpha/download", { method: "POST" }))).status, 405);
+});
+
+Deno.test("download stays available under READONLY (it is a read)", async () => {
+  const h = await docFixture(true);
+  const res = await h(req("/docs/alpha/download"));
+  assertEquals(res.status, 200);
+  assertEquals(res.headers.get("content-disposition"), 'attachment; filename="alpha.html"');
+});
