@@ -265,14 +265,15 @@ export async function transformDoc(
  * — then heals the canonical editorial bundle in, so even a doc saved off a
  * served page (or carrying a stale bundle) downloads clean and current.
  * Source hrefs stay as authored: the /docs/<slug> rewrite only resolves on
- * the served site. */
+ * the served site. Dossier docs get the same theme opt-out serving applies —
+ * the healed bundle must not hand them a toggle their palette can't honor. */
 export function portableHtml(srcHtml: string): string {
   const cleaned = stripAdmin(srcHtml)
     .replace(EXISTING_NAV_RE, "")
     .replace(EXISTING_FAVICON_RE, "")
     .replace(EXISTING_LOCAL_HEAD_RE, "")
     .replace(EXISTING_LOCAL_BODY_RE, "");
-  return injectEditorialBody(injectEditorialHead(cleaned));
+  return injectEditorialBody(injectEditorialHead(forceDossierThemeOff(cleaned)));
 }
 
 /** Resolve a doc's source like transformDoc, rendered portable. */

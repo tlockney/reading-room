@@ -168,3 +168,8 @@ Deno.test("portableHtml is idempotent", () => {
   const once = portableHtml(SERVED_LIKE);
   assertEquals(portableHtml(once), once);
 });
+
+Deno.test("portableHtml forces the dossier theme opt-out, like serving does", () => {
+  const out = portableHtml(DOSSIER);
+  assertStringIncludes(out, '<html lang="en" data-ed-theme="off">');
+});
