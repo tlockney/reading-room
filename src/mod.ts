@@ -21,6 +21,8 @@ export {
   injectLocalSlots,
   loadCorpus,
   loadSlots,
+  portableDoc,
+  portableHtml,
   renderIndex,
   stripAdmin,
   transformDoc,

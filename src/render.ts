@@ -235,6 +235,30 @@ export async function transformDoc(
   );
 }
 
+/** A PORTABLE copy of a source doc: self-contained and environment-neutral,
+ * for download (and, later, sharing). Strips every server-tied region — the
+ * breadcrumb nav, favicon links, admin layer, and per-environment local slots
+ * — then heals the canonical editorial bundle in, so even a doc saved off a
+ * served page (or carrying a stale bundle) downloads clean and current.
+ * Source hrefs stay as authored: the /docs/<slug> rewrite only resolves on
+ * the served site. */
+export function portableHtml(srcHtml: string): string {
+  const cleaned = stripAdmin(srcHtml)
+    .replace(EXISTING_NAV_RE, "")
+    .replace(EXISTING_FAVICON_RE, "")
+    .replace(EXISTING_LOCAL_HEAD_RE, "")
+    .replace(EXISTING_LOCAL_BODY_RE, "");
+  return injectEditorialBody(injectEditorialHead(cleaned));
+}
+
+/** Resolve a doc's source like transformDoc, rendered portable. */
+export async function portableDoc(ctx: RoomContext, doc: Doc): Promise<string> {
+  const override = join(ctx.migratedDir, `${doc.slug}.html`);
+  const src = (await exists(override)) ? override : join(ctx.workspace, doc.src);
+  if (!(await exists(src))) throw new Error(`missing source: ${src}`);
+  return portableHtml(await Deno.readTextFile(src));
+}
+
 /** Find + render a doc by slug; null if no such slug. */
 export async function transformDocBySlug(
   ctx: RoomContext,

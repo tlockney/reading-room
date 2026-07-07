@@ -16,7 +16,14 @@
  *
  * (Run under launchd via ./agent.sh install for an always-on local agent.)
  */
-import { injectLocalSlots, loadCorpus, loadSlots, renderIndex, transformDoc } from "./render.ts";
+import {
+  injectLocalSlots,
+  loadCorpus,
+  loadSlots,
+  portableDoc,
+  renderIndex,
+  transformDoc,
+} from "./render.ts";
 import type { Doc, Topic } from "./render.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { makeContext, resolveHome, resolveInstanceName } from "./config.ts";
@@ -61,6 +68,7 @@ import { join } from "jsr:@std/path@1";
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
 
 const DOC_RE = /^\/docs\/([A-Za-z0-9_-]+)\/?$/; // canonical: /docs/<slug> (S3 also serves /docs/<slug>/)
+const DOC_DOWNLOAD_RE = /^\/docs\/([A-Za-z0-9_-]+)\/download$/; // portable copy as an attachment
 const DOC_HTML_RE = /^\/docs\/([A-Za-z0-9._-]+)\.html$/; // legacy: redirect to extensionless
 const API_DOC_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)$/;
 const API_DOC_SEND_RE = /^\/api\/docs\/([A-Za-z0-9_-]+)\/send$/;
@@ -433,6 +441,19 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
           await loadSlots(opts.ctx.root),
         );
         return page(injectAdmin(index, ctx));
+      }
+      const dl = path.match(DOC_DOWNLOAD_RE);
+      if (dl) {
+        if (req.method !== "GET") return notice("Method not allowed.", 405);
+        const found = findDoc(corpus, dl[1]);
+        if (!found) return notice(`No such document: <b>${esc(dl[1])}</b>`, 404);
+        // A read, not a mutation — stays available under READONLY.
+        return new Response(await portableDoc(opts.ctx, found.doc), {
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "content-disposition": `attachment; filename="${found.doc.slug}.html"`,
+          },
+        });
       }
       const m = path.match(DOC_RE);
       if (m) {
