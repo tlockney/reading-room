@@ -4,6 +4,7 @@ import {
   injectEditorialBody,
   injectEditorialHead,
   injectFavicon,
+  portableHtml,
   renderIndex,
   stripAdmin,
 } from "./render.ts";
@@ -119,4 +120,51 @@ Deno.test("forceDossierThemeOff leaves non-dossier docs alone", () => {
     '<div class="cover-inner">x</div><code>--verdigris: teal</code>',
   );
   assertEquals(forceDossierThemeOff(nearMiss), nearMiss);
+});
+
+// A source doc as it might look after being saved off a served page: every
+// server-tied region baked in, plus a stale editorial bundle.
+const SERVED_LIKE = [
+  "<!DOCTYPE html><html><head><title>x</title>",
+  '<!-- EDITORIAL-FAVICON:start -->\n<link rel="icon" href="/favicon.svg">\n<!-- EDITORIAL-FAVICON:end -->',
+  "<!-- EDITORIAL-HEAD:start -->\n<style>/*STALE*/</style>\n<!-- EDITORIAL-HEAD:end -->",
+  "<!-- RR-LOCAL-HEAD:start -->\n<style>/*LOCAL*/</style>\n<!-- RR-LOCAL-HEAD:end -->",
+  "</head><body>",
+  "<!-- READING-ROOM-NAV:start -->\n<div data-library-nav>nav</div>\n<!-- READING-ROOM-NAV:end -->",
+  '<p>hi <a href="b.html#frag">sibling</a></p>',
+  "<!-- RR-ADMIN:start -->\n<script>window.__RR = {};</script>\n<!-- RR-ADMIN:end -->",
+  "<!-- RR-LOCAL-BODY:start -->\n<div>banner</div>\n<!-- RR-LOCAL-BODY:end -->",
+  "</body></html>",
+].join("\n");
+
+Deno.test("portableHtml strips every server-tied region", () => {
+  const out = portableHtml(SERVED_LIKE);
+  assertEquals(out.includes("READING-ROOM-NAV"), false);
+  // the canonical head bundle CSS mentions the [data-library-nav] selector;
+  // what must be gone is the injected nav element itself
+  assertEquals(out.includes("<div data-library-nav"), false);
+  assertEquals(out.includes("EDITORIAL-FAVICON"), false);
+  assertEquals(out.includes("favicon.svg"), false);
+  assertEquals(out.includes("RR-ADMIN"), false);
+  assertEquals(out.includes("window.__RR"), false);
+  assertEquals(out.includes("RR-LOCAL-HEAD"), false);
+  assertEquals(out.includes("RR-LOCAL-BODY"), false);
+  assertEquals(out.includes("/*LOCAL*/"), false);
+});
+
+Deno.test("portableHtml heals a stale editorial bundle to the current canonical", () => {
+  const out = portableHtml(SERVED_LIKE);
+  assertEquals(count(out, "EDITORIAL-HEAD:start"), 1);
+  assertEquals(count(out, "EDITORIAL-BODY:start"), 1);
+  assertEquals(out.includes("/*STALE*/"), false);
+});
+
+Deno.test("portableHtml leaves source hrefs as authored (no /docs rewrite)", () => {
+  const out = portableHtml(SERVED_LIKE);
+  assertStringIncludes(out, 'href="b.html#frag"');
+});
+
+Deno.test("portableHtml is idempotent", () => {
+  const once = portableHtml(SERVED_LIKE);
+  assertEquals(portableHtml(once), once);
 });

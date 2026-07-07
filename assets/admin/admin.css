@@ -74,7 +74,8 @@
   letter-spacing: 0.15em;
   text-transform: uppercase;
 }
-.rradmin-cluster button {
+.rradmin-cluster button,
+.rradmin-cluster a {
   appearance: none;
   background: transparent;
   border: 1px solid var(--rule-strong, #8a7e5e);
@@ -83,10 +84,12 @@
   font: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
+  text-decoration: none;
   padding: 3px 8px;
   cursor: pointer;
 }
-.rradmin-cluster button:hover {
+.rradmin-cluster button:hover,
+.rradmin-cluster a:hover {
   color: var(--copper, #a85a1a);
   border-color: var(--copper, #a85a1a);
 }

@@ -179,6 +179,17 @@ routes are serve-only and READONLY-gated; the outbound `fetch` is injected in te
 reachable by any tailnet member — mitigated by review-quarantine + READONLY. See
 `_specs/2026-07-05-doc-transfer-design.md`.
 
+## Doc download (serve-only)
+
+`GET /docs/<slug>/download` returns a **portable** copy of a doc as an attachment
+(`filename="<slug>.html"`): the source (with the `_migrated` override preferred) stripped of every
+server-tied region — breadcrumb nav, favicon links, admin layer, per-environment local slots — with
+the canonical editorial bundle healed in and source hrefs left as authored. `portableHtml` /
+`portableDoc` live in `src/render.ts` (exported from `mod.ts`); the route is GET-only and stays
+available under `READONLY=1` (it's a read). The affordance is a `↓ download` link in the doc page's
+breadcrumb cluster (admin layer), so static builds are untouched. A future sharing feature should
+reuse `portableDoc` as its payload builder. See `_specs/2026-07-07-doc-download-design.md`.
+
 ## Skill relationship
 
 The `editorial-longform-html` Claude skill authors standalone docs and bakes the same editorial
