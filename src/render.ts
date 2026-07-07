@@ -102,6 +102,28 @@ export function stripAdmin(docHtml: string): string {
   return docHtml.replace(EXISTING_ADMIN_RE, "");
 }
 
+// Field-dossier docs (the field-dossier-html skill) carry a fixed palette —
+// dark cover band over a paper body — that the editorial dark theme cannot
+// restyle. The skill template opts out via data-ed-theme="off" on <html>, but
+// docs authored from template copies that predate the attribute were filed
+// without it. Detect the dossier's signature (a `cover` class token plus its
+// --verdigris accent variable) and force the opt-out; a doc that already
+// carries any data-ed-theme value keeps it.
+const HTML_TAG_RE = /<html\b[^>]*>/i;
+const DOSSIER_COVER_RE = /class="(?:[^"]*\s)?cover(?:\s[^"]*)?"/;
+const DOSSIER_ACCENT_RE = /--verdigris\s*:/;
+
+/** Force the editorial theme toggle off for field-dossier docs (idempotent). */
+export function forceDossierThemeOff(docHtml: string): string {
+  if (!DOSSIER_COVER_RE.test(docHtml) || !DOSSIER_ACCENT_RE.test(docHtml)) return docHtml;
+  const tag = docHtml.match(HTML_TAG_RE);
+  if (!tag || tag[0].includes("data-ed-theme")) return docHtml;
+  return docHtml.replace(
+    HTML_TAG_RE,
+    (m: string): string => m.replace(/>$/, ' data-ed-theme="off">'),
+  );
+}
+
 // Per-environment additive slots: a consumer's assets/head-extra.html and
 // assets/body-extra.html ride along on every page (index, served docs, static
 // builds) in their own marked regions. Additive only — the canonical editorial
@@ -230,7 +252,9 @@ export async function transformDoc(
   const body = rewriteLinks(await Deno.readTextFile(src), sourceBasenameToSlug(corpus));
   const withNav = injectNav(body, navSnippet(topic.id, topic.short, doc.title));
   return injectLocalSlots(
-    injectEditorialBody(injectEditorialHead(injectFavicon(stripAdmin(withNav)))),
+    injectEditorialBody(
+      injectEditorialHead(injectFavicon(stripAdmin(forceDossierThemeOff(withNav)))),
+    ),
     await loadSlots(ctx.root),
   );
 }
@@ -241,14 +265,15 @@ export async function transformDoc(
  * — then heals the canonical editorial bundle in, so even a doc saved off a
  * served page (or carrying a stale bundle) downloads clean and current.
  * Source hrefs stay as authored: the /docs/<slug> rewrite only resolves on
- * the served site. */
+ * the served site. Dossier docs get the same theme opt-out serving applies —
+ * the healed bundle must not hand them a toggle their palette can't honor. */
 export function portableHtml(srcHtml: string): string {
   const cleaned = stripAdmin(srcHtml)
     .replace(EXISTING_NAV_RE, "")
     .replace(EXISTING_FAVICON_RE, "")
     .replace(EXISTING_LOCAL_HEAD_RE, "")
     .replace(EXISTING_LOCAL_BODY_RE, "");
-  return injectEditorialBody(injectEditorialHead(cleaned));
+  return injectEditorialBody(injectEditorialHead(forceDossierThemeOff(cleaned)));
 }
 
 /** Resolve a doc's source like transformDoc, rendered portable. */
