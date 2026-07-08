@@ -7,13 +7,18 @@
  * library. The doc itself is unchanged (it carries the editorial bundle and
  * works off-disk); render.ts de-dupes the bundle on serve.
  *
- *   deno task add-doc --src <file.html> --topic <id> --title "..." --kind "..." \
- *     --desc "..." --foot-left "..." --foot-right "..." [--slug x] \
- *     [--visibility private|shared] [--review] \
- *     [--new-topic "§ 0N|id|Name|Short"]
+ * ```sh
+ * deno run -A jsr:@tlockney/reading-room/add-doc \
+ *   --src <file.html> --topic <id> --title "..." --kind "..." \
+ *   --desc "..." --foot-left "..." --foot-right "..." [--slug x] \
+ *   [--visibility private|shared] [--review] \
+ *   [--new-topic "§ 0N|id|Name|Short"]
+ * ```
  *
  * The pure registry editors live in registry-edit.ts (shared with serve.ts's
  * management API) and are re-exported here for back-compat.
+ *
+ * @module
  */
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { basename, join } from "jsr:@std/path@1";
@@ -26,7 +31,10 @@ import { ensureHome } from "./init.ts";
 export { insertDoc, insertTopic, slugExists } from "./registry-edit.ts";
 export type { DocEntry, TopicEntry } from "./registry-edit.ts";
 
-// --- CLI dispatcher (exported so cli.ts can call it) -----------------------
+/**
+ * `reading-room add-doc` entry (exported so cli.ts can call it): copy the
+ * authored file into _migrated/ and register it. Returns the exit code.
+ */
 export async function addDocMain(args: string[]): Promise<number> {
   const a = parseArgs(args, {
     string: [

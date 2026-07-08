@@ -10,20 +10,31 @@ import { writeAtomic } from "./comments.ts";
 import { copy, ensureDir, exists, walk } from "jsr:@std/fs@1";
 import { basename, join } from "jsr:@std/path@1";
 
+/** One manifest entry: a snapshotted document or directory served verbatim at /artifacts/<slug>/. */
 export interface Artifact {
+  /** URL path segment; unique within the manifest, stable for the artifact's lifetime. */
   slug: string;
+  /** Display title for the gallery — explicit, extracted from <title>, or the slug. */
   title: string;
-  entry: string | null; // file served at the slug root; null → directory listing
+  /** File served at the slug root; null → directory listing. */
+  entry: string | null;
+  /** Whether the snapshot was a directory (vs a single file). */
   isDir: boolean;
-  createdAt: string; // ISO-8601
-  updatedAt: string; // ISO-8601
+  /** ISO-8601 */
+  createdAt: string;
+  /** ISO-8601 */
+  updatedAt: string;
+  /** Total size of the snapshotted content on disk. */
   bytes: number;
 }
 
+/** Shape of the machine-managed artifacts.json manifest in the content home. */
 export interface Manifest {
+  /** All published artifacts, in publish order. */
   artifacts: Artifact[];
 }
 
+/** Lowercase, collapse everything outside [a-z0-9_-] to single dashes, trim edge dashes. */
 export function slugify(name: string): string {
   return name
     .toLowerCase()
@@ -51,6 +62,10 @@ export function extractTitle(html: string): string | null {
   return text ? text : null;
 }
 
+/**
+ * Read the manifest's artifact list. A missing file or a malformed top level yields [] (first
+ * publish bootstraps the manifest); other read errors are surfaced.
+ */
 export async function loadManifest(path: string): Promise<Artifact[]> {
   try {
     const parsed: unknown = JSON.parse(await Deno.readTextFile(path));
@@ -63,6 +78,7 @@ export async function loadManifest(path: string): Promise<Artifact[]> {
   }
 }
 
+/** Write the artifact list back as the manifest, atomically (write-then-rename). */
 export async function saveManifest(path: string, list: Artifact[]): Promise<void> {
   const manifest: Manifest = { artifacts: list };
   await writeAtomic(path, JSON.stringify(manifest, null, 2) + "\n");
@@ -107,6 +123,13 @@ async function resolveEntryAndTitle(
   return { entry, title: slug };
 }
 
+/**
+ * Snapshot a file or directory into `artifactsDir/<slug>/` and record it in the manifest.
+ * The slug derives from `name` (else the file name, .html stripped), deduped against existing
+ * slugs; the title falls back to the entry file's <title>, then the slug. Content is copied
+ * verbatim — no editorial/admin transform, ever. Throws if `srcPath` is missing (surfaced as
+ * 400 by the API).
+ */
 export async function publishArtifact(opts: {
   artifactsDir: string;
   manifestPath: string;
@@ -140,6 +163,11 @@ export async function publishArtifact(opts: {
   return art;
 }
 
+/**
+ * Replace an existing artifact's content wholesale from `srcPath`, keeping its slug and title
+ * but refreshing entry, size, and `updatedAt`. Returns null when the slug is not in the
+ * manifest (nothing is written).
+ */
 export async function updateArtifact(opts: {
   artifactsDir: string;
   manifestPath: string;
@@ -181,6 +209,10 @@ export async function setArtifactTitle(opts: {
   return art;
 }
 
+/**
+ * Delete an artifact's content directory and drop it from the manifest. Returns false when
+ * the slug is not in the manifest (nothing is written).
+ */
 export async function removeArtifact(opts: {
   artifactsDir: string;
   manifestPath: string;

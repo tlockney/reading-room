@@ -17,21 +17,35 @@ import type { Comment } from "./comments.ts";
 import { insertDoc, insertTopic, slugExists } from "./registry-edit.ts";
 import type { DocEntry } from "./registry-edit.ts";
 
+/** Registry metadata carried alongside a transferred doc's HTML. */
 export interface DocMeta {
+  /** The sender's slug — advisory; the receiver sanitizes and dedupes it, never trusts it raw. */
   slug: string;
+  /** Display title, as in the sender's registry. */
   title: string;
+  /** Document kind label (e.g. "field notes"), as in the sender's registry. */
   kind: string;
+  /** One-line description; the receiver appends "(received from <origin>)" provenance. */
   desc: string;
+  /** Card footer, left side, as in the sender's registry. */
   footLeft: string;
+  /** Card footer, right side, as in the sender's registry. */
   footRight: string;
-  originTopic: string; // the sender's topic id — advisory, for the user re-filing
+  /** The sender's topic id — advisory, for the user re-filing. */
+  originTopic: string;
+  /** Publish visibility carried over from the sender's registry entry. */
   visibility: "private" | "shared";
-  origin: string; // sender instance name
+  /** Sender instance name. */
+  origin: string;
 }
 
+/** The JSON body POSTed to a peer's /api/receive: the full document plus its metadata. */
 export interface DocPayload {
+  /** The document's full HTML source, verbatim. */
   html: string;
+  /** Registry metadata for filing the doc on the receiving side. */
   meta: DocMeta;
+  /** Annotation sidecar entries; omitted when the sender has none or chose not to include them. */
   comments?: Comment[];
 }
 
@@ -42,6 +56,11 @@ function findDoc(corpus: Topic[], slug: string): { topic: Topic; doc: Doc } | nu
   return null;
 }
 
+/**
+ * Assemble the transfer payload for `slug`: the doc's HTML (the `_migrated/` override when
+ * present, else the registry `src`), its registry metadata, and — with `opts.withComments` —
+ * any annotation sidecar. Throws on an unknown slug.
+ */
 export async function buildDocPayload(
   ctx: RoomContext,
   corpus: Topic[],
@@ -108,6 +127,10 @@ function parseMeta(raw: unknown): DocMeta | string {
   };
 }
 
+/**
+ * Validate an untrusted /api/receive body into a DocPayload. Returns a human-readable
+ * error string (not a throw) on the first field that fails, so the API can 400 with it.
+ */
 export function parseReceivedPayload(raw: unknown): DocPayload | string {
   if (typeof raw !== "object" || raw === null) return "body must be a JSON object";
   const o = raw as Record<string, unknown>;
@@ -137,6 +160,11 @@ function topicExists(registry: string, id: string): boolean {
   return Array.isArray(corpus) && corpus.some((t) => t?.id === id);
 }
 
+/**
+ * File an incoming payload into this instance's content home: write the HTML (and any
+ * comments sidecar) under a sanitized, deduped slug, then register it `review: true` in the
+ * reserved "received" topic (created if absent) with provenance appended to `desc`.
+ */
 export async function receiveDoc(
   ctx: RoomContext,
   payload: DocPayload,
@@ -179,6 +207,11 @@ export async function receiveDoc(
   return { slug, topic: "received" };
 }
 
+/**
+ * Send a curated doc to a peer: build the payload and POST it to `<target>/api/receive`.
+ * Never throws — all failures come back as `{ ok: false, error }`; on success `slug` is the
+ * slug the peer filed it under (which may differ from ours). `fetchFn` is injectable for tests.
+ */
 export async function sendDoc(
   ctx: RoomContext,
   corpus: Topic[],

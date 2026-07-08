@@ -4,13 +4,22 @@
  * Serve, build, publish, and annotate a registry of long-form HTML documents.
  * Run the entry points against a content repo (cwd):
  *
- *   deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY \
- *     jsr:@tlockney/reading-room/serve
- *   deno run --allow-read --allow-write jsr:@tlockney/reading-room/build
+ * ```sh
+ * deno run --allow-read --allow-write --allow-net --allow-env=PORT,READONLY \
+ *   jsr:@tlockney/reading-room/serve
+ * deno run --allow-read --allow-write jsr:@tlockney/reading-room/build
+ * ```
  *
  * This module exports the library surface for scripting and for content-repo
  * drift tests (EDITORIAL_HEAD / EDITORIAL_BODY are the canonical zoom + theme
- * bundle the editorial-longform-html skill is pinned against).
+ * bundle the editorial-longform-html skill is pinned against):
+ *
+ * ```ts
+ * import { build, makeContext } from "jsr:@tlockney/reading-room";
+ *
+ * const ctx = await makeContext("/path/to/content-home");
+ * await build(ctx);
+ * ```
  *
  * @module
  */

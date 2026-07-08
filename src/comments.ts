@@ -11,16 +11,25 @@
 import { ensureDir } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
 
+/** One stored annotation: a W3C-style text-quote anchor plus the note it carries. */
 export interface Comment {
+  /** Server-assigned UUID. */
   id: string;
-  created: string; // ISO-8601
-  quote: string; // exact selected text
-  prefix: string; // up to ~32 chars before the selection
-  suffix: string; // up to ~32 chars after
-  note: string; // the annotation body
-  reviewed?: string; // ISO-8601 — when it was marked reviewed; absent = active
+  /** ISO-8601 creation time. */
+  created: string;
+  /** Exact selected text. */
+  quote: string;
+  /** Up to ~32 chars before the selection. */
+  prefix: string;
+  /** Up to ~32 chars after. */
+  suffix: string;
+  /** The annotation body. */
+  note: string;
+  /** ISO-8601 — when it was marked reviewed; absent = active. */
+  reviewed?: string;
 }
 
+/** The client-supplied fields of a comment; id/created/reviewed are server-managed. */
 export type CommentInput = Pick<Comment, "quote" | "prefix" | "suffix" | "note">;
 
 const MAX = { quote: 2000, prefix: 64, suffix: 64, note: 10_000 } as const;
@@ -51,6 +60,7 @@ export async function writeAtomic(path: string, text: string): Promise<void> {
 
 const fileFor = (dir: string, slug: string): string => join(dir, `${slug}.json`);
 
+/** Read a doc's comments; a missing sidecar file (or non-array JSON) reads as none. */
 export async function loadComments(dir: string, slug: string): Promise<Comment[]> {
   try {
     const parsed: unknown = JSON.parse(await Deno.readTextFile(fileFor(dir, slug)));
@@ -61,6 +71,8 @@ export async function loadComments(dir: string, slug: string): Promise<Comment[]
   }
 }
 
+/** Append a comment to a doc's sidecar (creating the dir if needed) and return it
+ * with the server-assigned id and created stamp. */
 export async function addComment(dir: string, slug: string, input: CommentInput): Promise<Comment> {
   await ensureDir(dir);
   const all = await loadComments(dir, slug);
@@ -95,6 +107,7 @@ export async function setCommentReviewed(
   return target;
 }
 
+/** Remove one comment by id; false when the id is unknown for that slug. */
 export async function deleteComment(dir: string, slug: string, id: string): Promise<boolean> {
   const all = await loadComments(dir, slug);
   const keep = all.filter((c) => c.id !== id);

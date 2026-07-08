@@ -4,6 +4,16 @@
  * --help/--version. Each subcommand keeps parsing its own remaining args; this
  * module only routes. Distributed via `deno install -g jsr:.../cli` (see
  * _specs/2026-06-13-cli-distribution-design.md). Library callers use ./mod.ts.
+ *
+ * ```sh
+ * deno install -g -f -n reading-room \
+ *   --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
+ *   --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
+ *   jsr:@tlockney/reading-room/cli
+ * reading-room --help
+ * ```
+ *
+ * @module
  */
 import { serveMain } from "./serve.ts";
 import { buildMain } from "./build.ts";

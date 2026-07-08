@@ -29,27 +29,44 @@ const FAVICON_SNIPPET = FAVICON_START +
   `\n<link rel="icon" type="image/svg+xml" href="/favicon.svg">` +
   `\n<link rel="apple-touch-icon" href="/apple-touch-icon.png">\n` + FAVICON_END;
 
+/** One registry entry: a source HTML document plus the metadata its index card renders. */
 export interface Doc {
+  /** URL identity — the doc serves at /docs/<slug>; also names the _migrated/ override file. */
   slug: string;
+  /** Document title, shown on the card and in the breadcrumb. */
   title: string;
+  /** Card eyebrow label (document type, e.g. "Reference"). */
   kind: string;
+  /** One-line card description. */
   desc: string;
+  /** Card footer, left slot. */
   footLeft: string;
+  /** Card footer, right slot. */
   footRight: string;
+  /** Source HTML path relative to the workspace; a `_migrated/<slug>.html` override wins. */
   src: string;
+  /** Publish gate: only "shared" docs enter the published subset. Absent means private. */
   visibility?: "private" | "shared";
+  /** Marks the doc for review; it also surfaces in the index's "For Review" group. */
   review?: boolean;
 }
+/** A numbered topic grouping docs on the index page. */
 export interface Topic {
+  /** Display number for the group heading (e.g. "01"). */
   num: string;
+  /** Anchor id — chips and the minimap link to /#<id>. */
   id: string;
+  /** Full topic name, shown in the group heading and chips. */
   name: string;
+  /** Short label used in the breadcrumb and minimap. */
   short: string;
+  /** Documents filed under this topic. */
   docs: Doc[];
 }
 
 const e = (s: string): string => escape(s);
 
+/** Parse a registry.jsonc file into the topic → docs corpus. */
 export async function loadCorpus(path: string): Promise<Topic[]> {
   return parseJsonc(await Deno.readTextFile(path)) as unknown as Topic[];
 }
@@ -86,11 +103,14 @@ const EXISTING_FAVICON_RE = new RegExp(
   "g",
 );
 
-// RR-ADMIN: the serve-only management layer's region markers. render.ts only
-// STRIPS this region — healing docs saved from a served page (e.g. a curl of
-// /docs/<slug> dropped into _migrated/) so the static build can never carry
-// management chrome. Injection lives in admin.ts, which serve.ts alone imports.
+/**
+ * RR-ADMIN: the serve-only management layer's region start marker. render.ts only
+ * STRIPS this region — healing docs saved from a served page (e.g. a curl of
+ * /docs/<slug> dropped into _migrated/) so the static build can never carry
+ * management chrome. Injection lives in admin.ts, which serve.ts alone imports.
+ */
 export const ADMIN_START = "<!-- RR-ADMIN:start -->";
+/** End marker of the RR-ADMIN region (see {@linkcode ADMIN_START}). */
 export const ADMIN_END = "<!-- RR-ADMIN:end -->";
 const EXISTING_ADMIN_RE = new RegExp(
   reEscape(ADMIN_START) + "[\\s\\S]*?" + reEscape(ADMIN_END) + "\\n?",
@@ -124,12 +144,16 @@ export function forceDossierThemeOff(docHtml: string): string {
   );
 }
 
-// Per-environment additive slots: a consumer's assets/head-extra.html and
-// assets/body-extra.html ride along on every page (index, served docs, static
-// builds) in their own marked regions. Additive only — the canonical editorial
-// bundle always injects regardless; there is no override mechanism.
+/**
+ * Per-environment additive slots: a consumer's assets/head-extra.html and
+ * assets/body-extra.html ride along on every page (index, served docs, static
+ * builds) in their own marked regions. Additive only — the canonical editorial
+ * bundle always injects regardless; there is no override mechanism.
+ */
 export interface LocalSlots {
+  /** Contents of assets/head-extra.html; "" means no head slot. */
   head: string;
+  /** Contents of assets/body-extra.html; "" means no body slot. */
   body: string;
 }
 
@@ -338,6 +362,9 @@ function minimapItem(t: Topic): string {
   }</span></a>`;
 }
 
+/** Render the full index page (masthead, minimap, chips, topic groups) with the
+ * editorial bundle + favicon injected. `instanceName` appends to the eyebrow as
+ * the serve-only library name; the static build omits it (two-arg call). */
 export function renderIndex(site: Site, corpus: Topic[], instanceName?: string): string {
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   const reviewing = corpus.flatMap((t) => t.docs.filter((d) => d.review));

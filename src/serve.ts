@@ -11,10 +11,14 @@
  * layer, so published static output stays clean. Set READONLY=1 to expose a
  * view-only instance (mutation routes return 403).
  *
- *   deno task serve            # 127.0.0.1:8413
- *   PORT=9000 deno task serve  # or:  deno task serve 9000
+ * ```sh
+ * deno run -A jsr:@tlockney/reading-room/serve        # 127.0.0.1:8413
+ * PORT=9000 deno run -A jsr:@tlockney/reading-room/serve
+ * ```
  *
  * (Run under launchd via ./agent.sh install for an always-on local agent.)
+ *
+ * @module
  */
 import {
   injectLocalSlots,
@@ -79,12 +83,22 @@ const ARTIFACT_RE = /^\/artifacts\/([A-Za-z0-9_-]+)(\/.*)?$/;
 const API_ARTIFACTS_RE = /^\/api\/artifacts\/?$/;
 const API_ARTIFACT_RE = /^\/api\/artifacts\/([A-Za-z0-9_-]+)$/;
 
+// Peer (and its PeerIdentity field) is public API through ServeOptions.discover;
+// re-export so the doc graph is complete.
+export type { Peer, PeerIdentity } from "./discovery.ts";
+
+/** Wiring for {@linkcode makeHandler}: the content home plus injectable effects. */
 export interface ServeOptions {
+  /** Resolved content home (registry path, dirs, site identity). */
   ctx: RoomContext;
+  /** View-only mode (READONLY=1) — every mutation route returns 403. */
   readonly: boolean;
+  /** Peer discovery backing /api/peers; omitted → no peers reported. */
   discover?: () => Promise<Peer[]>;
-  selfDns?: () => Promise<string | null>; // used by /api/artifacts to build tailnet URLs
-  sendFetch?: typeof fetch; // injected in tests; prod uses sendDoc's default fetch
+  /** This node's tailnet DNS name; used by /api/artifacts to build tailnet URLs. */
+  selfDns?: () => Promise<string | null>;
+  /** Outbound fetch for doc sends; injected in tests; prod uses sendDoc's default fetch. */
+  sendFetch?: typeof fetch;
 }
 
 function page(body: string, status = 200): Response {
@@ -381,6 +395,12 @@ async function serveArtifact(req: Request, path: string, opts: ServeOptions): Pr
 
 // --- handler ------------------------------------------------------------------
 
+/**
+ * Build the request handler for the live server: index + doc pages (with the
+ * admin layer injected), the /api/ management routes, artifacts, and the
+ * /.well-known identity endpoint. Corpus is re-read per request — no restart
+ * needed after edits.
+ */
 export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Response> {
   return async (req: Request): Promise<Response> => {
     const rawPath = new URL(req.url).pathname;
@@ -480,6 +500,10 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 
 // --- startup (only when run directly) ----------------------------------------
 
+/**
+ * `reading-room serve` entry: resolve the content home, wire real tailscale
+ * discovery, and serve on 127.0.0.1 until interrupted. Returns the exit code.
+ */
 export async function serveMain(args: string[]): Promise<number> {
   const a = parseArgs(args, { string: ["root", "port"] });
   const portArg = a.port ?? a._[0] ?? Deno.env.get("PORT") ?? 8413;
