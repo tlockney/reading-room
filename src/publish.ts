@@ -12,7 +12,11 @@
  *
  * Note: links from shared docs to private docs are not rewritten and will be dead in the published output.
  *
- *   deno task publish [--dry-run]
+ * ```sh
+ * deno run -A jsr:@tlockney/reading-room/publish --dry-run
+ * ```
+ *
+ * @module
  */
 import { join } from "jsr:@std/path@1";
 import { exists } from "jsr:@std/fs@1";
@@ -21,7 +25,9 @@ import { build } from "./build.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { makeContext, resolveHome } from "./config.ts";
 
+/** Parsed publish.jsonc: the command that pushes the built output. */
 export interface PublishConfig {
+  /** argv to run after the build; every "{out}" is replaced with the absolute output dir. */
   cmd: string[];
 }
 
@@ -40,6 +46,11 @@ export function resolveCmd(cmd: string[], out: string): string[] {
   return cmd.map((a) => a.replaceAll("{out}", out));
 }
 
+/**
+ * `reading-room publish` entry: build the shared subset into .publish/, then
+ * run the publish.jsonc command (or print it under --dry-run). Returns the
+ * exit code — the configured command's own code once it runs.
+ */
 export async function publishMain(args: string[]): Promise<number> {
   const a = parseArgs(args, { string: ["root"], boolean: ["dry-run"] });
   const dryRun = a["dry-run"];

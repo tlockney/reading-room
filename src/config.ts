@@ -9,15 +9,23 @@
 import { dirname, join, resolve } from "jsr:@std/path@1";
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 
+/** Site identity loaded from <root>/site.jsonc; every field falls back to DEFAULT_SITE. */
 export interface Site {
+  /** Masthead title. */
   title: string;
+  /** Small label above the masthead title. */
   eyebrow: string;
+  /** Introductory line under the masthead title. */
   lede: string;
+  /** Footer lines, rendered in order. */
   footer: string[];
-  seeds?: string[]; // optional discovery escape-hatch: base URLs of peers the auto-sources can't see
-  instance?: string; // this instance's name; serve-only, advertised to peers. Unset → bare hostname.
+  /** Optional discovery escape-hatch: base URLs of peers the auto-sources can't see. */
+  seeds?: string[];
+  /** This instance's name; serve-only, advertised to peers. Unset → bare hostname. */
+  instance?: string;
 }
 
+/** Generic identity used when site.jsonc is absent, and the base parseSite merges over. */
 export const DEFAULT_SITE: Site = {
   title: "The Reading Room",
   eyebrow: "Reference Library",
@@ -28,13 +36,21 @@ export const DEFAULT_SITE: Site = {
 
 /** Everything path- or identity-shaped the engine needs about one environment. */
 export interface RoomContext {
-  root: string; // the content repo
-  workspace: string; // dirname(root) — scattered registry `src` paths resolve here
+  /** The content repo (absolute). */
+  root: string;
+  /** dirname(root) — scattered registry `src` paths resolve here. */
+  workspace: string;
+  /** Absolute path to <root>/registry.jsonc. */
   registryPath: string;
+  /** Absolute path to <root>/_migrated, where filed document sources live. */
   migratedDir: string;
+  /** Absolute path to <root>/comments, the annotation sidecar directory. */
   commentsDir: string;
+  /** Absolute path to <root>/artifacts, the raw-served artifact store. */
   artifactsDir: string;
+  /** Absolute path to <root>/artifacts.json, the machine-managed artifact manifest. */
   artifactsManifest: string;
+  /** Site identity loaded from <root>/site.jsonc (defaults if absent). */
   site: Site;
 }
 
@@ -68,6 +84,7 @@ export function parseSite(raw: unknown): Site | string {
   return site;
 }
 
+/** Load <root>/site.jsonc; a missing file yields DEFAULT_SITE, an invalid one throws. */
 export async function loadSite(root: string): Promise<Site> {
   let text: string;
   try {
@@ -80,6 +97,9 @@ export async function loadSite(root: string): Promise<Site> {
   return site;
 }
 
+/** Build the RoomContext for a content root (default Deno.cwd()): resolve the
+ * standard paths and load the site identity. Root-agnostic — CLI home
+ * resolution is resolveHome's job, not this one's. */
 export async function makeContext(root: string = Deno.cwd()): Promise<RoomContext> {
   const abs = resolve(root);
   return {

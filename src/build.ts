@@ -14,8 +14,13 @@
  * static output carries no admin chrome and no annotations (build_test.ts
  * pins that on real output).
  *
- *   deno task build              # full corpus -> ./docs + ./index.html
- *   (publish.ts calls build() with outDir/sharedOnly for the remote subset)
+ * ```sh
+ * deno run --allow-read --allow-write jsr:@tlockney/reading-room/build
+ * ```
+ *
+ * (publish.ts calls build() with outDir/sharedOnly for the remote subset.)
+ *
+ * @module
  */
 import { emptyDir, ensureDir } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
@@ -34,11 +39,21 @@ export function filterShared(corpus: Topic[]): Topic[] {
     .filter((t) => t.docs.length > 0);
 }
 
+/** Options for {@linkcode build}. */
 export interface BuildOptions {
-  outDir?: string; // default ctx.root — today's layout (<root>/docs + <root>/index.html). <outDir>/docs is emptied.
-  sharedOnly?: boolean; // default false — everything
+  /**
+   * Default ctx.root — today's layout (<root>/docs + <root>/index.html).
+   * <outDir>/docs is emptied.
+   */
+  outDir?: string;
+  /** Default false — everything. */
+  sharedOnly?: boolean;
 }
 
+/**
+ * Write the static site: docs/<slug>/index.html per doc, the top index.html,
+ * and the site icons. Returns the corpus counts.
+ */
 export async function build(
   ctx: RoomContext,
   opts: BuildOptions = {},
@@ -70,6 +85,7 @@ export async function build(
   return { docs: total, topics: corpus.length };
 }
 
+/** `reading-room build` entry: full corpus into the content home. Returns the exit code. */
 export async function buildMain(args: string[]): Promise<number> {
   const a = parseArgs(args, { string: ["root"] });
   await build(await makeContext(resolveHome(a.root)));

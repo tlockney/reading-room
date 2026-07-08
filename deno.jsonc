@@ -37,7 +37,10 @@
     // Run the CLI dispatcher (serve | build | add-doc | publish | init).
     "cli": "deno run --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME src/cli.ts",
     // Run the test suite (render injection, registry surgery, comments, skill drift).
-    "test": "deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname"
+    "test": "deno test --allow-read --allow-write --allow-env --allow-run --allow-sys=hostname",
+    // Fail on undocumented exports / doc errors across every JSR entrypoint
+    // (the JSR score counts these). stdout is the rendered docs; discard it.
+    "doc-lint": "deno doc --lint src/mod.ts src/serve.ts src/build.ts src/publish.ts src/add-doc.ts src/cli.ts > /dev/null"
   },
   // fmt must never touch byte-pinned content: the editorial partials and skill
   // template (drift tests compare them verbatim), generated assets_gen.ts (pin

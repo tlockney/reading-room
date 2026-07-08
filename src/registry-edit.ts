@@ -15,33 +15,53 @@
  */
 import { parse as parseJsonc } from "jsr:@std/jsonc@1";
 
+/** One document entry as written into a topic's `docs` array. */
 export interface DocEntry {
+  /** Unique identifier across the whole registry; also the served URL path segment. */
   slug: string;
+  /** Display title shown on the index card and doc page. */
   title: string;
+  /** Document kind label (e.g. "Field Notes", "Reference") shown as the card eyebrow. */
   kind: string;
+  /** One-sentence description shown on the index card. */
   desc: string;
+  /** Left-hand footer line stamped onto the rendered doc. */
   footLeft: string;
+  /** Right-hand footer line stamped onto the rendered doc. */
   footRight: string;
+  /** Source HTML path, resolved relative to the workspace (dirname of the content root). */
   src: string;
+  /** Publish scope: only "shared" docs make it into the published subset. */
   visibility: "private" | "shared";
+  /** Review-quarantine flag; absent and false render identically. */
   review?: boolean;
 }
+/** One top-level topic in registry.jsonc, grouping an ordered list of docs. */
 export interface TopicEntry {
+  /** Display ordinal (e.g. "01") shown next to the topic name. */
   num: string;
+  /** Stable topic identifier used by insertDoc and the management API. */
   id: string;
+  /** Full topic name shown as the section heading. */
   name: string;
+  /** Short topic label used where the full name won't fit. */
   short: string;
+  /** The topic's documents, in display order. */
   docs: DocEntry[];
 }
 
 /** Patch for setDocField. review:false REMOVES the key (absent and false
  * render identically); visibility is always written explicitly. */
 export interface DocPatch {
+  /** New review state; false REMOVES the key rather than writing `"review": false`. */
   review?: boolean;
+  /** New publish scope; always written explicitly (never removed). */
   visibility?: "private" | "shared";
 }
 
+/** Thrown when an edit names a slug that no doc entry in the registry carries. */
 export class UnknownSlugError extends Error {
+  /** Message is passed through to Error; the name is set to "UnknownSlugError". */
   constructor(message: string) {
     super(message);
     this.name = "UnknownSlugError";
@@ -53,6 +73,7 @@ interface RawTopic {
   docs: Array<{ slug: string }>;
 }
 
+/** Whether any doc entry in the registry text carries `slug` (parsed, not string-matched). */
 export function slugExists(registry: string, slug: string): boolean {
   const corpus = parseJsonc(registry) as unknown as RawTopic[];
   return corpus.some((t) => t.docs.some((d) => d.slug === slug));

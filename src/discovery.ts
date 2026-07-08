@@ -10,17 +10,25 @@
  */
 import type { Topic } from "./render.ts";
 
+/** What an instance advertises at /.well-known/reading-room.json. */
 export interface PeerIdentity {
+  /** Instance name: site.jsonc `instance`, else the bare hostname. */
   name: string;
+  /** Engine version the instance is running. */
   version: string;
+  /** Topic count in the instance's registry. */
   topics: number;
+  /** Doc count across all topics. */
   docs: number;
 }
 
 /** A live peer: only instances that answered the identity probe are returned. */
 export interface Peer {
+  /** Display name: the tailnet HostName, or the seed's hostname. */
   name: string;
+  /** Base URL the identity probe answered on. */
   url: string;
+  /** The probed /.well-known/reading-room.json payload. */
   identity: PeerIdentity;
 }
 
