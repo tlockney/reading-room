@@ -23,6 +23,19 @@ Deno.test("injectAdmin appends the bundle before </body> with markers", () => {
   assert(out.includes(`href="/assets/admin/admin.css"`));
 });
 
+Deno.test("injectAdmin targets the real </body>, not a decoy in a comment", () => {
+  const decoy = MINIMAL.replace(
+    "<body>",
+    `<!-- authoring note: the admin block lands before </body> -->\n<body>`,
+  );
+  const out = injectAdmin(decoy, CTX);
+  assertEquals(out.split("RR-ADMIN:start").length - 1, 1);
+  assert(out.includes("lands before </body> -->"), "decoy comment must be preserved");
+  // the block must sit after the decoy mention and before the real (last) </body>
+  assert(out.indexOf("RR-ADMIN:start") > out.indexOf("lands before </body>"));
+  assert(out.indexOf("RR-ADMIN:start") < out.lastIndexOf("</body>"));
+});
+
 Deno.test("injectAdmin embeds the context as parseable JSON", () => {
   const out = injectAdmin(MINIMAL, CTX);
   const m = out.match(/window\.__RR = (.*?);<\/script>/);

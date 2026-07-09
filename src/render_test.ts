@@ -47,6 +47,35 @@ Deno.test("a baked-in (skill-authored) bundle is replaced, not duplicated", () =
   assertEquals(out.includes("/*STALE*/"), false); // replaced with current canonical
 });
 
+Deno.test("injection targets the real closing tags, not decoys in comments", () => {
+  // The editorial template's guidance comment literally names the closing tags
+  // ("...css before </head>... js before </body>..."). First-match injection
+  // splices the bundle inside that comment; the injected marker's --> then
+  // closes the comment early and spills its remaining text onto the page. The
+  // fix targets the LAST closing tag, so decoys are inert.
+  const decoy = `<!DOCTYPE html><html>` +
+    `<!-- guidance: put the css before </head> and the js before </body> here -->` +
+    `<head><title>x</title></head><body><p>hi</p></body></html>`;
+
+  const outH = injectEditorialHead(decoy);
+  assertEquals(count(outH, "EDITORIAL-HEAD:start"), 1);
+  assert(outH.includes("before </head> and the js"), "decoy comment must be preserved");
+  assert(
+    outH.indexOf("EDITORIAL-HEAD:start") > outH.indexOf("before </head>"),
+    "bundle must not be injected at the decoy </head>",
+  );
+  assert(outH.indexOf("EDITORIAL-HEAD:start") < outH.lastIndexOf("</head>"));
+
+  const outB = injectEditorialBody(decoy);
+  assertEquals(count(outB, "EDITORIAL-BODY:start"), 1);
+  assert(outB.includes("before </body> here"), "decoy comment must be preserved");
+  assert(
+    outB.indexOf("EDITORIAL-BODY:start") > outB.indexOf("before </body>"),
+    "bundle must not be injected at the decoy </body>",
+  );
+  assert(outB.indexOf("EDITORIAL-BODY:start") < outB.lastIndexOf("</body>"));
+});
+
 Deno.test("injectFavicon is RR-only and idempotent", () => {
   const once = injectFavicon(MINIMAL);
   assert(once.includes("favicon.svg"));

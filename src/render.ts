@@ -93,8 +93,15 @@ ${NAV_END}`;
 
 const reEscape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const BODY_RE = /(<body[^>]*>)/i;
-const BODY_END_RE = /<\/body>/i;
-const HEAD_END_RE = /<\/head>/i;
+// Match the LAST </body> / </head>, never the first. A decoy end-tag inside an
+// HTML comment, a <style>/<script> body, or a code sample would otherwise win
+// the first-match and splice the injected bundle mid-comment — whose marker's
+// --> then prematurely closes the comment and spills its text onto the page.
+// (The editorial template's own guidance comment mentions the closing tags.)
+// The real closing tags are always the final ones, so a trailing-occurrence
+// lookahead targets them regardless of decoys.
+const BODY_END_RE = /<\/body\s*>(?![\s\S]*<\/body\s*>)/i;
+const HEAD_END_RE = /<\/head\s*>(?![\s\S]*<\/head\s*>)/i;
 const EXISTING_NAV_RE = new RegExp(reEscape(NAV_START) + "[\\s\\S]*?" + reEscape(NAV_END), "g");
 const EDITORIAL_HEAD_RE = /<!-- EDITORIAL-HEAD:start -->[\s\S]*?<!-- EDITORIAL-HEAD:end -->\n?/g;
 const EDITORIAL_BODY_RE = /<!-- EDITORIAL-BODY:start -->[\s\S]*?<!-- EDITORIAL-BODY:end -->\n?/g;
