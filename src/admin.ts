@@ -17,7 +17,10 @@ export type AdminContext =
   | { page: "index"; readonly: boolean; docs: Record<string, Omit<DocState, "slug">> }
   | { page: "doc"; readonly: boolean; doc: DocState };
 
-const BODY_END_RE = /<\/body>/i;
+// Match the LAST </body> (never a decoy inside a comment/CSS/code sample), so
+// the admin block injects at the real closing tag. See render.ts for the full
+// rationale — this is the serve-only injection path with the same hazard.
+const BODY_END_RE = /<\/body\s*>(?![\s\S]*<\/body\s*>)/i;
 
 /** Serialize for a <script> body: <-escape so "</script>" can't break out. */
 function scriptJson(value: unknown): string {
