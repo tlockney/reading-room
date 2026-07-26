@@ -394,8 +394,13 @@
   .rradmin-card,
   .rradmin-panel,
   .rradmin-fab,
-  .rradmin-toast {
+  .rradmin-toast,
+  .rr-switcher {
     display: none !important;
+  }
+  /* the anchor highlight is a reading affordance, not part of the text */
+  ::highlight(rradmin) {
+    background: transparent;
   }
 }
 

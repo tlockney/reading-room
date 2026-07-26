@@ -55,6 +55,27 @@ Deno.test("script payload cannot break out of its <script> tag", () => {
   assertEquals(out.includes("</script><script>alert(1)"), false);
 });
 
+Deno.test("every top-level admin chrome container is hidden in print", async () => {
+  const css = await Deno.readTextFile(join(ROOT, "assets/admin/admin.css"));
+  const block = css.match(/@media print \{([\s\S]*?)\n\}/);
+  assert(block, "admin.css has no @media print block");
+  for (
+    const sel of [
+      ".rradmin-manage",
+      ".rradmin-controls",
+      ".rradmin-cluster",
+      ".rradmin-mark",
+      ".rradmin-card",
+      ".rradmin-panel",
+      ".rradmin-fab",
+      ".rradmin-toast",
+      ".rr-switcher",
+    ]
+  ) {
+    assert(block![1].includes(sel), `${sel} must be hidden when printing`);
+  }
+});
+
 // --- the publish-purity guards ----------------------------------------------
 
 Deno.test("static render path carries no admin layer", () => {
