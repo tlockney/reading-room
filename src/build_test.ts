@@ -79,6 +79,9 @@ Deno.test("built output carries no admin layer, even from contaminated sources",
     assert(builtDoc.includes("/*local*/"));
     assert(builtIndex.includes("RR-LOCAL-HEAD"));
     assert(builtIndex.includes("/*local*/"));
+    // the breadcrumb is screen chrome — it rides along, but must not print
+    assert(builtDoc.includes("<div data-library-nav"));
+    assert(builtDoc.includes("@media print{[data-library-nav]{display:none !important;}}"));
     // icons written from the embedded constants
     assert((await Deno.stat(join(out, "favicon.svg"))).isFile);
     assert((await Deno.stat(join(out, "apple-touch-icon.png"))).isFile);

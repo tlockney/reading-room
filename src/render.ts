@@ -79,6 +79,7 @@ function navSnippet(topicId: string, topicShort: string, docTitle: string): stri
   const short = e(topicShort);
   const title = e(docTitle);
   return `${NAV_START}
+<style>@media print{[data-library-nav]{display:none !important;}}</style>
 <div data-library-nav style="position:sticky;top:0;z-index:60;background:#f3ecdd;border-bottom:1px solid #c9bfa3;">
   <div style="max-width:880px;margin:0 auto;padding:11px clamp(20px,5vw,56px);display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;line-height:1.4;">
     <a href="/" style="color:#a85a1a;text-decoration:none;">&#167; Reading Room</a>
