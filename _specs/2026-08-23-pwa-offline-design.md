@@ -11,10 +11,10 @@
 
 Make the Reading Room a **Progressive Web App**: installable from any device that reaches it, and
 **fully readable offline**. "Offline" here means the whole local corpus — every document the
-instance serves — should be available with no server reachable (airplane, machine off, server
-down). This is a natural fit for a personal, tailnet-exposed, local-first document library: the
-library already lives on machines the user owns; the PWA turns it into an app you can open like a
-book, even mid-flight.
+instance serves — should be available with no server reachable (airplane, machine off, server down).
+This is a natural fit for a personal, tailnet-exposed, local-first document library: the library
+already lives on machines the user owns; the PWA turns it into an app you can open like a book, even
+mid-flight.
 
 ## What a PWA needs, mapped onto this engine
 
@@ -53,7 +53,7 @@ The service worker's precache list is generated from the same corpus the server 
 The runtime fetch policy is **network-first** for pages and docs, with cache fallback:
 
 - When the server is reachable (localhost/tailnet — i.e. almost always), the freshest content wins.
-  This preserves the engine's core ethos: *edits to the registry or a doc show up on refresh*.
+  This preserves the engine's core ethos: _edits to the registry or a doc show up on refresh_.
 - When the server is unreachable, the precache (and any runtime-cached copy) serves the last good
   version. For a doc that was never seen before and isn't precached, offline navigation falls back
   to the cached index rather than a dead screen.
@@ -70,16 +70,16 @@ origin, and there's no reason to hit the network for them once precached.
 
 ### D4. The service worker is generated, and changes when the library changes
 
-`/sw.js` is not a static file. `serve.ts` renders it per request from the live registry;
-`build.ts` writes it from the corpus at build time. The generated source embeds:
+`/sw.js` is not a static file. `serve.ts` renders it per request from the live registry; `build.ts`
+writes it from the corpus at build time. The generated source embeds:
 
 - the full precache URL list (index, icons, manifest, every `/docs/<slug>`), and
 - a revision label = `engine VERSION` + FNV-1a hash of the sorted slug list.
 
 Any registry edit (add/remove/reorder a doc) or engine upgrade changes the `sw.js` bytes, so the
-browser installs the updated worker on the next navigation and re-precaches — **no manual
-"refresh twice" dance**. Registration uses `{ updateViaCache: "none" }` so the worker script is
-always revalidated. Both served and built output share one generator (`src/pwa.ts`).
+browser installs the updated worker on the next navigation and re-precaches — **no manual "refresh
+twice" dance**. Registration uses `{ updateViaCache: "none" }` so the worker script is always
+revalidated. Both served and built output share one generator (`src/pwa.ts`).
 
 ### D5. Serve/build parity, and the existing purity rules hold
 
@@ -104,8 +104,8 @@ like the favicon and apple-touch-icon, and are written by `build.ts`.
 ## What I deliberately did NOT do
 
 - **No `site.jsonc` PWA overrides** (name/short_name/colors) — derived; extension point documented.
-- **No maskable-purpose icon** — the favicon fills its frame; a maskable-safe variant is future
-  work if the install tile matters on odd-shaped launchers.
+- **No maskable-purpose icon** — the favicon fills its frame; a maskable-safe variant is future work
+  if the install tile matters on odd-shaped launchers.
 - **No install-banner UI** — browsers surface install affordance natively for a manifest + SW.
 - **No app-shell/SPA refactor** — the library is multi-page; the SW caches every page.
 - **No change to `publish.jsonc` / the publish command** — the static build emits PWA files
@@ -137,9 +137,9 @@ unchanged.
 ## Verification
 
 - `deno task test` — includes new `pwa_test.ts` (generation), `sw_behavior_test.ts` (the generated
-  worker driven in a mocked SW runtime: install precaches everything, network-first online,
-  cache fallback offline, cache-first assets, pass-through for API/cross-origin, stale-cache
-  cleanup), plus serve/build/render endpoint tests.
+  worker driven in a mocked SW runtime: install precaches everything, network-first online, cache
+  fallback offline, cache-first assets, pass-through for API/cross-origin, stale-cache cleanup),
+  plus serve/build/render endpoint tests.
 - `deno fmt --check`, `deno lint`, `deno task doc-lint`, `deno publish --dry-run`.
 - Manual: `deno task serve` → open `/` → install the app → open each doc → stop the server →
   everything still reads. `deno task build` → the output contains `manifest.webmanifest`, `sw.js`,
