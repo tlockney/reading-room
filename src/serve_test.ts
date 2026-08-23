@@ -664,3 +664,51 @@ Deno.test("download stays available under READONLY (it is a read)", async () => 
   assertEquals(res.status, 200);
   assertEquals(res.headers.get("content-disposition"), 'attachment; filename="alpha.html"');
 });
+
+// --- PWA: manifest, service worker, icons -----------------------------------
+
+Deno.test("GET /manifest.webmanifest returns the app manifest", async () => {
+  const f = await fixture();
+  const res = await f.handler(req("/manifest.webmanifest"));
+  assertEquals(res.status, 200);
+  assert((res.headers.get("content-type") ?? "").includes("application/manifest+json"));
+  const m = await res.json() as {
+    name: string;
+    start_url: string;
+    icons: Array<{ sizes: string }>;
+  };
+  assertEquals(m.name, "The Reading Room");
+  assertEquals(m.start_url, "/");
+  const sizes = m.icons.map((i) => i.sizes);
+  assert(sizes.includes("192x192"));
+  assert(sizes.includes("512x512"));
+});
+
+Deno.test("GET /sw.js embeds the whole corpus for offline precaching", async () => {
+  const f = await fixture();
+  const res = await f.handler(req("/sw.js"));
+  assertEquals(res.status, 200);
+  assert((res.headers.get("content-type") ?? "").includes("application/javascript"));
+  const sw = await res.text();
+  assertStringIncludes(sw, "/docs/alpha");
+  assertStringIncludes(sw, "/docs/beta");
+  assertStringIncludes(sw, '"/"');
+  assert(sw.includes("addEventListener"));
+});
+
+Deno.test("PWA icon routes serve PNG bytes", async () => {
+  const f = await fixture();
+  for (const p of ["/icon-192.png", "/icon-512.png"]) {
+    const res = await f.handler(req(p));
+    assertEquals(res.status, 200, p);
+    assert((res.headers.get("content-type") ?? "").includes("image/png"));
+  }
+});
+
+Deno.test("PWA endpoints stay available under READONLY and reject non-GET", async () => {
+  const f = await fixture(true);
+  assertEquals((await f.handler(req("/sw.js"))).status, 200);
+  assertEquals((await f.handler(req("/manifest.webmanifest"))).status, 200);
+  assertEquals((await f.handler(req("/sw.js", { method: "POST" }))).status, 405);
+  assertEquals((await f.handler(req("/manifest.webmanifest", { method: "PUT" }))).status, 405);
+});

@@ -83,6 +83,21 @@ Deno.test("injectFavicon is RR-only and idempotent", () => {
   assertEquals(twice, once);
 });
 
+Deno.test("injectFavicon carries the PWA manifest link, theme-color, and SW registration", () => {
+  const once = injectFavicon(MINIMAL);
+  assert(once.includes('rel="manifest" href="/manifest.webmanifest"'));
+  assert(once.includes('name="theme-color"'));
+  assert(once.includes('navigator.serviceWorker.register("/sw.js"'));
+});
+
+Deno.test("portable output strips the PWA head chrome", () => {
+  const once = injectFavicon(MINIMAL);
+  const portable = portableHtml(once);
+  assertEquals(portable.includes('rel="manifest"'), false);
+  assertEquals(portable.includes("serviceWorker.register"), false);
+  assertEquals(portable.includes("favicon.svg"), false);
+});
+
 Deno.test("a baked-in admin block is stripped (and stripping is idempotent)", () => {
   const stale = MINIMAL.replace(
     "<p>hi</p>",
