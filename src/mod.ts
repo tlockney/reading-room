@@ -40,6 +40,13 @@ export {
 export type { Doc, LocalSlots, Topic } from "./render.ts";
 export { build, filterShared } from "./build.ts";
 export type { BuildOptions } from "./build.ts";
+export {
+  precacheUrls,
+  pwaRevision,
+  renderManifest,
+  renderServiceWorker,
+  shortName,
+} from "./pwa.ts";
 export { makeHandler } from "./serve.ts";
 export type { ServeOptions } from "./serve.ts";
 export {

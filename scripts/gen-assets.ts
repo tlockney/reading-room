@@ -40,6 +40,10 @@ ${Object.entries(admin).map(([k, v]) => `  ${j(k)}: ${j(v)},`).join("\n")}
 export const FAVICON_SVG: string = ${j(await text("favicon.svg"))};
 /** Apple touch icon PNG, base64-encoded for inline shipping (JSR cannot read package files). */
 export const APPLE_TOUCH_ICON_B64: string = ${j(await bin("apple-touch-icon.png"))};
+/** PWA 192x192 icon PNG, base64-encoded for inline shipping. */
+export const ICON_192_B64: string = ${j(await bin("icon-192.png"))};
+/** PWA 512x512 icon PNG, base64-encoded for inline shipping. */
+export const ICON_512_B64: string = ${j(await bin("icon-512.png"))};
 `;
 }
 

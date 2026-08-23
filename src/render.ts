@@ -21,13 +21,24 @@ import type { RoomContext, Site } from "./config.ts";
 // so the published JSR package never reads package-relative files.
 import { EDITORIAL_BODY as BODY_PARTIAL, EDITORIAL_HEAD as HEAD_PARTIAL } from "./assets_gen.ts";
 
-// RR-only chrome (NOT shared with standalone skill docs): the favicon links
-// resolve only on the served site, so they never go into a portable doc.
+// RR-only chrome (NOT shared with standalone skill docs): the favicon links,
+// PWA manifest, and service-worker registration resolve only on the served
+// site, so they never go into a portable doc.
 const FAVICON_START = "<!-- EDITORIAL-FAVICON:start -->";
 const FAVICON_END = "<!-- EDITORIAL-FAVICON:end -->";
 const FAVICON_SNIPPET = FAVICON_START +
   `\n<link rel="icon" type="image/svg+xml" href="/favicon.svg">` +
-  `\n<link rel="apple-touch-icon" href="/apple-touch-icon.png">\n` + FAVICON_END;
+  `\n<link rel="apple-touch-icon" href="/apple-touch-icon.png">` +
+  `\n<link rel="manifest" href="/manifest.webmanifest">` +
+  `\n<meta name="theme-color" content="#142822">` +
+  `\n<script>` +
+  `\n  // Reading Room PWA — precaches every local doc for offline reading.` +
+  `\n  if ("serviceWorker" in navigator) {` +
+  `\n    addEventListener("load", function () {` +
+  `\n      navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).catch(function () {});` +
+  `\n    });` +
+  `\n  }` +
+  `\n</script>\n` + FAVICON_END;
 
 /** One registry entry: a source HTML document plus the metadata its index card renders. */
 export interface Doc {

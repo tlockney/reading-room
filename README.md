@@ -172,6 +172,17 @@ works anywhere.
 A warm "espresso" dark theme is injected into every page. The toggle (bottom-right) persists your
 choice and defaults to your system setting.
 
+## Installable & offline (PWA)
+
+The served library is a progressive web app. The manifest (`/manifest.webmanifest`) and a service
+worker (`/sw.js`) are generated from the live registry, and every page carries the manifest link +
+service-worker registration. On first visit the worker **precaches the whole corpus**, so the
+library installs to your home screen and reads fully offline. Runtime fetches are **network-first**
+— live edits still show on refresh — and fall back to the cached copy when the server is
+unreachable. Adding or removing a doc changes the worker's revision, so the next visit re-precaches
+automatically. It works over `tailscale serve` (HTTPS) and `localhost`; static builds get the same
+files, precaching the `shared` subset. See `_specs/2026-08-23-pwa-offline-design.md`.
+
 ## Customize an environment
 
 - **Identity** — `site.jsonc` in the content repo sets the `<title>`, masthead eyebrow, lede, and
