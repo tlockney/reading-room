@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assert, assertEquals, assertStringIncludes } from "jsr:@std/assert@1";
 import { join } from "jsr:@std/path@1";
 import { build, buildMain, filterShared } from "./build.ts";
 import { exists } from "jsr:@std/fs@1";
@@ -103,5 +103,51 @@ Deno.test("buildMain --root builds index.html into the given home", async () => 
     assert(await exists(join(home, "index.html")));
   } finally {
     await Deno.remove(home, { recursive: true });
+  }
+});
+
+Deno.test("build writes the PWA manifest, service worker, and icons", async () => {
+  const root = await Deno.makeTempDir();
+  const out = await Deno.makeTempDir();
+  const outShared = await Deno.makeTempDir();
+  try {
+    await Deno.mkdir(join(root, "_migrated"));
+    for (const slug of ["one", "two", "three", "four"]) {
+      await Deno.writeTextFile(
+        join(root, "_migrated", `${slug}.html`),
+        `<!DOCTYPE html><html><head><title>${slug}</title></head><body>${slug}</body></html>`,
+      );
+    }
+    await Deno.writeTextFile(join(root, "registry.jsonc"), JSON.stringify(CORPUS));
+    const ctx = await makeContext(root);
+
+    // Full build: PWA files present, SW precaches the whole corpus.
+    const res = await build(ctx, { outDir: out });
+    assertEquals(res.docs, 4);
+    for (const f of ["manifest.webmanifest", "sw.js", "icon-192.png", "icon-512.png"]) {
+      assert(await exists(join(out, f)), `missing ${f}`);
+    }
+    const sw = await Deno.readTextFile(join(out, "sw.js"));
+    for (const slug of ["one", "two", "three", "four"]) {
+      assertStringIncludes(sw, `/docs/${slug}`);
+    }
+    const manifest = JSON.parse(await Deno.readTextFile(join(out, "manifest.webmanifest"))) as {
+      start_url: string;
+      icons: Array<{ sizes: string }>;
+    };
+    assertEquals(manifest.start_url, "/");
+    assert(manifest.icons.some((i) => i.sizes === "512x512"));
+
+    // Shared-only build: SW precaches only the visibility:shared subset.
+    await build(ctx, { outDir: outShared, sharedOnly: true });
+    const swShared = await Deno.readTextFile(join(outShared, "sw.js"));
+    assertStringIncludes(swShared, "/docs/one");
+    for (const slug of ["two", "three", "four"]) {
+      assertEquals(swShared.includes(`/docs/${slug}`), false, `shared SW must omit /docs/${slug}`);
+    }
+  } finally {
+    await Deno.remove(root, { recursive: true });
+    await Deno.remove(out, { recursive: true });
+    await Deno.remove(outShared, { recursive: true });
   }
 });

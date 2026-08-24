@@ -2,6 +2,8 @@
 # (`deno task serve`) renders dynamically and never reads these.
 /docs/
 /index.html
+/manifest.webmanifest
+/sw.js
 
 # LaunchAgent logs (agent.sh)
 .agent.out.log

@@ -44,8 +44,15 @@ import {
 } from "./comments.ts";
 import { injectAdmin } from "./admin.ts";
 import type { AdminContext } from "./admin.ts";
-import { ADMIN_ASSETS, APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
+import {
+  ADMIN_ASSETS,
+  APPLE_TOUCH_ICON_B64,
+  FAVICON_SVG,
+  ICON_192_B64,
+  ICON_512_B64,
+} from "./assets_gen.ts";
 import { decodeBase64 } from "jsr:@std/encoding@1/base64";
+import { renderManifest, renderServiceWorker } from "./pwa.ts";
 import {
   buildIdentity,
   listTailscalePeers,
@@ -70,6 +77,8 @@ import { exists } from "jsr:@std/fs@1";
 import { join } from "jsr:@std/path@1";
 
 const APPLE_TOUCH_ICON = decodeBase64(APPLE_TOUCH_ICON_B64);
+const ICON_192 = decodeBase64(ICON_192_B64);
+const ICON_512 = decodeBase64(ICON_512_B64);
 
 const DOC_RE = /^\/docs\/([A-Za-z0-9_-]+)\/?$/; // canonical: /docs/<slug> (S3 also serves /docs/<slug>/)
 const DOC_DOWNLOAD_RE = /^\/docs\/([A-Za-z0-9_-]+)\/download$/; // portable copy as an attachment
@@ -414,6 +423,8 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
     }
     if (path === "/favicon.svg") return asset(FAVICON_SVG, "image/svg+xml");
     if (path === "/apple-touch-icon.png") return asset(APPLE_TOUCH_ICON, "image/png");
+    if (path === "/icon-192.png") return asset(ICON_192, "image/png");
+    if (path === "/icon-512.png") return asset(ICON_512, "image/png");
     const adminAsset = path.match(ADMIN_ASSET_RE);
     if (adminAsset) {
       const body = ADMIN_ASSETS[adminAsset[1]];
@@ -433,6 +444,25 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
       } catch (err) {
         return jsonError(String(err), 500);
       }
+    }
+    if (path === "/manifest.webmanifest") {
+      if (req.method !== "GET") return jsonError("method not allowed", 405);
+      return new Response(renderManifest(opts.ctx.site), {
+        headers: {
+          "content-type": "application/manifest+json; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      });
+    }
+    if (path === "/sw.js") {
+      if (req.method !== "GET") return jsonError("method not allowed", 405);
+      const corpus = await loadCorpus(opts.ctx.registryPath);
+      return new Response(renderServiceWorker(corpus), {
+        headers: {
+          "content-type": "application/javascript; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      });
     }
     if (path === "/index.html") return redirect("/");
     const legacy = path.match(DOC_HTML_RE);

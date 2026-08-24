@@ -30,7 +30,8 @@ import type { Topic } from "./render.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { makeContext, resolveHome } from "./config.ts";
 import type { RoomContext } from "./config.ts";
-import { APPLE_TOUCH_ICON_B64, FAVICON_SVG } from "./assets_gen.ts";
+import { APPLE_TOUCH_ICON_B64, FAVICON_SVG, ICON_192_B64, ICON_512_B64 } from "./assets_gen.ts";
+import { renderManifest, renderServiceWorker } from "./pwa.ts";
 
 /** The publish subset: only visibility:shared docs, then only non-empty topics. */
 export function filterShared(corpus: Topic[]): Topic[] {
@@ -80,6 +81,12 @@ export async function build(
   // site icons ship embedded in the engine; the output dir gets its own copies
   await Deno.writeTextFile(join(outDir, "favicon.svg"), FAVICON_SVG);
   await Deno.writeFile(join(outDir, "apple-touch-icon.png"), decodeBase64(APPLE_TOUCH_ICON_B64));
+  await Deno.writeFile(join(outDir, "icon-192.png"), decodeBase64(ICON_192_B64));
+  await Deno.writeFile(join(outDir, "icon-512.png"), decodeBase64(ICON_512_B64));
+  // PWA: manifest + service worker derived from the corpus written above (the
+  // shared subset when publishing) — the same files the live server generates.
+  await Deno.writeTextFile(join(outDir, "manifest.webmanifest"), renderManifest(ctx.site));
+  await Deno.writeTextFile(join(outDir, "sw.js"), renderServiceWorker(corpus));
   const total = corpus.reduce((s, t) => s + t.docs.length, 0);
   console.log(`  index.html  (${total} docs, ${corpus.length} topics)`);
   return { docs: total, topics: corpus.length };
