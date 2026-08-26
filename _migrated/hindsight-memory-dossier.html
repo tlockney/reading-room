@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<!--
+  Field-dossier template.
+
+  REGIONS. The file is split into marked regions — <!== NAME:start ==> …
+  <!== NAME:end ==> (written with = here only because this outer comment
+  can't nest; in the file they are ordinary HTML comments). Exactly three
+  regions belong to the DOCUMENT:
+
+      DOC-TITLE   the <title> line
+      DOC-CSS     per-doc style overrides (empty by default)
+      CONTENT     cover band + shell — the entire authored body
+
+  Everything else — FONTS, TEMPLATE-CSS, SYNTAX-HIGHLIGHT, TEMPLATE-JS —
+  is TEMPLATE CHROME. Don't hand-edit chrome in a finished doc, and never
+  put document content outside CONTENT. That split is what lets
+  `assets/doc-tool.py retemplate <doc.html>` re-apply an updated template
+  to an existing document, and `doc-tool.py fonts embed|link <doc.html>`
+  swap the font strategy in one command.
+-->
+<html lang="en" data-ed-theme="off">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DOC-TITLE:start --><title>Hindsight Memory System — Field Dossier</title>
+<!-- DOC-TITLE:end -->
+<!-- FONTS:start — swap this whole region with:
+       assets/doc-tool.py fonts embed <doc.html>   (artifact / CSP-safe)
+       assets/doc-tool.py fonts link  <doc.html>   (back to the default)
+     FONTS-LINK is the default: Archivo (incl. wdth 125% for the expanded
+     display face) / Source Serif 4 / JetBrains Mono, loaded from Google
+     Fonts. Under the Claude artifact CSP this link is BLOCKED and the
+     page falls back to system stacks, losing the expanded display face
+     that carries the cover. The embed form inlines
+     assets/fonts-embedded.css instead. For off-CSP use (local file,
+     Reading Room, email) keep the link; the two are mutually exclusive —
+     never ship both. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400&family=JetBrains+Mono:wght@400..700&display=swap" rel="stylesheet">
+<!-- FONTS:end -->
+<!-- TEMPLATE-CSS:start — the design. Chrome: don't edit per-doc.
+     Per-doc overrides go in the DOC-CSS region below. -->
+<style>
+  :root{
+    /* cover band */
+    --cover:#0F1F1C;
+    --cover-2:#16302C;
+    --cover-ink:#E7E6DA;
+    --cover-soft:#9FB0AB;
+    /* body */
+    --ground:#E7E5DA;
+    --paper:#F4F2EA;
+    --ink:#1A2926;
+    --ink-soft:#46544F;
+    --ink-faint:#6C7872;
+    /* accents — brass + verdigris are the ONLY two. Don't add more. */
+    --brass:#9A6620;
+    --brass-bright:#C68A3A;
+    --verdigris:#2E6E64;
+    --verdigris-bright:#4F9488;
+    --line:rgba(26,41,38,0.14);
+    --line-soft:rgba(26,41,38,0.08);
+
+    --serif:"Source Serif 4","Charter","Iowan Old Style",Georgia,serif;
+    --grotesk:"Archivo","Avenir Next","Helvetica Neue",system-ui,sans-serif;
+    /* expanded display face = Archivo's variable wdth axis at 125% — pair
+       var(--expanded) with font-stretch:125% ("Archivo Expanded" is NOT a
+       real Google Fonts family; requesting it 400s). */
+    --expanded:"Archivo","Avenir Next Condensed",Futura,sans-serif;
+    --mono:"JetBrains Mono","SF Mono",ui-monospace,monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto;}}
+
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:var(--serif);
+    font-size:18px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* ---------- COVER BAND ---------- */
+  .cover{
+    background:var(--cover);
+    color:var(--cover-ink);
+    position:relative;
+    overflow:hidden;
+    border-bottom:3px solid var(--brass);
+  }
+  .cover::before{
+    /* faint engraved grid */
+    content:"";
+    position:absolute;inset:0;
+    background-image:
+      linear-gradient(var(--cover-2) 1px,transparent 1px),
+      linear-gradient(90deg,var(--cover-2) 1px,transparent 1px);
+    background-size:46px 46px;
+    opacity:.5;
+    mask-image:radial-gradient(ellipse 90% 80% at 70% 30%,#000 10%,transparent 75%);
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 70% 30%,#000 10%,transparent 75%);
+    pointer-events:none;
+  }
+  .cover-inner{
+    max-width:1180px;margin:0 auto;
+    padding:34px 40px 46px;
+    position:relative;z-index:1;
+  }
+  .cover-top{
+    display:flex;justify-content:space-between;align-items:baseline;
+    gap:20px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--cover-soft);
+  }
+  .cover-top .tag{color:var(--brass-bright);}
+  .masthead{
+    display:grid;grid-template-columns:1fr auto;gap:30px;align-items:center;
+    margin-top:46px;
+  }
+  .title-block h1{
+    font-family:var(--expanded);
+    font-stretch:125%;
+    font-weight:800;
+    font-size:clamp(40px,7.2vw,86px);
+    line-height:.94;
+    letter-spacing:-0.015em;
+    margin:0;
+    color:var(--cover-ink);
+  }
+  .title-block h1 .glyph{color:var(--brass-bright);font-family:var(--grotesk);font-weight:700;}
+  .subtitle{
+    font-family:var(--grotesk);font-weight:500;
+    font-size:clamp(15px,2vw,19px);
+    color:var(--cover-soft);
+    margin:18px 0 0;max-width:46ch;line-height:1.45;
+  }
+  .subtitle b{color:var(--verdigris-bright);font-weight:600;}
+
+  /* signature mark — replace the SVG in the masthead with a doc-specific one,
+     or delete the <svg> and let the title span the full width */
+  .loopmark{width:150px;height:150px;flex-shrink:0;}
+  @media(max-width:760px){.masthead{grid-template-columns:1fr;} .loopmark{width:104px;height:104px;}}
+  .loopmark path,.loopmark circle{
+    fill:none;stroke-linecap:round;
+  }
+  .loop-ring{stroke:var(--verdigris-bright);stroke-width:2.4;stroke-dasharray:1;}
+  .loop-arrow{stroke:var(--brass-bright);stroke-width:3;}
+  .loop-node{fill:var(--brass-bright);stroke:none;}
+  .loop-spine{stroke:var(--cover-soft);stroke-width:2;opacity:.55;}
+  @media (prefers-reduced-motion:no-preference){
+    .loop-ring{
+      stroke-dasharray:360;stroke-dashoffset:360;
+      animation:draw 2.4s ease forwards .3s;
+    }
+    .loop-rotor{transform-origin:75px 75px;animation:spin 14s linear infinite;}
+  }
+  @keyframes draw{to{stroke-dashoffset:0;}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* metadata strip */
+  .meta{
+    display:grid;grid-template-columns:repeat(5,1fr);
+    gap:1px;margin-top:42px;
+    background:var(--line-soft);
+    border:1px solid rgba(231,230,218,.14);
+  }
+  @media(max-width:760px){
+    .meta{grid-template-columns:repeat(2,1fr);}
+    /* the verdict cell is the payoff — give it the full row when the grid wraps */
+    .meta div:last-child{grid-column:1/-1;}
+  }
+  .meta div{background:var(--cover);padding:14px 16px;}
+  .meta .k{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--cover-soft);}
+  .meta .v{font-family:var(--grotesk);font-weight:600;font-size:14px;margin-top:5px;color:var(--cover-ink);}
+  .meta .v.accent{color:var(--brass-bright);}
+
+  /* ---------- LAYOUT ---------- */
+  .shell{max-width:1180px;margin:0 auto;padding:0 40px;
+    display:grid;grid-template-columns:210px 1fr;gap:54px;align-items:start;}
+  @media(max-width:920px){.shell{grid-template-columns:1fr;padding:0 26px;}}
+
+  /* TOC */
+  .toc{position:sticky;top:24px;padding-top:54px;font-family:var(--mono);font-size:12px;}
+  @media(max-width:920px){.toc{display:none;}}
+  .toc .toc-h{font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px;}
+  .toc a{
+    display:flex;gap:10px;text-decoration:none;color:var(--ink-soft);
+    padding:5px 0;line-height:1.3;border-left:2px solid transparent;padding-left:12px;margin-left:-12px;
+    transition:color .18s,border-color .18s;
+  }
+  .toc a .num{color:var(--ink-faint);}
+  .toc a:hover{color:var(--brass);}
+  .toc a.active{color:var(--ink);border-left-color:var(--brass);}
+  .toc a.active .num{color:var(--brass);}
+
+  /* min-width:0 defeats the grid-item auto minimum — without it a wide pre
+     or table forces the whole page past the viewport on narrow screens */
+  main{padding:54px 0 80px;max-width:760px;min-width:0;}
+
+  /* ---------- BLUF (front-loaded summary panel) ---------- */
+  .bluf{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-top:3px solid var(--verdigris);
+    padding:30px 34px;
+    margin-bottom:64px;
+    box-shadow:0 1px 0 rgba(0,0,0,.02);
+  }
+  .bluf .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--verdigris);margin-bottom:14px;}
+  .bluf p{margin:0 0 16px;font-size:17px;}
+  .bluf p:last-child{margin-bottom:0;}
+
+  /* ---------- SECTIONS ---------- */
+  .sec{margin-bottom:58px;scroll-margin-top:24px;}
+  .sec-head{display:flex;align-items:baseline;gap:16px;
+    padding-bottom:14px;margin-bottom:22px;border-bottom:1px solid var(--line);}
+  .sec-num{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--brass);
+    letter-spacing:.05em;padding-top:6px;white-space:nowrap;}
+  .sec-head h2{font-family:var(--expanded);font-stretch:125%;font-weight:700;font-size:clamp(22px,3vw,30px);
+    line-height:1.06;letter-spacing:-0.01em;margin:0;}
+
+  main h3{font-family:var(--grotesk);font-weight:700;font-size:17px;letter-spacing:.01em;
+    margin:30px 0 8px;color:var(--ink);}
+  main p{margin:0 0 16px;}
+  main a{color:var(--brass);text-decoration:none;border-bottom:1px solid rgba(154,102,32,.32);}
+  main a:hover{border-bottom-color:var(--brass);}
+  strong{font-weight:600;}
+  code,.mono{font-family:var(--mono);font-size:.84em;background:rgba(46,110,100,.1);
+    color:var(--verdigris);padding:1px 5px;border-radius:3px;}
+  /* block code — cover-dark plate so code reads as a distinct register */
+  pre{background:var(--cover);color:var(--cover-ink);font-family:var(--mono);
+    font-size:13px;line-height:1.62;padding:16px 18px;overflow-x:auto;
+    border:1px solid var(--line);border-left:3px solid var(--verdigris);margin:18px 0;}
+  pre code{background:none;color:inherit;padding:0;font-size:inherit;border-radius:0;}
+  pre .cm{color:var(--cover-soft);font-style:italic;}   /* comment */
+  pre .st{color:var(--verdigris-bright);}                /* string */
+  pre .kw{color:var(--brass-bright);}                    /* keyword/flag */
+
+  /* SYNTAX-HIGHLIGHT:css:start — dossier Prism theme. Pairs with the inlined
+     Prism bundle in the SYNTAX-HIGHLIGHT:js block at the end of the page. Tag
+     block code with class="language-<lang>" on the inner <code> to
+     highlight; untagged blocks keep the plain cover-plate style (or the
+     legacy hand-tag spans .cm/.st/.kw above). Token colors stay inside
+     the two-accent rule — brass ramp for control/identity, verdigris
+     ramp for strings/types, warm neutrals for the rest. No third hue.
+     Scoped to <pre> so inline <code> is never tinted. Harmless when no
+     code blocks are present. To drop highlighting entirely, delete this
+     CSS block AND the SYNTAX-HIGHLIGHT:js script block at the end of the page. */
+  pre[class*="language-"], code[class*="language-"]{
+    font-family:var(--mono);text-shadow:none;tab-size:2;hyphens:none;}
+  pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata{
+    color:var(--cover-soft);font-style:italic;}          /* recede */
+  pre .token.punctuation, pre .token.template-punctuation{color:#7E938D;}
+  pre .token.namespace{opacity:.8;}
+  /* brass-bright — control words & "look here" */
+  pre .token.keyword, pre .token.tag, pre .token.selector,
+  pre .token.atrule, pre .token.rule, pre .token.important,
+  pre .token.instruction, pre .token.for-or-select, pre .token.coord{
+    color:var(--brass-bright);font-weight:600;}
+  /* muted brass — operators & links */
+  pre .token.operator, pre .token.entity, pre .token.combinator,
+  pre .token.url, pre .token.atrule .token.url{color:#BE9660;}
+  /* light brass — numeric & identity literals, function names */
+  pre .token.number, pre .token.boolean, pre .token.constant,
+  pre .token.symbol, pre .token.function, pre .token.function-definition,
+  pre .token.macro{color:#DCAB63;}
+  /* verdigris-bright — string-like text */
+  pre .token.string, pre .token.char, pre .token.attr-value,
+  pre .token.regex, pre .token.template-string, pre .token.string-property{
+    color:#6FB3A6;}
+  /* light verdigris — types, keys, properties, builtins */
+  pre .token.class-name, pre .token.builtin, pre .token.type,
+  pre .token.key, pre .token.property, pre .token.attr-name,
+  pre .token.title{color:#8CC3B8;}
+  /* warm neutral — variables & parameters */
+  pre .token.variable, pre .token.parameter, pre .token.property-access{
+    color:#D6D2C0;}
+  pre .token.bold{font-weight:600;}
+  pre .token.italic{font-style:italic;}
+  /* diff — accent-tinted bands; scoped to the diff language */
+  pre[class*="language-diff"] .token.inserted{
+    color:#6FB3A6;background:rgba(79,148,136,.14);display:block;}
+  pre[class*="language-diff"] .token.deleted{
+    color:#DCAB63;background:rgba(198,138,58,.13);display:block;}
+  pre .token.inserted{color:#6FB3A6;}
+  pre .token.deleted{color:#DCAB63;}
+  /* SYNTAX-HIGHLIGHT:css:end */
+
+  /* lists — brass dash bullets, verdigris for nested */
+  main ul{list-style:none;margin:0 0 18px;padding:0;}
+  main ul li{position:relative;padding-left:26px;margin-bottom:10px;}
+  main ul li::before{content:"";position:absolute;left:4px;top:.62em;width:9px;height:2px;background:var(--brass);}
+  main ul li ul{margin:10px 0 0;}
+  main ul li ul li::before{background:var(--verdigris);width:6px;left:6px;}
+
+  /* callout */
+  .note{
+    border-left:3px solid var(--brass);
+    background:rgba(154,102,32,.06);
+    padding:16px 20px;margin:22px 0;font-size:16px;
+  }
+  .note .nlabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);display:block;margin-bottom:6px;}
+
+  /* ---------- COMPARISON TABLE (signature component) ---------- */
+  .faceoff{margin:26px 0 8px;border:1px solid var(--ink);background:var(--paper);}
+  .faceoff-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--ink-faint);padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;}
+  thead th{font-family:var(--grotesk);font-weight:700;text-align:left;padding:13px 16px;
+    vertical-align:top;border-bottom:2px solid var(--ink);}
+  thead th.dim{font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-faint);width:23%;}
+  thead th.h{color:var(--verdigris);font-size:16px;}
+  thead th.o{color:var(--brass);font-size:16px;}
+  tbody td{padding:12px 16px;vertical-align:top;border-bottom:1px solid var(--line-soft);line-height:1.42;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody td.dim{font-family:var(--grotesk);font-weight:600;font-size:13px;color:var(--ink-soft);}
+  tbody tr:nth-child(even){background:rgba(26,41,38,.025);}
+  .faceoff-wrap{overflow-x:auto;}
+  @media(max-width:620px){
+    table{font-size:13px;}
+    thead th,tbody td{padding:10px 11px;}
+    /* below this width three columns crush — hold a readable minimum and
+       let .faceoff-wrap scroll instead */
+    .faceoff-wrap table{min-width:520px;}
+  }
+
+  /* ---------- FIGURES / DIAGRAMS ---------- */
+  .figure{margin:30px 0;border:1px solid var(--line);background:var(--paper);padding:24px 24px 16px;}
+  .figure.wide{overflow-x:auto;}
+  .figure svg{display:block;width:100%;height:auto;}
+  .figure.wide svg{min-width:600px;}
+  .figure figcaption{font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--ink-faint);
+    margin-top:16px;padding-top:12px;border-top:1px solid var(--line-soft);line-height:1.55;}
+  /* .dg — hand-authored SVG diagram vocabulary */
+  .dg text{dominant-baseline:middle;}
+  .dg .box{fill:#FBFAF4;stroke:var(--ink);stroke-width:1.5;}
+  .dg .box-soft{fill:rgba(26,41,38,.03);stroke:var(--line);stroke-width:1.2;}
+  .dg .box-core{fill:rgba(154,102,32,.07);stroke:var(--brass);stroke-width:2;}
+  .dg .box-verd{fill:rgba(46,110,100,.13);stroke:var(--verdigris);stroke-width:2;}
+  .dg .box-dash{fill:rgba(26,41,38,.02);stroke:var(--ink-soft);stroke-width:1.4;stroke-dasharray:5 4;}
+  .dg .lbl{font-family:var(--grotesk);font-weight:600;font-size:13px;fill:var(--ink);}
+  .dg .lbl-sm{font-family:var(--mono);font-size:10px;fill:var(--ink-faint);}
+  .dg .ey{font-family:var(--mono);font-size:9.5px;fill:var(--ink-faint);letter-spacing:.14em;text-transform:uppercase;}
+  .dg .num{fill:var(--brass);font-weight:700;}
+  .dg .flow{fill:none;stroke:var(--ink-soft);stroke-width:1.6;}
+  .dg .flow-accent{fill:none;stroke:var(--brass);stroke-width:2.4;}
+  .dg .flow-verd{fill:none;stroke:var(--verdigris);stroke-width:2.4;}
+  .dg .ring{fill:none;stroke:var(--verdigris);stroke-width:1.6;stroke-dasharray:4 5;opacity:.65;}
+  .dg .axis{fill:none;stroke:var(--line);stroke-width:1.4;}
+  .dg .dash{fill:none;stroke:var(--ink-faint);stroke-width:1.2;stroke-dasharray:3 4;}
+  .dg .tri{fill:var(--verdigris);}
+  .dg .ah{fill:var(--ink-soft);}
+  .dg .ah-accent{fill:var(--brass);}
+
+  /* ---------- FOOTER ---------- */
+  .foot{border-top:1px solid var(--line);margin-top:40px;padding-top:24px;
+    font-family:var(--mono);font-size:12px;color:var(--ink-faint);line-height:1.7;}
+  .foot .row{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .foot .cad{color:var(--brass);}
+
+  /* reveal-on-scroll (sections opt in with class="reveal") */
+  .reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+  @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;}}
+
+  /* ---------- GLOSSARY TERMS / TOOLTIPS ---------- */
+  .term{border-bottom:1px dotted var(--brass);cursor:help;position:relative;color:inherit;}
+  .term:focus-visible{outline:2px solid var(--brass);outline-offset:2px;border-radius:2px;}
+  .term::after{
+    content:attr(data-def);
+    position:absolute;left:50%;bottom:calc(100% + 11px);transform:translateX(-50%) translateY(5px);
+    width:min(290px,74vw);
+    background:var(--cover);color:var(--cover-ink);
+    font-family:var(--grotesk);font-weight:500;font-size:13px;line-height:1.5;letter-spacing:0;
+    text-align:left;text-transform:none;white-space:normal;
+    padding:12px 14px;border-radius:7px;border:1px solid var(--brass);
+    box-shadow:0 10px 28px rgba(15,31,28,.28);
+    opacity:0;visibility:hidden;transition:opacity .16s ease,transform .16s ease;
+    z-index:60;pointer-events:none;
+  }
+  .term::before{
+    content:"";position:absolute;left:50%;bottom:calc(100% + 5px);transform:translateX(-50%);
+    border:6px solid transparent;border-top-color:var(--brass);
+    opacity:0;visibility:hidden;transition:opacity .16s ease;z-index:61;pointer-events:none;
+  }
+  .term:hover::after,.term:focus::after{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);}
+  .term:hover::before,.term:focus::before{opacity:1;visibility:visible;}
+  @media (prefers-reduced-motion:reduce){.term::after{transition:opacity .16s ease;}}
+
+  .gloss-intro{color:var(--ink-faint);font-size:15px;margin-bottom:6px;}
+  .glossary{margin:10px 0 0;}
+  .glossary div{padding:15px 0;border-bottom:1px solid var(--line-soft);}
+  .glossary div:last-child{border-bottom:none;}
+  .glossary dt{font-family:var(--grotesk);font-weight:700;font-size:15px;color:var(--ink);margin-bottom:5px;}
+  .glossary dd{margin:0;font-size:16px;color:var(--ink-soft);line-height:1.5;}
+
+  /* ---------- PHONES (≤640px) ---------- */
+  @media(max-width:640px){
+    .cover-inner{padding:24px 22px 34px;}
+    .cover-top{font-size:10.5px;}
+    .masthead{margin-top:32px;gap:22px;}
+    .title-block h1{font-size:clamp(30px,10vw,40px);overflow-wrap:break-word;}
+    .meta{margin-top:30px;}
+    .meta div{padding:12px 13px;}
+    .shell{padding:0 20px;}
+    main{padding:40px 0 64px;}
+    .bluf{padding:22px 20px;margin-bottom:44px;}
+    .sec{margin-bottom:44px;}
+    .sec-head{gap:12px;}
+    .note{padding:14px 16px;}
+    .figure{padding:16px 14px 12px;}
+    code{overflow-wrap:anywhere;}
+    /* Tooltips stay anchored to their term on phones. A tap focuses the
+       term (tabindex=0); the mobile-tooltip script writes --tip-x/--tip-w
+       so the panel hugs the term but never escapes the viewport, and adds
+       .tip-below when the term sits too close to the top to open upward.
+       Do NOT go back to position:fixed here — a fixed panel detaches from
+       the term and lands at the bottom of the screen, and inside any
+       transformed ancestor (.reveal mid-animation) it lands at the bottom
+       of the section instead. */
+    .term::after{
+      left:var(--tip-x,0);right:auto;bottom:calc(100% + 10px);top:auto;
+      transform:none;width:var(--tip-w,min(290px,86vw));
+    }
+    .term:hover::after,.term:focus::after{transform:none;}
+    .term.tip-below::after{bottom:auto;top:calc(100% + 10px);}
+    .term.tip-below::before{bottom:auto;top:calc(100% + 5px);
+      border-top-color:transparent;border-bottom-color:var(--brass);}
+  }
+
+  
+
+  ::selection{background:var(--brass);color:#fff;}
+  a:focus-visible,.toc a:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:2px;}
+</style>
+<!-- TEMPLATE-CSS:end -->
+
+<!-- DOC-CSS:start — per-document style overrides. This region is carried
+     across `doc-tool.py retemplate`, so anything doc-specific belongs
+     HERE, not in TEMPLATE-CSS. Stay inside the two-accent rule (brass +
+     verdigris) and reuse the existing custom properties; if you need
+     more than a handful of rules, the document probably wants a
+     different style. --><style>
+/* Numeric data tables: right-aligned, tabular-nums, own scroll wrapper */
+.data-wrap{overflow-x:auto;margin:24px 0 8px;border:1px solid var(--line);}
+.data-wrap table{font-size:14px;}
+.data-wrap thead th{border-bottom:1px solid var(--ink);padding:11px 14px;}
+.data-wrap tbody td{padding:9px 14px;}
+.data-wrap .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.data-wrap thead th.n{text-align:right;}
+.data-wrap .em{font-weight:700;}
+.data-wrap .bad{color:var(--brass);font-weight:600;}
+.data-wrap .good{color:var(--verdigris);font-weight:600;}
+.data-cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--ink-faint);margin:22px 0 -14px;}
+/* Slightly widen reading column for code-heavy reference */
+.shell main{max-width:820px;}
+pre{max-width:100%;}
+/* h4 — sub-steps inside the 4.x setup sections. Quieter than h3: mono
+   eyebrow weight rather than a second grotesk heading level. */
+main h4{font-family:var(--mono);font-weight:500;font-size:11px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--brass);
+  margin:26px 0 8px;}
+main h4 + p{margin-top:0;}
+</style>
+<!-- DOC-CSS:end -->
+
+<!-- PRINT-OVERRIDES:start — print rules live HERE, after DOC-CSS,
+     so they out-cascade per-document styles. A rule of equal
+     specificity in DOC-CSS would otherwise silently beat them and the
+     page would print wrong with nothing on screen to show it.
+     Chrome: don't edit per-doc. -->
+<style>
+  @media print{
+    body{background:#fff;}
+    /* browsers default to not printing backgrounds, so the dark cover band
+       would leave light text on white — flip it to ink-on-paper instead */
+    .cover{background:none;color:var(--ink);}
+    .cover::before{display:none;}
+    .cover-top{color:var(--ink-faint);}
+    .cover-top .tag{color:var(--brass);}
+    .title-block h1{color:var(--ink);}
+    .title-block h1 .glyph{color:var(--brass);}
+    .subtitle{color:var(--ink-soft);}
+    .subtitle b{color:var(--verdigris);}
+    .loop-spine{stroke:var(--ink-soft);}
+    .loop-ring{stroke:var(--verdigris);}
+    .loop-arrow{stroke:var(--brass);}
+    .loop-node{fill:var(--brass);}
+    .meta{background:none;border-color:var(--line);}
+    .meta div{background:none;border:1px solid var(--line-soft);}
+    .meta .k{color:var(--ink-faint);}
+    .meta .v{color:var(--ink);}
+    .meta .v.accent{color:var(--brass);}
+    /* single column; the sticky TOC is nav chrome, not content */
+    .shell{display:block;padding:0 8px;}
+    .toc{display:none;}
+    main{max-width:100%;padding-top:28px;}
+    /* sections the reader never scrolled to must not print blank */
+    .reveal{opacity:1 !important;transform:none !important;}
+    /* code flips from the cover-dark plate to ink-on-light */
+    pre{background:#f5f3ec;color:#1a2926;}
+    pre .cm{color:#6b6357;}
+    pre .st{color:var(--verdigris);}
+    pre .kw{color:var(--brass);}
+    pre .token{color:#1a2926;background:none;}
+    pre .token.comment,pre .token.prolog,pre .token.doctype,pre .token.cdata{
+      color:#6b6357;font-style:italic;}
+    pre .token.keyword,pre .token.tag,pre .token.selector,pre .token.atrule,
+    pre .token.rule,pre .token.important,pre .token.instruction,
+    pre .token.for-or-select,pre .token.coord{color:var(--brass);}
+    pre .token.string,pre .token.char,pre .token.attr-value,pre .token.regex,
+    pre .token.template-string,pre .token.string-property{color:var(--verdigris);}
+    /* out-specify the diff-band rules so paper diffs read as dark text */
+    pre .token.inserted,pre .token.deleted,
+    pre[class*="language-diff"] .token.inserted,
+    pre[class*="language-diff"] .token.deleted{color:#1a2926;background:none;}
+    /* paper cannot scroll. A wrapper that scrolls on screen CLIPS on
+       paper, silently dropping the columns past the page edge — the
+       reader has no way to tell. Let wide content shrink to fit instead. */
+    .faceoff-wrap,.figure.wide,.data-wrap{overflow:visible;}
+    .faceoff-wrap table{min-width:0;}
+    .figure.wide svg{min-width:0;width:100%;}
+    .data-wrap table{font-size:10.5px;width:100%;max-width:100%;}
+    .data-wrap thead th,.data-wrap tbody td{padding:5px 6px;}
+    .data-wrap .n{white-space:normal;}
+    /* folded notebook code (collapse-notebook.py): reveal it on paper —
+       a disclosure control the reader can't click is just lost content.
+       ::details-content is what actually works; overriding the children
+       directly does not. */
+    details.nb-code::details-content{content-visibility:visible !important;}
+    details.nb-code>*:not(summary){display:block;}
+    details.nb-code>summary{display:none;}
+    /* break hygiene */
+    .sec-head,main h3{break-after:avoid;page-break-after:avoid;}
+    pre,.figure,.faceoff,.note,.bluf,.data-wrap,
+    details.nb-code{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+<!-- PRINT-OVERRIDES:end -->
+</head>
+<body>
+<!-- CONTENT:start — everything the document actually says lives between
+     these two markers, and nothing else does. Keep it that way: it is
+     the only region `doc-tool.py retemplate` carries into a refreshed
+     template. --><!-- ===================== COVER ===================== -->
+<header class="cover">
+  <div class="cover-inner">
+    <div class="cover-top">
+      <span>Research Dossier · Agent Memory Systems</span>
+      <span class="tag">// vectorize-io/hindsight · rev. 2026-08-24</span>
+    </div>
+
+    <div class="masthead">
+      <div class="title-block">
+        <h1>Hindsight: Agent Memory <span class="glyph">§</span></h1>
+        <p class="subtitle">A field dossier on the memory engine that learns — the system, its tooling, and how to wire it into Hermes, Claude, Claude Code, Pi, and DeepSeek Harness, with the <b>integration quality</b> as the variable that actually decides the outcome.</p>
+      </div>
+
+      <svg class="loopmark" viewBox="0 0 150 150" role="img" aria-label="Stylized memory loop: a ring with an arrow and a node">
+        <g class="loop-rotor">
+          <circle class="loop-ring" cx="75" cy="75" r="57"/>
+        </g>
+        <path class="loop-arrow" d="M112 60 a40 40 0 1 1 -14 -22"/>
+        <path class="loop-arrow" d="M98 18 L99 39 L80 31"/>
+        <circle class="loop-node" cx="75" cy="75" r="6"/>
+      </svg>
+    </div>
+
+    <div class="meta">
+      <div><div class="k">Subject</div><div class="v">Hindsight memory system</div></div>
+      <div><div class="k">Vendor</div><div class="v">Vectorize.io · MIT · ~21k★</div></div>
+      <div><div class="k">Deployments</div><div class="v">Cloud · self-hosted · local-embedded</div></div>
+      <div><div class="k">Surface</div><div class="v">CLI · SDKs · REST · MCP · UI</div></div>
+      <div><div class="k">Verdict</div><div class="v accent">Best-in-class engine; judge each harness's integration on its own</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- ===================== SHELL ===================== -->
+<div class="shell">
+
+  <nav class="toc" aria-label="Contents">
+    <div class="toc-h">Contents</div>
+    <a href="#bluf"><span class="num">00</span> BLUF</a>
+    <a href="#s1"><span class="num">01</span> The memory model</a>
+    <a href="#s2"><span class="num">02</span> Tooling &amp; deployment</a>
+    <a href="#s3"><span class="num">03</span> Five integrations, face-off</a>
+    <a href="#s4"><span class="num">04</span> Setup per tool</a>
+    <a href="#s5"><span class="num">05</span> Common use cases</a>
+    <a href="#s6"><span class="num">06</span> Verdict &amp; risk</a>
+    <a href="#glossary"><span class="num">§</span> Glossary</a>
+  </nav>
+
+  <main>
+
+    <section class="bluf reveal" id="bluf">
+      <div class="eyebrow">Bottom line up front</div>
+      <p><strong><a href="https://github.com/vectorize-io/hindsight">Hindsight</a></strong> (vectorize-io/hindsight, ~21k stars, MIT) is the current state-of-the-art open-source agent memory system: <span class="term" tabindex="0" data-term="retain" data-def="Store information into a memory bank as structured, multi-dimensional facts">retain</span> / <span class="term" tabindex="0" data-term="recall" data-def="Search a memory bank with semantic, keyword, graph and temporal strategies">recall</span> / <span class="term" tabindex="0" data-term="reflect" data-def="LLM-synthesized, disposition-aware answer drawn from a memory bank">reflect</span>, a four-strategy retrieval engine, and automatic consolidation of raw facts into durable observations. It is #1 on the BEAM memory benchmark and ships with an MCP server, SDKs in four languages, and 52 official integrations.</p>
+      <p>The engine is the constant; <strong>the integration is the variable</strong>. Hermes gets a mature native memory provider (auto-recall + auto-retain hooks, three explicit tools). Claude Code, DeepSeek Harness and nine other CLI agents are covered by one shared "coding agents" package with per-repo banks built from git history and conversations. Pi gets an independent, opinionated extension (epimetheus). Plain Claude (the desktop app) has no first-party plugin — you wire the MCP server yourself. This dossier walks the system, then the setup for each of the five, then the use cases and the operational gotchas that actually bite.</p>
+    </section>
+
+    <!-- ===================== 01 ===================== -->
+    <section class="sec reveal" id="s1">
+      <div class="sec-head"><span class="sec-num">01</span><h2>The memory model</h2></div>
+      <p>Hindsight is built around a simple thesis: agents don't need a transcript-replay system, they need a <strong>belief store that consolidates</strong>. Information goes in via <code>retain()</code>, comes out via <code>recall()</code> (raw matches) or <code>reflect()</code> (reasoned synthesis), all scoped to an isolated <span class="term" tabindex="0" data-term="memory bank" data-def="An isolated, named store of memories, entities, observations and documents; typically one per project, agent or user">memory bank</span>.</p>
+
+      <h3>Memory hierarchy</h3>
+      <div class="faceoff">
+        <div class="faceoff-cap"><span>// Four memory types</span><span>bottom = raw, top = curated</span></div>
+        <div class="faceoff-wrap">
+        <table>
+          <thead>
+            <tr><th class="dim">Type</th><th class="h">Stores</th><th class="o">Example</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="dim">Mental Model</td><td>User-curated, cached reflection for common queries</td><td>"Team communication best practices"</td></tr>
+            <tr><td class="dim">Observation</td><td>Consolidated, deduplicated beliefs with evidence</td><td>"User was a React dev, has since switched to Vue"</td></tr>
+            <tr><td class="dim">World Fact</td><td>Objective facts received from the user</td><td>"Alice works at Google"</td></tr>
+            <tr><td class="dim">Experience Fact</td><td>The bank's own actions and interactions</td><td>"I recommended Python to Bob"</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+      <p>During <code>reflect</code>, Hindsight checks sources in priority order: <strong>Mental Models → Observations → Raw Facts</strong>. Mental models are the cheapest, most-curated layer; raw facts the ground truth to fall back on.</p>
+
+      <figure class="figure wide">
+        <svg viewBox="0 0 720 340" class="dg" role="img" aria-label="The four memory tiers stacked bottom to top: world facts and experience facts at the base, consolidated into observations, curated into mental models. A turn or document enters at the left via retain. On the right, reflect scans the tiers top-down in priority order while recall reads the fact and observation tiers directly.">
+          <text x="16" y="18" class="ey">WRITE PATH RUNS UP · READ PATH RUNS DOWN</text>
+
+          <!-- tier 1: mental models -->
+          <rect x="216" y="58" width="320" height="56" rx="4" class="box-verd"/>
+          <text x="376" y="79" text-anchor="middle" class="lbl">Mental Models</text>
+          <text x="376" y="97" text-anchor="middle" class="lbl-sm">cached reflect answers · user-curated</text>
+
+          <!-- tier 2: observations -->
+          <rect x="216" y="146" width="320" height="56" rx="4" class="box-core"/>
+          <text x="376" y="167" text-anchor="middle" class="lbl">Observations</text>
+          <text x="376" y="185" text-anchor="middle" class="lbl-sm">deduplicated beliefs + evidence + proof count</text>
+
+          <!-- tier 3: the two raw fact types -->
+          <rect x="216" y="234" width="150" height="56" rx="4" class="box"/>
+          <text x="291" y="255" text-anchor="middle" class="lbl">World Facts</text>
+          <text x="291" y="273" text-anchor="middle" class="lbl-sm">about the world</text>
+          <rect x="386" y="234" width="150" height="56" rx="4" class="box"/>
+          <text x="461" y="255" text-anchor="middle" class="lbl">Experience Facts</text>
+          <text x="461" y="273" text-anchor="middle" class="lbl-sm">the bank's own acts</text>
+
+          <!-- input -->
+          <rect x="16" y="234" width="150" height="56" rx="4" class="box-dash"/>
+          <text x="91" y="255" text-anchor="middle" class="lbl">Turn / document</text>
+          <text x="91" y="273" text-anchor="middle" class="lbl-sm">raw text in</text>
+          <line x1="166" y1="262" x2="207" y2="262" class="flow-accent"/>
+          <polygon points="207,257 207,267 216,262" class="ah-accent"/>
+          <text x="191" y="224" text-anchor="middle" class="lbl-sm">retain()</text>
+
+          <!-- consolidate: facts -> observations -->
+          <line x1="291" y1="234" x2="291" y2="211" class="flow-accent"/>
+          <polygon points="286,211 296,211 291,202" class="ah-accent"/>
+          <line x1="461" y1="234" x2="461" y2="211" class="flow-accent"/>
+          <polygon points="456,211 466,211 461,202" class="ah-accent"/>
+          <text x="376" y="220" text-anchor="middle" class="lbl-sm">consolidate · dedup · cite</text>
+
+          <!-- curate: observations -> mental models -->
+          <line x1="376" y1="146" x2="376" y2="123" class="flow-accent"/>
+          <polygon points="371,123 381,123 376,114" class="ah-accent"/>
+          <text x="376" y="132" text-anchor="middle" class="lbl-sm">curate / cache</text>
+
+          <!-- reflect: top-down priority scan -->
+          <path d="M 560 86 L 560 262" class="ring"/>
+          <polygon points="555,253 565,253 560,262" class="tri"/>
+          <line x1="536" y1="86" x2="560" y2="86" class="dash"/>
+          <line x1="536" y1="174" x2="560" y2="174" class="dash"/>
+          <line x1="536" y1="262" x2="560" y2="262" class="dash"/>
+          <text x="556" y="86" class="lbl-sm" text-anchor="end" dx="-6">1</text>
+          <text x="556" y="174" class="lbl-sm" text-anchor="end" dx="-6">2</text>
+          <text x="556" y="262" class="lbl-sm" text-anchor="end" dx="-6">3</text>
+          <text x="574" y="60" class="lbl">reflect()</text>
+          <text x="574" y="80" class="lbl-sm">checks tiers in</text>
+          <text x="574" y="96" class="lbl-sm">priority order,</text>
+          <text x="574" y="112" class="lbl-sm">stopping at the</text>
+          <text x="574" y="128" class="lbl-sm">cheapest answer</text>
+          <text x="574" y="176" class="lbl">recall()</text>
+          <text x="574" y="196" class="lbl-sm">returns raw</text>
+          <text x="574" y="212" class="lbl-sm">matches from</text>
+          <text x="574" y="228" class="lbl-sm">tiers 2 and 3 —</text>
+          <text x="574" y="244" class="lbl-sm">no synthesis</text>
+
+          <text x="16" y="316" class="lbl-sm">Higher tiers are cheaper to read and lossier. Lower tiers are the audit trail.</text>
+        </svg>
+        <figcaption>The hierarchy is a write path and a read path over the same four tiers. Everything enters at the bottom as raw facts; consolidation lifts them into observations that carry their evidence; curation caches the frequent questions as mental models. <code>reflect</code> reads downward and stops early — which is why a well-populated mental-model layer is the main lever on recall latency and cost. <code>recall</code> ignores the top tier entirely.</figcaption>
+      </figure>
+
+
+      <h3>Multi-strategy retrieval (TEMPR)</h3>
+      <p>Every recall runs <strong>four search strategies in parallel</strong>, then fuses the results:</p>
+      <ul>
+        <li><strong>Semantic</strong> — conceptual similarity and paraphrasing (embedding search).</li>
+        <li><strong>Keyword (BM25)</strong> — names, technical terms, exact identifiers.</li>
+        <li><strong>Graph</strong> — related entities and indirect connections across the entity graph.</li>
+        <li><strong>Temporal</strong> — time-anchored queries ("last spring", "in June", "before the migration").</li>
+      </ul>
+
+      <figure class="figure wide">
+        <svg viewBox="0 0 700 268" class="dg" role="img" aria-label="A single query fans out to four parallel retrieval strategies — semantic, keyword BM25, graph and temporal — whose results are fused and ranked into one ordered set of memories.">
+          <text x="16" y="18" class="ey">ONE QUERY · FOUR STRATEGIES · ONE RANKING</text>
+
+          <rect x="16" y="96" width="118" height="56" rx="4" class="box-dash"/>
+          <text x="75" y="117" text-anchor="middle" class="lbl">query</text>
+          <text x="75" y="135" text-anchor="middle" class="lbl-sm">natural language</text>
+
+          <path d="M 134 124 C 168 124, 168 50, 196 50" class="flow"/>
+          <path d="M 134 124 C 168 124, 168 100, 196 100" class="flow"/>
+          <path d="M 134 124 C 168 124, 168 150, 196 150" class="flow"/>
+          <path d="M 134 124 C 168 124, 168 200, 196 200" class="flow"/>
+
+          <rect x="200" y="28" width="204" height="44" rx="4" class="box"/>
+          <text x="214" y="45" class="lbl">Semantic</text>
+          <text x="214" y="62" class="lbl-sm">paraphrase, concept drift</text>
+          <rect x="200" y="78" width="204" height="44" rx="4" class="box"/>
+          <text x="214" y="95" class="lbl">Keyword · BM25</text>
+          <text x="214" y="112" class="lbl-sm">names, IDs, error strings</text>
+          <rect x="200" y="128" width="204" height="44" rx="4" class="box"/>
+          <text x="214" y="145" class="lbl">Graph</text>
+          <text x="214" y="162" class="lbl-sm">entities one hop away</text>
+          <rect x="200" y="178" width="204" height="44" rx="4" class="box"/>
+          <text x="214" y="195" class="lbl">Temporal</text>
+          <text x="214" y="212" class="lbl-sm">relative time expressions</text>
+
+          <path d="M 404 50 C 426 50, 426 124, 442 124" class="flow"/>
+          <path d="M 404 100 C 426 100, 426 124, 442 124" class="flow"/>
+          <path d="M 404 150 C 426 150, 426 124, 442 124" class="flow"/>
+          <path d="M 404 200 C 426 200, 426 124, 442 124" class="flow"/>
+
+          <rect x="446" y="96" width="106" height="56" rx="4" class="box-core"/>
+          <text x="499" y="117" text-anchor="middle" class="lbl">fuse</text>
+          <text x="499" y="135" text-anchor="middle" class="lbl-sm">rank + dedup</text>
+
+          <line x1="552" y1="124" x2="575" y2="124" class="flow-accent"/>
+          <polygon points="575,119 575,129 584,124" class="ah-accent"/>
+          <rect x="584" y="96" width="100" height="56" rx="4" class="box-verd"/>
+          <text x="634" y="117" text-anchor="middle" class="lbl">ranked</text>
+          <text x="634" y="135" text-anchor="middle" class="lbl-sm">memories</text>
+
+          <text x="16" y="248" class="lbl-sm">All four run in parallel; none is a fallback for another.</text>
+        </svg>
+        <figcaption>Plain RAG is the top lane alone. The value of the other three is that they answer questions the embedding cannot: BM25 finds an exact stack-trace string that embeds into mush, graph reaches a fact stored about a <em>related</em> entity, and the temporal index resolves relative time expressions that appear nowhere in the stored text. Fusion means a weak signal in one lane can still surface if another corroborates it.</figcaption>
+      </figure>
+
+      <p>That temporal + graph layer is what distinguishes Hindsight from plain RAG: it can answer <em>"what did Alice do last spring?"</em> even when no stored chunk contains that exact phrasing.</p>
+
+      <h3>Observation consolidation</h3>
+      <p>After retention, Hindsight automatically consolidates related facts into <strong>observations</strong>:</p>
+      <ul>
+        <li><strong>Deduplication</strong> — overlapping facts merge into one durable observation instead of piling up as repeats.</li>
+        <li><strong>Evidence tracking</strong> — each observation references the source memories that support it (with exact quotes) plus a proof count.</li>
+        <li><strong>Continuous refinement</strong> — observations are <em>updated, not overwritten</em>, when new evidence supports, contradicts or extends them; history is preserved.</li>
+        <li><strong>Freshness awareness</strong> — if newer memories haven't been consolidated yet, <code>reflect</code> treats affected observations as stale and re-verifies them against raw facts.</li>
+      </ul>
+
+      <h3>Mission, directives &amp; disposition</h3>
+      <p>Banks can be configured to shape <em>how</em> the agent reasons during <code>reflect</code> (these settings do <strong>not</strong> affect <code>recall</code>):</p>
+      <ul>
+        <li><strong>Mission</strong> — natural-language identity for the bank ("I am a research assistant specializing in ML; I prefer simplicity over cutting-edge").</li>
+        <li><strong>Directives</strong> — hard guardrails that must never be violated ("never recommend specific stocks", "always cite sources").</li>
+        <li><strong>Disposition</strong> — soft reasoning traits on a 1–5 scale (skepticism, literalism, empathy).</li>
+      </ul>
+
+      <div class="note">
+        <span class="nlabel">What this buys you · BEAM</span>
+        The underlying model reportedly uses a ~20B open backbone that outperforms full-context GPT-4o on the same long-term-memory benchmark. The paper is <em>"Hindsight is 20/20: Building Agent Memory that Retains, Recalls, and Reflects"</em> (arXiv 2512.12818).
+      </div>
+    </section>
+
+    <!-- ===================== 02 ===================== -->
+    <section class="sec reveal" id="s2">
+      <div class="sec-head"><span class="sec-num">02</span><h2>Tooling &amp; deployment</h2></div>
+      <p>Hindsight runs in three shapes, and the shape you pick determines everything downstream.</p>
+
+      <div class="faceoff">
+        <div class="faceoff-cap"><span>// Deployment modes</span><span>managed → local</span></div>
+        <div class="faceoff-wrap">
+        <table>
+          <thead>
+            <tr><th class="dim">Mode</th><th class="h">Hindsight Cloud</th><th class="o">Self-hosted server</th><th>Local embedded</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="dim">What runs</td><td>Managed API (api.hindsight.vectorize.io)</td><td><code>hindsight-api</code> via Docker Compose / Helm / pip</td><td><code>hindsight-embed</code> daemon + embedded Postgres (pg0)</td></tr>
+            <tr><td class="dim">Extraction LLM</td><td>Server-side (none needed locally)</td><td>Yours, server-side</td><td>Yours, local — needs an API key</td></tr>
+            <tr><td class="dim">Port</td><td>—</td><td>8888 (typical)</td><td>9077 (coding agents) / 9177 (Hermes profile)</td></tr>
+            <tr><td class="dim">Best for</td><td>Production, no infra</td><td>Multi-agent, data you host</td><td>Personal / privacy-first, offline</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <h3>Clients &amp; interfaces</h3>
+      <ul>
+        <li><strong>REST API</strong> — full CRUD over <code>/v1/default/banks/{bank_id}/…</code>: <code>/memories</code>, <code>/memories/recall</code>, <code>/reflect</code>, <code>/documents</code>, <code>/mental-models</code>, <code>/operations</code>, <code>/export</code>, <code>/consolidate</code>.</li>
+        <li><strong>MCP server</strong> — <code>http://localhost:8888/mcp/{bank_id}/</code> (single-bank) or <code>/mcp/</code> (multi-bank, 29 tools). This is how Claude and Claude Desktop connect.</li>
+        <li><strong>SDKs</strong> — Python (<code>hindsight_client</code>), TypeScript, Go, plus the CLI.</li>
+        <li><strong>CLI</strong> — two binaries with different jobs. <code>hindsight</code> is the API client: <code>bank</code>, <code>memory</code> (list/get/recall/reflect/retain/clear), <code>document</code>, <code>entity</code>, <code>tag</code>, <code>chunk</code>, <code>operation</code>, <code>mental-model</code>, <code>directive</code>, <code>webhook</code>, <code>audit</code>, <code>health</code>, <code>metrics</code>, plus <code>explore</code> — a k9s-style TUI for walking banks, memories and entities and firing recall/reflect interactively. <code>hindsight-embed</code> is the lifecycle tool: profile, daemon, bank and UI management. (Verified against <code>hindsight 0.8.6</code>.)</li>
+        <li><strong>Web UI</strong> — <code>hindsight-embed -p &lt;profile&gt; ui start</code> serves a Next.js "control plane" on <code>daemon_port + 10000</code> for browsing memories, observations, entities and operations. It is a thin client over the dataplane: it connects out to the daemon's REST port and, with no API key set, runs open — and it binds <code>0.0.0.0</code>, not localhost. On a laptop that shares a coffee-shop LAN, that is your whole memory bank on an unauthenticated port.</li>
+      </ul>
+
+      <p>The <code>hindsight</code> CLI resolves its target in a fixed order, and it is worth knowing before you debug a "wrong bank" mystery: <code>HINDSIGHT_API_URL</code> / <code>HINDSIGHT_API_KEY</code> in the environment win, then a named profile from <code>~/.hindsight/cli-profiles/&lt;name&gt;.toml</code> (selected with <code>-p</code> or <code>HINDSIGHT_PROFILE</code>), then the default <code>http://localhost:8888</code>. Note the near-collision: <strong>CLI</strong> profiles live in <code>~/.hindsight/cli-profiles/</code>, while <strong>daemon</strong> profiles live in <code>~/.hindsight/profiles/</code>. Same word, different directory, different job — and a daemon profile does not give the CLI a URL. If you start a daemon on <code>:9177</code> and then run bare <code>hindsight memory list</code>, it will talk to <code>:8888</code> and report nothing.</p>
+
+      <h3>Local embedded — the daemon you probably run</h3>
+      <p>The local-embedded path (what Hermes uses here) is a small daemon with an embedded PostgreSQL (<code>pg0</code>), started on demand and shut down after an idle timeout (default 300s; <code>HINDSIGHT_EMBED_DAEMON_IDLE_TIMEOUT=0</code> keeps it resident). It needs its own LLM for fact extraction — configured independently of the host agent's model. On this machine that's <code>deepseek-v4-flash</code> via Ollama Cloud (<code>https://ollama.com/v1</code>).</p>
+
+      <div class="data-wrap">
+        <div class="data-cap">// Key local paths &amp; ports</div>
+        <table>
+          <thead>
+            <tr><th>Path / port</th><th class="n">Value</th><th>Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Daemon port (Hermes profile)</td><td class="n">9177</td><td>REST API for the <code>hermes</code> bank</td></tr>
+            <tr><td>Daemon port (coding agents)</td><td class="n">9077</td><td>REST API shared by coding-agent integrations</td></tr>
+            <tr><td>MCP server port</td><td class="n">8888</td><td><code>hindsight-local-mcp</code> — MCP + full API</td></tr>
+            <tr><td>Control plane UI</td><td class="n">19177</td><td><code>daemon_port + 10000</code>; binds <code>0.0.0.0</code></td></tr>
+            <tr><td>Embedded Postgres</td><td class="n">5432</td><td>pg0-managed; <em>the standard port</em> — see below</td></tr>
+            <tr><td>Daemon env / config</td><td>~/.hindsight/profiles/&lt;p&gt;.env</td><td>Extraction LLM, provider, model, log level, idle timeout</td></tr>
+            <tr><td>Daemon runtime state</td><td>~/.hindsight/profiles/&lt;p&gt;.{log,lock,ui.port}</td><td>Daemon log (grows fast — 103&nbsp;MB here), lock, UI port</td></tr>
+            <tr><td>CLI profiles</td><td>~/.hindsight/cli-profiles/&lt;n&gt;.toml</td><td>API URL/key for the <code>hindsight</code> client — <em>not</em> the daemon</td></tr>
+            <tr><td>Hermes plugin config</td><td>~/.hermes/hindsight/config.json</td><td>Mode, bank, budgets, extraction LLM, retain prefixes</td></tr>
+            <tr><td>Hermes memory policy</td><td>~/.hermes/config.yaml → <code>memory:</code></td><td>Provider selection, char limits, nudge/flush cadence</td></tr>
+            <tr><td>Embedded DB</td><td>~/.pg0/instances/hindsight-embed-hermes/</td><td>Postgres data (wipe to reset) — 358&nbsp;MB here</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <span class="nlabel">Config gotcha · three sources of truth</span>
+        The Hermes plugin reads <code>~/.hermes/hindsight/config.json</code>; the daemon reads <code>~/.hindsight/profiles/hermes.env</code>; and <code>daemon start</code> re-syncs the env file <em>from</em> config.json. Change the extraction model in BOTH or the daemon silently reverts it on next start. The third file, <code>~/.hermes/config.yaml</code> under <code>memory:</code>, decides whether Hermes consults the provider at all — and it is the one people forget, because it looks like unrelated agent config.
+      </div>
+
+      <div class="note">
+        <span class="nlabel">Port collision · PG-1</span>
+        The pg0-managed instance takes <strong>port 5432</strong> — the Postgres default — with the credentials <code>hindsight</code>/<code>hindsight</code> and database <code>hindsight</code> (Postgres 18.1 here). If you also run a local Postgres for development, one of the two loses. The daemon log shows the symptom as a bare <code>port 5432 failed: Connection refused</code> during startup, which reads like a Hindsight bug and is not one.
+      </div>
+    </section>
+
+    <!-- ===================== 03 ===================== -->
+    <section class="sec reveal" id="s3">
+      <div class="sec-head"><span class="sec-num">03</span><h2>Five integrations, face-off</h2></div>
+      <p>The five tools you asked about connect to Hindsight in five different ways — native provider, MCP + hooks, shared plugin, independent extension, and a Cordis plugin. The table is the whole argument of this dossier.</p>
+
+      <div class="faceoff">
+        <div class="faceoff-cap"><span>// Integration mechanisms</span><span>per tool</span></div>
+        <div class="faceoff-wrap">
+        <table>
+          <thead>
+            <tr><th class="dim">Tool</th><th class="h">Mechanism</th><th class="o">Auto recall/retain</th><th>Explicit tools</th><th>Scope</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="dim">Hermes</td><td>Native memory provider (<code>hermes memory setup</code>)</td><td>Yes — <code>pre_llm_call</code> / <code>post_llm_call</code> hooks</td><td><code>hindsight_retain/recall/reflect</code></td><td>One bank (<code>hermes</code>), global</td></tr>
+            <tr><td class="dim">Claude (desktop app)</td><td>MCP server only (<code>hindsight-local-mcp</code>)</td><td>No hooks — manual tools only</td><td>29 MCP tools (retain, recall, reflect, pages…)</td><td>Per-bank via <code>/mcp/{bank}/</code></td></tr>
+            <tr><td class="dim">Claude Code</td><td>Coding-agents plugin (hooks + MCP + skill)</td><td>Yes — SessionStart / UserPromptSubmit / Stop hooks</td><td><code>hindsight_*</code> MCP tools</td><td>Per-repo: <code>coding-agent::{gitProject}</code></td></tr>
+            <tr><td class="dim">Pi</td><td>epimetheus extension (ambient + queue)</td><td>Yes — injected per user prompt</td><td><code>hindsight_retain/recall/reflect</code> + commands</td><td>Project/user/session-scoped via tags</td></tr>
+            <tr><td class="dim">DeepSeek Harness (dsh)</td><td>Cordis plugin via coding-agents package</td><td>Yes — native plugin tools, no MCP</td><td><code>hindsight_*</code> tools</td><td>Per-repo, resolved per session workspace</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <p>Three structural notes worth internalizing:</p>
+      <ul>
+        <li><strong>Claude Code, Codex, opencode, Kilo, Cursor, Copilot, Grok, Antigravity, Devin, Cline and DeepSeek Harness share one package</strong> (<code>@vectorize-io/hindsight-coding-agents</code>). Banks are per-repo and harness-neutral by default, so every agent working in a repo reads and writes the same memory.</li>
+        <li><strong>Plain Claude is the outlier.</strong> No first-party plugin exists; you get memory only where you wire the MCP server in, and there are no automatic recall/retain hooks — the agent must call the tools itself. (The Claude Agent SDK path adds hooks, but only for agents you write with the SDK.)</li>
+        <li><strong>Pi's epimetheus is independent and deliberately conservative.</strong> It follows Hindsight's documented best practices closely, queues retains to disk, and fixes a known Hermes gap (Hermes recall is one turn behind — issue #5820). It's beta and needs its own Hindsight server.</li>
+      </ul>
+    </section>
+
+    <!-- ===================== 04 ===================== -->
+    <section class="sec reveal" id="s4">
+      <div class="sec-head"><span class="sec-num">04</span><h2>Setup per tool</h2></div>
+      <p>Everything below is verified against the current docs (2026-08). Where a path is deprecated or superseded, it's flagged.</p>
+
+      <h3>4.1 Hermes — native provider</h3>
+      <p>Hermes ships Hindsight as a built-in memory provider. The old standalone <code>hindsight-hermes</code> plugin is deprecated; use the native provider.</p>
+      <pre><code class="language-bash"># Wizard — picks cloud or local-embedded and writes ~/.hermes/hindsight/config.json
+hermes memory setup          # select "hindsight"
+
+# Manual (cloud):
+hermes config set memory.provider hindsight
+echo "HINDSIGHT_API_KEY=your-key" >> ~/.hermes/.env
+echo "HINDSIGHT_API_URL=https://api.hindsight.vectorize.io" >> ~/.hermes/.env
+
+# Verify
+hermes memory status
+</code></pre>
+      <h4>Where the settings actually live</h4>
+      <p>Two files, not one, and they answer different questions. <code>~/.hermes/config.yaml</code> decides <em>whether and how hard</em> Hermes uses memory at all; <code>~/.hermes/hindsight/config.json</code> decides <em>which Hindsight</em> it talks to. Neither file mentions the other, which is why "I configured Hindsight and nothing happened" is usually a <code>config.yaml</code> problem.</p>
+
+      <pre><code class="language-yaml"># ~/.hermes/config.yaml — the agent-side policy
+memory:
+  memory_enabled: true        # master switch for the memory subsystem
+  user_profile_enabled: true  # maintain USER.md alongside MEMORY.md
+  write_approval: false       # false = retain without prompting the user
+  memory_char_limit: 4000     # cap on injected memory context
+  user_char_limit: 2000       # cap on injected user-profile context
+  provider: hindsight         # which external provider is active (one at a time)
+  nudge_interval: 10          # turns between "consider saving this" nudges
+  flush_min_turns: 6          # minimum turns before a retain flush fires
+</code></pre>
+
+      <pre><code class="language-jsonc">// ~/.hermes/hindsight/config.json — what `hermes memory setup` writes.
+// Note the snake_case: this is not the camelCase schema the coding-agents
+// package uses, and settings do not carry across.
+{
+  "mode": "local_embedded",           // "local_embedded" | "cloud" | "self_hosted"
+  "apiKey": "",                       // cloud/self-hosted only
+  "timeout": 120,                     // seconds, per API call
+  "idle_timeout": 0,                  // 0 = daemon stays resident
+  "retain_tags": "",                  // tags stamped on every retained memory
+  "observation_scopes": "",           // consolidation scoping ("" = bank default)
+  "retain_source": "",
+  "retain_user_prefix": "User",       // speaker labels in the retained transcript
+  "retain_assistant_prefix": "Assistant",
+  "banks": {
+    "hermes": { "bankId": "hermes", "budget": "mid", "enabled": true }
+  },
+  "llm_provider": "openai_compatible", // extraction LLM — independent of the agent's model
+  "llm_base_url": "https://ollama.com/v1",
+  "llm_model": "deepseek-v4-flash",
+  "bank_id": "hermes",                 // active bank
+  "recall_budget": "mid"               // low | mid | high — size of injected recall
+}
+</code></pre>
+
+      <p>The knobs that matter in daily use: <code>recall_budget</code> (and the per-bank <code>budget</code>) trade injected-context size against prompt cost; <code>retain_tags</code> is how you keep work and personal memories separable inside one bank; <code>observation_scopes</code> controls whether consolidation builds one belief set or several; and <code>idle_timeout: 0</code> is what stops the daemon shutting down between turns and paying the cold-start cost again. A handful of these are also env-overridable from <code>~/.hermes/.env</code> — <code>HINDSIGHT_LLM_API_KEY</code>, <code>HINDSIGHT_TIMEOUT</code>, <code>HINDSIGHT_IDLE_TIMEOUT</code>.</p>
+
+      <h4>As configured on this machine</h4>
+      <p>Read live from the install rather than from the docs, because the gap between the two is the point of this section.</p>
+
+      <div class="data-wrap">
+        <div class="data-cap">// Live Hermes ⇄ Hindsight wiring · 2026-08-24</div>
+        <table>
+          <thead>
+            <tr><th>Setting</th><th>Value</th><th>Read from</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Provider</td><td><code>hindsight</code>, active</td><td><code>config.yaml → memory.provider</code></td></tr>
+            <tr><td>Mode</td><td><code>local_embedded</code></td><td><code>hindsight/config.json</code></td></tr>
+            <tr><td>Bank</td><td><code>hermes</code> · budget <code>mid</code> · enabled</td><td><code>hindsight/config.json</code></td></tr>
+            <tr><td>Extraction LLM</td><td><code>deepseek-v4-flash</code> @ <code>https://ollama.com/v1</code></td><td>config.json <em>and</em> <code>profiles/hermes.env</code></td></tr>
+            <tr><td>Daemon</td><td><code>127.0.0.1:9177</code>, idle timeout 0 (resident)</td><td><code>hermes.env</code>, <code>hermes.ui.log</code></td></tr>
+            <tr><td>Control plane UI</td><td><code>0.0.0.0:19177</code>, no API key</td><td><code>hermes.ui.port</code>, <code>hermes.ui.log</code></td></tr>
+            <tr><td>Store</td><td>Postgres 18.1 via pg0, 358&nbsp;MB</td><td><code>~/.pg0/instances/hindsight-embed-hermes/</code></td></tr>
+            <tr><td>Built-in memory</td><td>MEMORY.md + USER.md, <strong>also enabled</strong></td><td><code>hermes memory status</code></td></tr>
+            <tr><td>Last daemon use</td><td>2026-08-23</td><td><code>~/.hindsight/profiles/metadata.json</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Two details in there are easy to miss. First, the provider name is translated on the way down: <code>config.json</code> says <code>llm_provider: openai_compatible</code>, but the env file the daemon actually reads says <code>HINDSIGHT_API_LLM_PROVIDER=openai</code>. They mean the same thing; a grep for the wrong one finds nothing. Second, the daemon log at <code>~/.hindsight/profiles/hermes.log</code> is <strong>103&nbsp;MB</strong> at <code>info</code> level and nothing rotates it. Set <code>HINDSIGHT_API_LOG_LEVEL=warning</code> once the install is stable, or add it to your own log rotation.</p>
+
+      <div class="note">
+        <span class="nlabel">Live finding · HERM-2</span>
+        <code>hermes memory status</code> on this machine reports <code>Plugin: installed ✓</code> but <code>Status: not available ✗</code>, with <code>✗ HINDSIGHT_API_KEY</code> listed as missing — <em>despite</em> <code>mode: local_embedded</code>, where a key is by definition not needed. The readiness check appears to test for the cloud credential unconditionally. Treat a red <code>memory status</code> as inconclusive in local-embedded mode and verify the real thing instead: start the daemon and hit its REST port, or run <code>hindsight -p hermes bank stats</code> against <code>:9177</code>.
+      </div>
+
+      <div class="note">
+        <span class="nlabel">Gateway gotcha · HERM-3</span>
+        <code>hermes memory status</code> also warns that <strong>systemd and gateway services do not inherit <code>~/.hermes/.env</code></strong>. This matters precisely for the cross-platform assistant use case in §05: the Telegram/Discord/Slack gateways are where you most want memory, and they are the surface most likely to start without the Hindsight variables set. Put them in the service environment, not just the dotenv.
+      </div>
+
+
+      <figure class="figure wide">
+        <svg viewBox="0 0 720 400" class="dg" role="img" aria-label="Topology of the Hermes to Hindsight wiring on this machine. The Hermes agent calls the hindsight-embed daemon on port 9177, which stores into a pg0-managed Postgres on 5432 and calls Ollama Cloud for fact extraction. A separate control-plane UI on 19177 connects back to the daemon. Below, three config files feed the runtime: config.yaml and hindsight/config.json are read by Hermes, and config.json is re-synced into the daemon's env file on start.">
+          <text x="16" y="16" class="ey">AS WIRED ON THIS MACHINE · 2026-08-24</text>
+
+          <!-- runtime row -->
+          <rect x="16" y="56" width="176" height="70" rx="4" class="box-core"/>
+          <text x="104" y="82" text-anchor="middle" class="lbl">Hermes agent</text>
+          <text x="104" y="100" text-anchor="middle" class="lbl-sm">pre_llm_call → recall</text>
+          <text x="104" y="115" text-anchor="middle" class="lbl-sm">post_llm_call → retain</text>
+
+          <rect x="272" y="56" width="176" height="70" rx="4" class="box-verd"/>
+          <text x="360" y="82" text-anchor="middle" class="lbl">hindsight-embed</text>
+          <text x="360" y="100" text-anchor="middle" class="lbl-sm">127.0.0.1:9177</text>
+          <text x="360" y="115" text-anchor="middle" class="lbl-sm">resident (idle_timeout 0)</text>
+
+          <rect x="528" y="56" width="176" height="70" rx="4" class="box"/>
+          <text x="616" y="82" text-anchor="middle" class="lbl">pg0 · Postgres 18.1</text>
+          <text x="616" y="100" text-anchor="middle" class="lbl-sm">localhost:5432 · 358 MB</text>
+          <text x="616" y="115" text-anchor="middle" class="lbl-sm">bank: hermes</text>
+
+          <line x1="192" y1="91" x2="263" y2="91" class="flow-accent"/>
+          <polygon points="263,86 263,96 272,91" class="ah-accent"/>
+          <text x="227" y="76" text-anchor="middle" class="lbl-sm">REST</text>
+
+          <line x1="448" y1="91" x2="519" y2="91" class="flow"/>
+          <polygon points="519,86 519,96 528,91" class="ah"/>
+          <text x="483" y="76" text-anchor="middle" class="lbl-sm">SQL</text>
+
+          <!-- side services -->
+          <rect x="272" y="178" width="176" height="62" rx="4" class="box-dash"/>
+          <text x="360" y="200" text-anchor="middle" class="lbl">Ollama Cloud</text>
+          <text x="360" y="218" text-anchor="middle" class="lbl-sm">deepseek-v4-flash</text>
+          <text x="360" y="233" text-anchor="middle" class="lbl-sm">https://ollama.com/v1</text>
+
+          <line x1="360" y1="126" x2="360" y2="169" class="flow"/>
+          <polygon points="355,169 365,169 360,178" class="ah"/>
+          <text x="368" y="152" class="lbl-sm">fact extraction</text>
+
+          <rect x="528" y="178" width="176" height="62" rx="4" class="box-soft"/>
+          <text x="616" y="200" text-anchor="middle" class="lbl">Control plane UI</text>
+          <text x="616" y="218" text-anchor="middle" class="lbl-sm">0.0.0.0:19177</text>
+          <text x="616" y="233" text-anchor="middle" class="lbl-sm">no API key</text>
+
+          <path d="M 528 209 L 470 209 L 470 32 L 360 32 L 360 47" class="dash"/>
+          <polygon points="355,47 365,47 360,56" class="ah"/>
+          <text x="488" y="24" text-anchor="middle" class="lbl-sm">control plane → dataplane</text>
+
+          <!-- config row -->
+          <rect x="16" y="292" width="204" height="88" rx="4" class="box-soft"/>
+          <text x="30" y="312" class="lbl-sm">~/.hermes/config.yaml</text>
+          <text x="30" y="332" class="lbl">memory:</text>
+          <text x="30" y="350" class="lbl-sm">provider: hindsight</text>
+          <text x="30" y="366" class="lbl-sm">nudge 10 · flush 6 turns</text>
+
+          <rect x="258" y="292" width="204" height="88" rx="4" class="box-soft"/>
+          <text x="272" y="312" class="lbl-sm">~/.hermes/hindsight/</text>
+          <text x="272" y="332" class="lbl">config.json</text>
+          <text x="272" y="350" class="lbl-sm">mode: local_embedded</text>
+          <text x="272" y="366" class="lbl-sm">bank hermes · budget mid</text>
+
+          <rect x="500" y="292" width="204" height="88" rx="4" class="box-dash"/>
+          <text x="514" y="312" class="lbl-sm">~/.hindsight/profiles/</text>
+          <text x="514" y="332" class="lbl">hermes.env</text>
+          <text x="514" y="350" class="lbl-sm">HINDSIGHT_API_LLM_*</text>
+          <text x="514" y="366" class="lbl-sm">IDLE_TIMEOUT=0</text>
+
+          <line x1="104" y1="292" x2="104" y2="135" class="flow"/>
+          <polygon points="99,135 109,135 104,126" class="ah"/>
+          <path d="M 330 292 L 330 278 L 170 278 L 170 135" class="flow"/>
+          <polygon points="165,135 175,135 170,126" class="ah"/>
+
+          <line x1="462" y1="336" x2="491" y2="336" class="flow-accent"/>
+          <polygon points="491,331 491,341 500,336" class="ah-accent"/>
+          <text x="481" y="282" text-anchor="middle" class="lbl-sm">re-synced on daemon start</text>
+
+          <path d="M 560 292 L 560 264 L 252 264 L 252 110 L 263 110" class="flow"/>
+          <polygon points="263,105 263,115 272,110" class="ah"/>
+          <text x="406" y="256" text-anchor="middle" class="lbl-sm">the daemon reads only this file</text>
+        </svg>
+        <figcaption>The whole shape of the two-sources-of-truth problem in one picture: Hermes never reads <code>hermes.env</code>, and the daemon never reads <code>config.json</code> — they are joined only by the re-sync that runs at daemon start, which is why an edit to one file appears to work and then quietly reverts. Note also that nothing in this diagram is on the network except the extraction call to Ollama Cloud; the memories themselves never leave the machine.</figcaption>
+      </figure>
+
+      <h4>Built-in memory does not go away</h4>
+      <p>The advice you will find in most write-ups — run <code>hermes tools disable memory</code> if the model keeps preferring Hermes's markdown memory over Hindsight — reaches for the wrong lever. The CLI says so plainly: <em>"Built-in memory (MEMORY.md/USER.md) is always active."</em> Only one <em>external</em> provider can be active at a time, and the built-in layer runs underneath whichever one you pick. What the commands actually do:</p>
+      <ul>
+        <li><code>hermes memory off</code> — disables the external provider, leaving built-in memory running.</li>
+        <li><code>hermes memory reset</code> — erases MEMORY.md and USER.md. This is the only way to clear built-in memory, and it does not touch Hindsight.</li>
+        <li><code>hermes tools disable memory</code> — disables the <code>memory</code> <em>toolset</em>, i.e. the model's explicit memory tools. Automatic injection still happens, so this narrows the surface rather than resolving a conflict.</li>
+        <li><code>config.yaml → memory.memory_enabled: false</code> — the actual master switch.</li>
+      </ul>
+      <p>So the two layers coexist by design, and on this machine both are live. That is usually fine: built-in memory is a short curated file the user edits, Hindsight is the large consolidated store. It becomes a problem only when the same fact lives in both and they disagree — at which point the built-in file wins, because it is injected verbatim rather than retrieved.</p>
+
+      <div class="note">
+        <span class="nlabel">Known gap · HERM-1</span>
+        Auto-recall in Hermes runs one turn behind the current prompt (NousResearch/hermes-agent#5820) — the memory injected reflects the previous message. Epimetheus and the coding-agents package both avoid this by building the query from the incoming prompt. The diagram below shows why the hook's position in the turn is what causes it.
+      </div>
+
+      <figure class="figure wide">
+        <svg viewBox="0 0 720 330" class="dg" role="img" aria-label="Three swimlanes over one conversational turn. The middle lane is the turn itself: user prompt, LLM call, response. Above it, Hermes hooks fire around the LLM call, so its recall query comes from the previous turn. Below it, the coding-agents and epimetheus integrations hook UserPromptSubmit, so their recall query is built from the prompt just typed.">
+          <text x="16" y="16" class="ey">WHERE THE RECALL QUERY COMES FROM</text>
+
+          <text x="16" y="44" class="lbl">Hermes</text>
+          <text x="16" y="62" class="lbl-sm">*_llm_call hooks</text>
+          <rect x="250" y="24" width="180" height="56" rx="4" class="box-core"/>
+          <text x="340" y="45" text-anchor="middle" class="lbl">pre_llm_call</text>
+          <text x="340" y="63" text-anchor="middle" class="lbl-sm">recall ← turn n−1 prompt</text>
+          <rect x="520" y="24" width="140" height="56" rx="4" class="box-core"/>
+          <text x="590" y="45" text-anchor="middle" class="lbl">post_llm_call</text>
+          <text x="590" y="63" text-anchor="middle" class="lbl-sm">retain (async)</text>
+
+          <text x="16" y="144" class="lbl">One turn</text>
+          <text x="16" y="162" class="lbl-sm">what the model sees</text>
+          <rect x="176" y="124" width="140" height="56" rx="4" class="box-dash"/>
+          <text x="246" y="152" text-anchor="middle" class="lbl">user prompt</text>
+          <rect x="380" y="124" width="140" height="56" rx="4" class="box"/>
+          <text x="450" y="152" text-anchor="middle" class="lbl">LLM call</text>
+          <rect x="584" y="124" width="120" height="56" rx="4" class="box-dash"/>
+          <text x="644" y="152" text-anchor="middle" class="lbl">response</text>
+          <line x1="316" y1="152" x2="371" y2="152" class="flow"/>
+          <polygon points="371,147 371,157 380,152" class="ah"/>
+          <line x1="520" y1="152" x2="575" y2="152" class="flow"/>
+          <polygon points="575,147 575,157 584,152" class="ah"/>
+
+          <path d="M 430 52 L 450 52 L 450 115" class="flow-accent"/>
+          <polygon points="445,115 455,115 450,124" class="ah-accent"/>
+          <line x1="644" y1="124" x2="644" y2="89" class="flow-accent"/>
+          <polygon points="639,89 649,89 644,80" class="ah-accent"/>
+
+          <text x="16" y="244" class="lbl">coding-agents</text>
+          <text x="16" y="262" class="lbl-sm">epimetheus</text>
+          <rect x="250" y="224" width="180" height="56" rx="4" class="box-verd"/>
+          <text x="340" y="245" text-anchor="middle" class="lbl">UserPromptSubmit</text>
+          <text x="340" y="263" text-anchor="middle" class="lbl-sm">recall ← this prompt</text>
+          <rect x="520" y="224" width="140" height="56" rx="4" class="box-verd"/>
+          <text x="590" y="245" text-anchor="middle" class="lbl">Stop</text>
+          <text x="590" y="263" text-anchor="middle" class="lbl-sm">retain (async)</text>
+
+          <line x1="246" y1="180" x2="246" y2="215" class="flow-verd"/>
+          <polygon points="241,215 251,215 246,224" class="tri"/>
+          <path d="M 430 252 L 470 252 L 470 189" class="flow-verd"/>
+          <polygon points="465,189 475,189 470,180" class="tri"/>
+          <line x1="644" y1="180" x2="644" y2="215" class="flow-verd"/>
+          <polygon points="639,215 649,215 644,224" class="tri"/>
+
+          <text x="16" y="304" class="lbl-sm">Hermes hooks fire around the LLM call — by then the prompt is already assembled, so the query reflects turn n−1.</text>
+          <text x="16" y="320" class="lbl-sm">UserPromptSubmit fires before assembly, so the query is the prompt you just typed. Same engine, one hook earlier.</text>
+        </svg>
+        <figcaption>HERM-1 is not a bug in the memory engine; it is a consequence of hook placement. Both integrations call the same <code>recall()</code>. The difference is that Hermes has no hook between "user typed something" and "context assembled", so the only prompt available when <code>pre_llm_call</code> fires is the one from the turn before. Until that hook exists, the practical mitigation is to lean on <code>reflect</code>-backed mental models — which are query-insensitive — rather than on per-turn recall.</figcaption>
+      </figure>
+
+
+      <h3>4.2 Claude (desktop app / Claude.ai)</h3>
+      <p>No plugin — run the local MCP server and point Claude Desktop at it. This is the official path for "Claude long-term memory across conversations."</p>
+      <pre><code class="language-bash"># 1. Start the local MCP server (embeds Postgres, exposes /mcp/)
+HINDSIGHT_API_LLM_API_KEY=sk-... uvx --from hindsight-api hindsight-local-mcp
+# or with Ollama (no key):
+HINDSIGHT_API_LLM_PROVIDER=ollama HINDSIGHT_API_LLM_MODEL=llama3.2 uvx --from hindsight-api hindsight-local-mcp
+</code></pre>
+      <pre><code class="language-json">// 2. ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "hindsight": {
+      "type": "http",
+      "url": "http://localhost:8888/mcp/hermes/"   // single-bank mode
+    }
+  }
+}
+</code></pre>
+      <p>Multi-bank mode uses <code>http://localhost:8888/mcp/</code> and selects the bank per call via the <code>bank_id</code> parameter or <code>X-Bank-Id</code> header. First startup downloads the embedding model (~100MB) and initializes the DB. Data persists in <code>~/.pg0/hindsight-mcp/</code>.</p>
+      <p>For agents you write, the <strong>Claude Agent SDK</strong> integration adds hooks so recall/retain happen automatically:</p>
+      <pre><code class="language-bash">pip install hindsight-claude-agent-sdk
+</code></pre>
+      <pre><code class="language-python">from claude_agent_sdk import query, ClaudeAgentOptions
+from hindsight_claude_agent_sdk import create_hindsight_server
+
+server = create_hindsight_server(bank_id="my-agent",
+                                 hindsight_api_url="http://localhost:8888")
+# pass server via ClaudeAgentOptions(mcp_servers={"hindsight": server})
+</code></pre>
+      <div class="note">
+        <span class="nlabel">Scope caveat · CLAUDE-1</span>
+        The MCP route gives the agent 29 explicit tools (retain/recall/reflect, mental models, directives, knowledge pages, documents) but <strong>no automatic injection</strong> — memory only appears when the model chooses to call a tool. Fine for a research assistant; weaker as a fire-and-forget memory layer.
+      </div>
+
+      <h3>4.3 Claude Code — coding-agents plugin (current)</h3>
+      <p>The recommended path is the shared coding-agents package; the older per-agent plugin is superseded. One command wires three hooks into <code>~/.claude/settings.json</code>, MCP via <code>claude mcp add</code>, and a companion skill.</p>
+      <pre><code class="language-bash">cd /path/to/your/repo
+npx @vectorize-io/hindsight-coding-agents install claude-code
+# optional flags:
+#   --server cloud|self-hosted|daemon   where memory lives
+#   --api-url http://localhost:8888     for an existing server
+#   --import-conversations              re-ingest past local transcripts
+npx @vectorize-io/hindsight-coding-agents uninstall claude-code   # removes exactly what install added
+</code></pre>
+      <p>Behavior (hooks): <code>SessionStart</code> health check + cold-repo seed, <code>UserPromptSubmit</code> auto-recall injected as <code>additionalContext</code> (invisible to chat, visible to Claude), <code>Stop</code> auto-retain (async). Explicit <code>hindsight_*</code> MCP tools plus a knowledge-page skill teach the agent how its own memory works.</p>
+      <p>Config lives in <code>~/.hindsight/coding-agent.json</code> (shared by all agents) — note that this is a <em>separate</em> config tree from the Hermes wiring in §4.1, in camelCase rather than snake_case, and nothing carries across. On this machine that file does not exist: Claude Code is not currently wired to Hindsight, so the Hermes bank and any future per-repo coding banks would start out with no shared history. Key settings:</p>
+      <pre><code class="language-jsonc">{
+  "apiUrl": "http://127.0.0.1:9077",      // local daemon; cloud default otherwise
+  "bankIdTemplate": "coding-agent::{gitProject}",  // harness-neutral per-repo bank
+  "autoSeed": true,                        // seed cold repo from git history
+  "seedLimit": 300,                        // most-recent-N commits
+  "gitIngest": "message",                  // "message" | "full" (diffs) | "none"
+  "optInOnly": false,                      // true = memory only in optInPaths
+  "optInPaths": ["~/work/client-x"],
+  "retainTags": ["project:{gitProject}", "env:work"],
+  "observationScopes": "shared"            // one belief set per bank (all agents)
+}
+</code></pre>
+      <p>Local-daemon mode starts <code>hindsight-embed</code> on demand at <code>127.0.0.1:9077</code> (one daemon serves every agent; an existing server is adopted, never restarted). It needs an LLM key for extraction — first of <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>GEMINI_API_KEY</code>, <code>GROQ_API_KEY</code> — or falls back to the Claude Code CLI (no key).</p>
+      <div class="note">
+        <span class="nlabel">macOS · DSH-MAC-1</span>
+        On macOS the local daemon compiles <code>litellm</code> from source (no macOS wheels) — you need a current Rust toolchain from rustup.rs or daemon startup fails.
+      </div>
+
+      <h3>4.4 Pi — epimetheus extension</h3>
+      <p><strong>Pi</strong> is the open-source coding agent by can1357; its official Hindsight integration is <strong>epimetheus</strong> (noctuid) — a beta, GPL-3.0 extension with an unusually careful design. It needs its own Hindsight server; it won't ride on the Hermes daemon profile.</p>
+      <pre><code class="language-bash"># 1. Server (own profile/port)
+uvx hindsight-embed@latest profile create pi --port 9100
+uvx hindsight-embed -p pi configure            # LLM provider/key
+uvx hindsight-embed@latest -p pi bank create default
+# keep daemon resident (required by the extension):
+echo "HINDSIGHT_EMBED_DAEMON_IDLE_TIMEOUT=0" >> ~/.hindsight/profiles/pi.env
+
+# 2. Install the extension (pin a tag — config API is in flux)
+pi install @noctuid/epimetheus@&lt;latest-tag&gt;
+</code></pre>
+      <pre><code class="language-jsonc">// 3. ~/.pi/agent/epimetheus/config.jsonc
+{
+  "apiUrl": "http://127.0.0.1:9100",
+  "apiKey": "your-api-key",
+  "bankId": "default",
+  "constantTags": ["harness:pi", "user:me"],
+  "toolsEnabled": ["retain", "reflect"],
+  "autoRecallPersist": true,
+  "autoRecallDisplay": true,
+  "observationScopes": [["user:me"], ["{project}"]],
+  "autoRecallTags": ["user:me"],
+  "maxRecallTokens": 2048
+}
+</code></pre>
+      <p>Highlights: automatic retention on session lifecycle (switch/fork/reload/compact/quit), disk-backed queue that survives Hindsight being down, past-session ingestion of <em>any</em> historical session, project/user/session scoping via tags, and <code>reflect</code>-backed mental-model workflows. The author hand-verifies queue and parsed-session files — a level of correctness focus most memory integrations don't have.</p>
+      <div class="note">
+        <span class="nlabel">Beta maturity · PI-1</span>
+        Beta software; the author recommends locking to a specific tag and reviewing the changelog before updates. Re-read the best-practices section early — changing the retain/observation mission later means re-ingesting old sessions.
+      </div>
+
+      <h3>4.5 DeepSeek Harness (dsh)</h3>
+      <p>DeepSeek's plugin-first coding agent ("everything is a plugin," built on the Cordis framework) gained Hindsight memory via the same coding-agents package. One command, no MCP:</p>
+      <pre><code class="language-bash">npx @vectorize-io/hindsight-coding-agents install dsh
+# alternative package route:
+dsh plugin --profile web add @vectorize-io/hindsight-coding-agents
+</code></pre>
+      <p>The installer adds a Cordis plugin row to <code>$DSH_HOME/cordis.patch.yml</code> (<code>~/.dsh</code> by default), which every dsh profile composes. Two dsh-specific notes: because one dsh process serves several repositories (the Web UI opens sessions in whatever directory you pick), the bank is resolved <strong>per session workspace</strong>, not per process; and dsh has no plugin-facing notice channel, so the seed line goes to the plugin log rather than the UI. Everything model-facing — recalled memory, the knowledge preamble, the <code>hindsight_*</code> tools — is unaffected.</p>
+      <p>Session transcripts live as Zstandard-framed JSONL under <code>$DSH_HOME/sessions</code>; importing past sessions needs Node 22.15+ (the import is skipped with a reason on older Node rather than silently importing nothing). Same per-repo banks as Claude Code — both agents share <code>coding-agent::{gitProject}</code>.</p>
+    </section>
+
+    <!-- ===================== 05 ===================== -->
+    <section class="sec reveal" id="s5">
+      <div class="sec-head"><span class="sec-num">05</span><h2>Common use cases</h2></div>
+
+      <h3>Per-repo coding memory (the flagship)</h3>
+      <p>The coding-agents package is zero-setup: a repo's git history and conversations flow into its bank in the background. The stated premise — most of a real fix is derivable from the code, but the <em>last mile</em> hinges on project-specific decisions (a rounding rule, a retry allowlist, a tie-break policy) that live only in git history and past chats — is exactly the gap memory fills. Cold repos are auto-seeded from the last N commits, with an optional headless codebase survey run under the harness's own CLI.</p>
+
+      <h3>Cross-agent shared memory</h3>
+      <p>Because the default bank template (<code>coding-agent::{gitProject}</code>) is harness-neutral, Claude Code, Codex, opencode and dsh all read and write one bank per repo. A decision recorded by one agent is recalled by every other. Use <code>observationScopes: "shared"</code> so consolidation builds one set of beliefs per bank instead of parallel per-agent belief sets.</p>
+
+      <h3>Subagents with their own brains</h3>
+      <p>Claude Code's plugin exposes a <code>create-agent</code> skill that scaffolds a subagent file under <code>~/.claude/agents/</code> with an isolated bank; dynamic bank IDs (<code>dynamicBankId</code>, granularity <code>agent</code>/<code>channel</code>/<code>user</code>) isolate memory per agent, channel, or user — including Claude Code Channels (Telegram/Discord/Slack).</p>
+
+      <h3>Personal-assistant memory across platforms</h3>
+      <p>Hermes in gateway mode (Telegram/Discord/Slack) creates a fresh agent per message; the <code>pre_llm_call</code> hook recalls relevant memories every turn regardless of platform, so the assistant remembers who you are, your preferences, and open threads across surfaces.</p>
+
+      <h3>Knowledge pages — living project docs</h3>
+      <p>Newer feature: banks can maintain <strong>knowledge pages</strong> (architecture, conventions, in-flight initiatives) as living documents over the bank's memories, auto-refreshed after each consolidation (or on a cron, or manually). Future sessions start from them.</p>
+
+      <h3>Retroactive memory via past-session ingestion</h3>
+      <p>Both the coding-agents package (<code>--import-conversations</code>) and epimetheus can ingest <em>any</em> past session — not just ones that had the plugin loaded. Ingestion is idempotent (dedup by document id) and respects session attribution so forks don't duplicate parent content.</p>
+
+      <h3>Mental models &amp; guardrails</h3>
+      <p>Mental models cache reflect answers for common queries ("What are the user's dev preferences?") and can auto-refresh when new observations land. Directives provide hard guardrails that <code>reflect</code> will not violate — useful for compliance-flavored assistants.</p>
+
+      <h3>Bulk knowledge loading</h3>
+      <p>For vaults/docs, load through the REST API rather than per-item tool calls: batch 5 items per request, always <code>async: true</code>, cap content at ~30KB per item, tag the source filename in <code>context</code>, and filter aggressively (skip daily notes and third-party exports — noise beats signal). Verify the extraction model before a big load; a dead model accepts everything into the queue then fails every extraction.</p>
+    </section>
+
+    <!-- ===================== 06 ===================== -->
+    <section class="sec reveal" id="s6">
+      <div class="sec-head"><span class="sec-num">06</span><h2>Verdict &amp; risk</h2></div>
+
+      <h3>Where it wins</h3>
+      <ul>
+        <li><strong>The engine is genuinely state-of-the-art</strong> — temporal + graph retrieval, evidence-grounded consolidation, BEAM #1. If you're choosing a memory system, Hindsight is the default recommendation.</li>
+        <li><strong>One shared integration for a dozen coding agents</strong>, with per-repo banks that let every agent contribute to one memory. This is the strongest "write once, remember everywhere" story in the space.</li>
+        <li><strong>Local-first options are real</strong> — a personal daemon with embedded Postgres needs no external account, and the MCP server is trivial to stand up for any MCP client.</li>
+      </ul>
+
+      <h3>Where it bites</h3>
+      <ul>
+        <li><strong>Integration quality varies more than engine quality.</strong> Hermes has the one-turn-behind recall gap (#5820); plain Claude gets no automatic hooks at all; Pi's epimetheus is excellent but beta and self-hosted.</li>
+        <li><strong>The plugin landscape is mid-migration.</strong> Per-agent plugins (hindsight-claude-code, etc.) are superseded by the coding-agents package; docs for the old path still rank in search. Pin to the current package and ignore stale guidance.</li>
+        <li><strong>Extraction-model fragility is the #1 operational failure.</strong> Malformed-JSON models poison the task queue; retired model IDs (gemini-3-flash-preview 410, removed OpenRouter IDs) fail every retain silently. The model is configured independently of your agent — treat it as infrastructure with its own verification.</li>
+        <li><strong>Config has three sources of truth</strong> — <code>config.yaml</code> (does Hermes use memory at all), <code>hindsight/config.json</code> (which Hindsight), <code>profiles/*.env</code> (what the daemon reads) — joined only by a re-sync at daemon start. macOS daemon mode additionally drags in a Rust toolchain. All documented, none obvious.</li>
+        <li><strong>The status check lies in local-embedded mode.</strong> <code>hermes memory status</code> reports the provider unavailable for want of <code>HINDSIGHT_API_KEY</code> even when the mode does not use one (HERM-2). If you trust it, you will spend an afternoon fixing a working install.</li>
+        <li><strong>Defaults are unauthenticated and on standard ports.</strong> The control-plane UI binds <code>0.0.0.0</code> with no API key; the embedded Postgres takes 5432 with <code>hindsight</code>/<code>hindsight</code>. Fine on a trusted machine, not fine on a shared network — and neither is called out at setup time.</li>
+        <li><strong>Operational hygiene is yours.</strong> Nothing rotates the daemon log (103&nbsp;MB here at <code>info</code>) and nothing warns you when the extraction model retires out from under you — the failure mode is a silently growing unconsolidated backlog, not an error.</li>
+      </ul>
+
+      <div class="faceoff">
+        <div class="faceoff-cap"><span>// Recommendation by surface</span><span>what I'd run where</span></div>
+        <div class="faceoff-wrap">
+        <table>
+          <thead>
+            <tr><th class="dim">Surface</th><th class="h">Run</th><th class="o">Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="dim">Hermes (personal assistant)</td><td>Native provider, hybrid mode</td><td>Built-in, auto-everything, multi-platform; accept the one-turn gap or file upstream</td></tr>
+            <tr><td class="dim">Coding in repos (Claude Code, dsh, Codex…)</td><td>Coding-agents plugin, per-repo banks</td><td>Zero-setup, shared memory across every agent in the repo</td></tr>
+            <tr><td class="dim">Pi</td><td>epimetheus + own profile</td><td>Most correct client; use if you want queueing, scoping, and best-practices rigor and accept beta risk</td></tr>
+            <tr><td class="dim">Claude desktop app</td><td>Local MCP server</td><td>Only path available; works well for explicit, tool-driven memory</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <div class="note">
+        <span class="nlabel">Bottom line · HIN-1</span>
+        Adopt Hindsight for the engine; pick integrations deliberately. For coding agents, the coding-agents package is the obvious default. For your personal Hermes assistant it's already running. Wire plain Claude through the MCP server only when explicit memory tools are acceptable, and stand up epimetheus for Pi if you want the careful client.
+      </div>
+    </section>
+
+    <!-- ===================== GLOSSARY ===================== -->
+    <section class="sec reveal" id="glossary">
+      <div class="sec-head"><span class="sec-num">§</span><h2>Glossary</h2></div>
+      <p class="gloss-intro">Every dotted-underline term in this dossier, collected. Definitions also appear on hover/focus in place.</p>
+      <dl class="glossary" id="glossary-list"></dl>
+    </section>
+
+    <footer class="foot">
+      <div class="row">
+        <span class="cad">§ Hindsight memory system · field dossier</span>
+        <span>Compiled 2026-08-23 · revised 2026-08-24 against the live install · hindsight.vectorize.io, github.com/vectorize-io/hindsight, local hindsight 0.8.6</span>
+      </div>
+    </footer>
+
+  </main>
+</div>
+<!-- CONTENT:end -->
+
+<!-- TEMPLATE-JS:start — the three bundled scripts (scroll reveal, TOC
+     scrollspy, glossary builder). Chrome: no-ops when their targets are
+     absent; don't add others. -->
+<script>
+  // scroll reveal
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const items = document.querySelectorAll('.reveal');
+  if(reduce){ items.forEach(el=>el.classList.add('in')); }
+  else{
+    // threshold must stay 0: a fractional threshold can never be met by a
+    // section taller than (1/threshold) viewports, leaving it invisible
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+    },{threshold:0, rootMargin:'0px 0px -8% 0px'});
+    items.forEach(el=>io.observe(el));
+  }
+
+  // active TOC highlighting
+  const links = [...document.querySelectorAll('.toc a')];
+  const map = new Map(links.map(a=>[a.getAttribute('href').slice(1), a]));
+  const secObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.remove('active'));
+        const a = map.get(e.target.id);
+        if(a) a.classList.add('active');
+      }
+    });
+  },{rootMargin:'-20% 0px -70% 0px',threshold:0});
+  document.querySelectorAll('section[id]').forEach(s=>secObserver.observe(s));
+
+  // mobile glossary tooltips — anchor the panel to its term, clamped to the
+  // viewport. CSS alone can only center on the term, which pushes the panel
+  // off-screen for terms near either edge; the old workaround pinned it to
+  // the bottom of the screen, which read as "the note fell to the footer".
+  (function(){
+    const phone = window.matchMedia('(max-width:640px)');
+    const GAP = 14, MAXW = 290;
+    function place(el){
+      if(!phone.matches){
+        el.style.removeProperty('--tip-x');
+        el.style.removeProperty('--tip-w');
+        el.classList.remove('tip-below');
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      const w = Math.min(MAXW, window.innerWidth - GAP * 2);
+      const centered = r.left + r.width / 2 - w / 2;
+      const left = Math.max(GAP, Math.min(centered, window.innerWidth - w - GAP));
+      el.style.setProperty('--tip-x', (left - r.left) + 'px');
+      el.style.setProperty('--tip-w', w + 'px');
+      // no room to open upward near the top of the viewport — flip below
+      el.classList.toggle('tip-below', r.top < 150);
+    }
+    const terms = [...document.querySelectorAll('.term')];
+    terms.forEach(el=>{
+      ['focus','mouseenter','touchstart'].forEach(ev=>
+        el.addEventListener(ev, ()=>place(el), {passive:true}));
+    });
+    // focus is what reveals the panel, so a tap elsewhere has to blur it
+    document.addEventListener('touchstart', (e)=>{
+      const open = document.activeElement;
+      if(open && open.classList && open.classList.contains('term') && !open.contains(e.target)){
+        open.blur();
+      }
+    }, {passive:true});
+    window.addEventListener('resize', ()=>terms.forEach(place));
+  })();
+
+  // build the glossary from inline term definitions (single source of truth)
+  (function(){
+    const els = [...document.querySelectorAll('[data-def]')];
+    const seen = new Map();
+    els.forEach(el=>{
+      const term = (el.getAttribute('data-term') || el.textContent).trim();
+      const def = el.getAttribute('data-def');
+      const key = term.toLowerCase();
+      if(def && !seen.has(key)) seen.set(key, {term, def});
+    });
+    const list = document.getElementById('glossary-list');
+    if(!list) return;
+    [...seen.values()].sort((a,b)=>a.term.localeCompare(b.term)).forEach(({term,def})=>{
+      const wrap = document.createElement('div');
+      const dt = document.createElement('dt'); dt.textContent = term;
+      const dd = document.createElement('dd'); dd.textContent = def;
+      wrap.append(dt, dd); list.append(wrap);
+    });
+  })();
+</script>
+<!-- TEMPLATE-JS:end -->
+
+
+<!-- SYNTAX-HIGHLIGHT:js:start — inlined Prism (curated languages), runs at load.
+     Tag code blocks with a language class to highlight them:
+       <pre><code class="language-ts">…</code></pre>
+     Supported by this bundle: markup/html, css, js, jsx, ts, tsx, json,
+     yaml, bash, python, sql, go, rust, diff, markdown, toml, docker
+     (aliases like "shell", "py", "dockerfile" also work). Untagged or
+     unsupported blocks fall back to the plain cover-plate <pre> — no error.
+     Inlined so it works off-disk, over email, AND as a Claude Code artifact
+     (CSP-safe — nothing to swap, unlike fonts). Pairs with the
+     SYNTAX-HIGHLIGHT:css block in <head>. Delete BOTH blocks if the document
+     has no code samples; the source of truth is assets/prism-bundle.min.js
+     (same curated build as editorial-longform-html's). -->
+<script>/*! Dossier syntax-highlight bundle — Prism 1.29.0 (https://prismjs.com), MIT.
+   Curated languages (dependency order): markup, css, clike, javascript, jsx,
+   typescript, tsx, json, yaml, bash, python, sql, go, rust, diff, markdown, toml, docker.
+   Regenerate: see "Syntax highlighting" in SKILL.md. No autoloader (would break offline/CSP). */
+/*! Editorial syntax-highlight bundle — Prism 1.29.0 (https://prismjs.com), MIT.
+   Curated languages (dependency order): markup, css, clike, javascript, jsx,
+   typescript, tsx, json, yaml, bash, python, sql, go, rust, diff, markdown, toml, docker.
+   Regenerate: see "Syntax highlighting" in SKILL.md. No autoloader (would break offline/CSP). */
+var _self="undefined"!=typeof window?window:"undefined"!=typeof WorkerGlobalScope&&self instanceof WorkerGlobalScope?self:{},Prism=function(e){var n=/(?:^|\s)lang(?:uage)?-([\w-]+)(?=\s|$)/i,t=0,r={},a={manual:e.Prism&&e.Prism.manual,disableWorkerMessageHandler:e.Prism&&e.Prism.disableWorkerMessageHandler,util:{encode:function e(n){return n instanceof i?new i(n.type,e(n.content),n.alias):Array.isArray(n)?n.map(e):n.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/\u00a0/g," ")},type:function(e){return Object.prototype.toString.call(e).slice(8,-1)},objId:function(e){return e.__id||Object.defineProperty(e,"__id",{value:++t}),e.__id},clone:function e(n,t){var r,i;switch(t=t||{},a.util.type(n)){case"Object":if(i=a.util.objId(n),t[i])return t[i];for(var l in r={},t[i]=r,n)n.hasOwnProperty(l)&&(r[l]=e(n[l],t));return r;case"Array":return i=a.util.objId(n),t[i]?t[i]:(r=[],t[i]=r,n.forEach((function(n,a){r[a]=e(n,t)})),r);default:return n}},getLanguage:function(e){for(;e;){var t=n.exec(e.className);if(t)return t[1].toLowerCase();e=e.parentElement}return"none"},setLanguage:function(e,t){e.className=e.className.replace(RegExp(n,"gi"),""),e.classList.add("language-"+t)},currentScript:function(){if("undefined"==typeof document)return null;if("currentScript"in document)return document.currentScript;try{throw new Error}catch(r){var e=(/at [^(\r\n]*\((.*):[^:]+:[^:]+\)$/i.exec(r.stack)||[])[1];if(e){var n=document.getElementsByTagName("script");for(var t in n)if(n[t].src==e)return n[t]}return null}},isActive:function(e,n,t){for(var r="no-"+n;e;){var a=e.classList;if(a.contains(n))return!0;if(a.contains(r))return!1;e=e.parentElement}return!!t}},languages:{plain:r,plaintext:r,text:r,txt:r,extend:function(e,n){var t=a.util.clone(a.languages[e]);for(var r in n)t[r]=n[r];return t},insertBefore:function(e,n,t,r){var i=(r=r||a.languages)[e],l={};for(var o in i)if(i.hasOwnProperty(o)){if(o==n)for(var s in t)t.hasOwnProperty(s)&&(l[s]=t[s]);t.hasOwnProperty(o)||(l[o]=i[o])}var u=r[e];return r[e]=l,a.languages.DFS(a.languages,(function(n,t){t===u&&n!=e&&(this[n]=l)})),l},DFS:function e(n,t,r,i){i=i||{};var l=a.util.objId;for(var o in n)if(n.hasOwnProperty(o)){t.call(n,o,n[o],r||o);var s=n[o],u=a.util.type(s);"Object"!==u||i[l(s)]?"Array"!==u||i[l(s)]||(i[l(s)]=!0,e(s,t,o,i)):(i[l(s)]=!0,e(s,t,null,i))}}},plugins:{},highlightAll:function(e,n){a.highlightAllUnder(document,e,n)},highlightAllUnder:function(e,n,t){var r={callback:t,container:e,selector:'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code'};a.hooks.run("before-highlightall",r),r.elements=Array.prototype.slice.apply(r.container.querySelectorAll(r.selector)),a.hooks.run("before-all-elements-highlight",r);for(var i,l=0;i=r.elements[l++];)a.highlightElement(i,!0===n,r.callback)},highlightElement:function(n,t,r){var i=a.util.getLanguage(n),l=a.languages[i];a.util.setLanguage(n,i);var o=n.parentElement;o&&"pre"===o.nodeName.toLowerCase()&&a.util.setLanguage(o,i);var s={element:n,language:i,grammar:l,code:n.textContent};function u(e){s.highlightedCode=e,a.hooks.run("before-insert",s),s.element.innerHTML=s.highlightedCode,a.hooks.run("after-highlight",s),a.hooks.run("complete",s),r&&r.call(s.element)}if(a.hooks.run("before-sanity-check",s),(o=s.element.parentElement)&&"pre"===o.nodeName.toLowerCase()&&!o.hasAttribute("tabindex")&&o.setAttribute("tabindex","0"),!s.code)return a.hooks.run("complete",s),void(r&&r.call(s.element));if(a.hooks.run("before-highlight",s),s.grammar)if(t&&e.Worker){var c=new Worker(a.filename);c.onmessage=function(e){u(e.data)},c.postMessage(JSON.stringify({language:s.language,code:s.code,immediateClose:!0}))}else u(a.highlight(s.code,s.grammar,s.language));else u(a.util.encode(s.code))},highlight:function(e,n,t){var r={code:e,grammar:n,language:t};if(a.hooks.run("before-tokenize",r),!r.grammar)throw new Error('The language "'+r.language+'" has no grammar.');return r.tokens=a.tokenize(r.code,r.grammar),a.hooks.run("after-tokenize",r),i.stringify(a.util.encode(r.tokens),r.language)},tokenize:function(e,n){var t=n.rest;if(t){for(var r in t)n[r]=t[r];delete n.rest}var a=new s;return u(a,a.head,e),o(e,a,n,a.head,0),function(e){for(var n=[],t=e.head.next;t!==e.tail;)n.push(t.value),t=t.next;return n}(a)},hooks:{all:{},add:function(e,n){var t=a.hooks.all;t[e]=t[e]||[],t[e].push(n)},run:function(e,n){var t=a.hooks.all[e];if(t&&t.length)for(var r,i=0;r=t[i++];)r(n)}},Token:i};function i(e,n,t,r){this.type=e,this.content=n,this.alias=t,this.length=0|(r||"").length}function l(e,n,t,r){e.lastIndex=n;var a=e.exec(t);if(a&&r&&a[1]){var i=a[1].length;a.index+=i,a[0]=a[0].slice(i)}return a}function o(e,n,t,r,s,g){for(var f in t)if(t.hasOwnProperty(f)&&t[f]){var h=t[f];h=Array.isArray(h)?h:[h];for(var d=0;d<h.length;++d){if(g&&g.cause==f+","+d)return;var v=h[d],p=v.inside,m=!!v.lookbehind,y=!!v.greedy,k=v.alias;if(y&&!v.pattern.global){var x=v.pattern.toString().match(/[imsuy]*$/)[0];v.pattern=RegExp(v.pattern.source,x+"g")}for(var b=v.pattern||v,w=r.next,A=s;w!==n.tail&&!(g&&A>=g.reach);A+=w.value.length,w=w.next){var E=w.value;if(n.length>e.length)return;if(!(E instanceof i)){var P,L=1;if(y){if(!(P=l(b,A,e,m))||P.index>=e.length)break;var S=P.index,O=P.index+P[0].length,j=A;for(j+=w.value.length;S>=j;)j+=(w=w.next).value.length;if(A=j-=w.value.length,w.value instanceof i)continue;for(var C=w;C!==n.tail&&(j<O||"string"==typeof C.value);C=C.next)L++,j+=C.value.length;L--,E=e.slice(A,j),P.index-=A}else if(!(P=l(b,0,E,m)))continue;S=P.index;var N=P[0],_=E.slice(0,S),M=E.slice(S+N.length),W=A+E.length;g&&W>g.reach&&(g.reach=W);var z=w.prev;if(_&&(z=u(n,z,_),A+=_.length),c(n,z,L),w=u(n,z,new i(f,p?a.tokenize(N,p):N,k,N)),M&&u(n,w,M),L>1){var I={cause:f+","+d,reach:W};o(e,n,t,w.prev,A,I),g&&I.reach>g.reach&&(g.reach=I.reach)}}}}}}function s(){var e={value:null,prev:null,next:null},n={value:null,prev:e,next:null};e.next=n,this.head=e,this.tail=n,this.length=0}function u(e,n,t){var r=n.next,a={value:t,prev:n,next:r};return n.next=a,r.prev=a,e.length++,a}function c(e,n,t){for(var r=n.next,a=0;a<t&&r!==e.tail;a++)r=r.next;n.next=r,r.prev=n,e.length-=a}if(e.Prism=a,i.stringify=function e(n,t){if("string"==typeof n)return n;if(Array.isArray(n)){var r="";return n.forEach((function(n){r+=e(n,t)})),r}var i={type:n.type,content:e(n.content,t),tag:"span",classes:["token",n.type],attributes:{},language:t},l=n.alias;l&&(Array.isArray(l)?Array.prototype.push.apply(i.classes,l):i.classes.push(l)),a.hooks.run("wrap",i);var o="";for(var s in i.attributes)o+=" "+s+'="'+(i.attributes[s]||"").replace(/"/g,"&quot;")+'"';return"<"+i.tag+' class="'+i.classes.join(" ")+'"'+o+">"+i.content+"</"+i.tag+">"},!e.document)return e.addEventListener?(a.disableWorkerMessageHandler||e.addEventListener("message",(function(n){var t=JSON.parse(n.data),r=t.language,i=t.code,l=t.immediateClose;e.postMessage(a.highlight(i,a.languages[r],r)),l&&e.close()}),!1),a):a;var g=a.util.currentScript();function f(){a.manual||a.highlightAll()}if(g&&(a.filename=g.src,g.hasAttribute("data-manual")&&(a.manual=!0)),!a.manual){var h=document.readyState;"loading"===h||"interactive"===h&&g&&g.defer?document.addEventListener("DOMContentLoaded",f):window.requestAnimationFrame?window.requestAnimationFrame(f):window.setTimeout(f,16)}return a}(_self);"undefined"!=typeof module&&module.exports&&(module.exports=Prism),"undefined"!=typeof global&&(global.Prism=Prism);
+Prism.languages.markup={comment:{pattern:/<!--(?:(?!<!--)[\s\S])*?-->/,greedy:!0},prolog:{pattern:/<\?[\s\S]+?\?>/,greedy:!0},doctype:{pattern:/<!DOCTYPE(?:[^>"'[\]]|"[^"]*"|'[^']*')+(?:\[(?:[^<"'\]]|"[^"]*"|'[^']*'|<(?!!--)|<!--(?:[^-]|-(?!->))*-->)*\]\s*)?>/i,greedy:!0,inside:{"internal-subset":{pattern:/(^[^\[]*\[)[\s\S]+(?=\]>$)/,lookbehind:!0,greedy:!0,inside:null},string:{pattern:/"[^"]*"|'[^']*'/,greedy:!0},punctuation:/^<!|>$|[[\]]/,"doctype-tag":/^DOCTYPE/i,name:/[^\s<>'"]+/}},cdata:{pattern:/<!\[CDATA\[[\s\S]*?\]\]>/i,greedy:!0},tag:{pattern:/<\/?(?!\d)[^\s>\/=$<%]+(?:\s(?:\s*[^\s>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+(?=[\s>]))|(?=[\s/>])))+)?\s*\/?>/,greedy:!0,inside:{tag:{pattern:/^<\/?[^\s>\/]+/,inside:{punctuation:/^<\/?/,namespace:/^[^\s>\/:]+:/}},"special-attr":[],"attr-value":{pattern:/=\s*(?:"[^"]*"|'[^']*'|[^\s'">=]+)/,inside:{punctuation:[{pattern:/^=/,alias:"attr-equals"},{pattern:/^(\s*)["']|["']$/,lookbehind:!0}]}},punctuation:/\/?>/,"attr-name":{pattern:/[^\s>\/]+/,inside:{namespace:/^[^\s>\/:]+:/}}}},entity:[{pattern:/&[\da-z]{1,8};/i,alias:"named-entity"},/&#x?[\da-f]{1,8};/i]},Prism.languages.markup.tag.inside["attr-value"].inside.entity=Prism.languages.markup.entity,Prism.languages.markup.doctype.inside["internal-subset"].inside=Prism.languages.markup,Prism.hooks.add("wrap",(function(a){"entity"===a.type&&(a.attributes.title=a.content.replace(/&amp;/,"&"))})),Object.defineProperty(Prism.languages.markup.tag,"addInlined",{value:function(a,e){var s={};s["language-"+e]={pattern:/(^<!\[CDATA\[)[\s\S]+?(?=\]\]>$)/i,lookbehind:!0,inside:Prism.languages[e]},s.cdata=/^<!\[CDATA\[|\]\]>$/i;var t={"included-cdata":{pattern:/<!\[CDATA\[[\s\S]*?\]\]>/i,inside:s}};t["language-"+e]={pattern:/[\s\S]+/,inside:Prism.languages[e]};var n={};n[a]={pattern:RegExp("(<__[^>]*>)(?:<!\\[CDATA\\[(?:[^\\]]|\\](?!\\]>))*\\]\\]>|(?!<!\\[CDATA\\[)[^])*?(?=</__>)".replace(/__/g,(function(){return a})),"i"),lookbehind:!0,greedy:!0,inside:t},Prism.languages.insertBefore("markup","cdata",n)}}),Object.defineProperty(Prism.languages.markup.tag,"addAttribute",{value:function(a,e){Prism.languages.markup.tag.inside["special-attr"].push({pattern:RegExp("(^|[\"'\\s])(?:"+a+")\\s*=\\s*(?:\"[^\"]*\"|'[^']*'|[^\\s'\">=]+(?=[\\s>]))","i"),lookbehind:!0,inside:{"attr-name":/^[^\s=]+/,"attr-value":{pattern:/=[\s\S]+/,inside:{value:{pattern:/(^=\s*(["']|(?!["'])))\S[\s\S]*(?=\2$)/,lookbehind:!0,alias:[e,"language-"+e],inside:Prism.languages[e]},punctuation:[{pattern:/^=/,alias:"attr-equals"},/"|'/]}}}})}}),Prism.languages.html=Prism.languages.markup,Prism.languages.mathml=Prism.languages.markup,Prism.languages.svg=Prism.languages.markup,Prism.languages.xml=Prism.languages.extend("markup",{}),Prism.languages.ssml=Prism.languages.xml,Prism.languages.atom=Prism.languages.xml,Prism.languages.rss=Prism.languages.xml;
+!function(s){var e=/(?:"(?:\\(?:\r\n|[\s\S])|[^"\\\r\n])*"|'(?:\\(?:\r\n|[\s\S])|[^'\\\r\n])*')/;s.languages.css={comment:/\/\*[\s\S]*?\*\//,atrule:{pattern:RegExp("@[\\w-](?:[^;{\\s\"']|\\s+(?!\\s)|"+e.source+")*?(?:;|(?=\\s*\\{))"),inside:{rule:/^@[\w-]+/,"selector-function-argument":{pattern:/(\bselector\s*\(\s*(?![\s)]))(?:[^()\s]|\s+(?![\s)])|\((?:[^()]|\([^()]*\))*\))+(?=\s*\))/,lookbehind:!0,alias:"selector"},keyword:{pattern:/(^|[^\w-])(?:and|not|only|or)(?![\w-])/,lookbehind:!0}}},url:{pattern:RegExp("\\burl\\((?:"+e.source+"|(?:[^\\\\\r\n()\"']|\\\\[^])*)\\)","i"),greedy:!0,inside:{function:/^url/i,punctuation:/^\(|\)$/,string:{pattern:RegExp("^"+e.source+"$"),alias:"url"}}},selector:{pattern:RegExp("(^|[{}\\s])[^{}\\s](?:[^{};\"'\\s]|\\s+(?![\\s{])|"+e.source+")*(?=\\s*\\{)"),lookbehind:!0},string:{pattern:e,greedy:!0},property:{pattern:/(^|[^-\w\xA0-\uFFFF])(?!\s)[-_a-z\xA0-\uFFFF](?:(?!\s)[-\w\xA0-\uFFFF])*(?=\s*:)/i,lookbehind:!0},important:/!important\b/i,function:{pattern:/(^|[^-a-z0-9])[-a-z0-9]+(?=\()/i,lookbehind:!0},punctuation:/[(){};:,]/},s.languages.css.atrule.inside.rest=s.languages.css;var t=s.languages.markup;t&&(t.tag.addInlined("style","css"),t.tag.addAttribute("style","css"))}(Prism);
+Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/(["'])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},"class-name":{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation:/[.\\]/}},keyword:/\b(?:break|catch|continue|do|else|finally|for|function|if|in|instanceof|new|null|return|throw|try|while)\b/,boolean:/\b(?:false|true)\b/,function:/\b\w+(?=\()/,number:/\b0x[\da-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:e[+-]?\d+)?/i,operator:/[<>]=?|[!=]=?=?|--?|\+\+?|&&?|\|\|?|[?*/~^%]/,punctuation:/[{}[\];(),.:]/};
+Prism.languages.javascript=Prism.languages.extend("clike",{"class-name":[Prism.languages.clike["class-name"],{pattern:/(^|[^$\w\xA0-\uFFFF])(?!\s)[_$A-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\.(?:constructor|prototype))/,lookbehind:!0}],keyword:[{pattern:/((?:^|\})\s*)catch\b/,lookbehind:!0},{pattern:/(^|[^.]|\.\.\.\s*)\b(?:as|assert(?=\s*\{)|async(?=\s*(?:function\b|\(|[$\w\xA0-\uFFFF]|$))|await|break|case|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally(?=\s*(?:\{|$))|for|from(?=\s*(?:['"]|$))|function|(?:get|set)(?=\s*(?:[#\[$\w\xA0-\uFFFF]|$))|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)\b/,lookbehind:!0}],function:/#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*(?:\.\s*(?:apply|bind|call)\s*)?\()/,number:{pattern:RegExp("(^|[^\\w$])(?:NaN|Infinity|0[bB][01]+(?:_[01]+)*n?|0[oO][0-7]+(?:_[0-7]+)*n?|0[xX][\\dA-Fa-f]+(?:_[\\dA-Fa-f]+)*n?|\\d+(?:_\\d+)*n|(?:\\d+(?:_\\d+)*(?:\\.(?:\\d+(?:_\\d+)*)?)?|\\.\\d+(?:_\\d+)*)(?:[Ee][+-]?\\d+(?:_\\d+)*)?)(?![\\w$])"),lookbehind:!0},operator:/--|\+\+|\*\*=?|=>|&&=?|\|\|=?|[!=]==|<<=?|>>>?=?|[-+*/%&|^!=<>]=?|\.{3}|\?\?=?|\?\.?|[~:]/}),Prism.languages.javascript["class-name"][0].pattern=/(\b(?:class|extends|implements|instanceof|interface|new)\s+)[\w.\\]+/,Prism.languages.insertBefore("javascript","keyword",{regex:{pattern:RegExp("((?:^|[^$\\w\\xA0-\\uFFFF.\"'\\])\\s]|\\b(?:return|yield))\\s*)/(?:(?:\\[(?:[^\\]\\\\\r\n]|\\\\.)*\\]|\\\\.|[^/\\\\\\[\r\n])+/[dgimyus]{0,7}|(?:\\[(?:[^[\\]\\\\\r\n]|\\\\.|\\[(?:[^[\\]\\\\\r\n]|\\\\.|\\[(?:[^[\\]\\\\\r\n]|\\\\.)*\\])*\\])*\\]|\\\\.|[^/\\\\\\[\r\n])+/[dgimyus]{0,7}v[dgimyus]{0,7})(?=(?:\\s|/\\*(?:[^*]|\\*(?!/))*\\*/)*(?:$|[\r\n,.;:})\\]]|//))"),lookbehind:!0,greedy:!0,inside:{"regex-source":{pattern:/^(\/)[\s\S]+(?=\/[a-z]*$)/,lookbehind:!0,alias:"language-regex",inside:Prism.languages.regex},"regex-delimiter":/^\/|\/$/,"regex-flags":/^[a-z]+$/}},"function-variable":{pattern:/#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*[=:]\s*(?:async\s*)?(?:\bfunction\b|(?:\((?:[^()]|\([^()]*\))*\)|(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)\s*=>))/,alias:"function"},parameter:[{pattern:/(function(?:\s+(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*)?\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\))/,lookbehind:!0,inside:Prism.languages.javascript},{pattern:/(^|[^$\w\xA0-\uFFFF])(?!\s)[_$a-z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*=>)/i,lookbehind:!0,inside:Prism.languages.javascript},{pattern:/(\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*=>)/,lookbehind:!0,inside:Prism.languages.javascript},{pattern:/((?:\b|\s|^)(?!(?:as|async|await|break|case|catch|class|const|continue|debugger|default|delete|do|else|enum|export|extends|finally|for|from|function|get|if|implements|import|in|instanceof|interface|let|new|null|of|package|private|protected|public|return|set|static|super|switch|this|throw|try|typeof|undefined|var|void|while|with|yield)(?![$\w\xA0-\uFFFF]))(?:(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*)\(\s*|\]\s*\(\s*)(?!\s)(?:[^()\s]|\s+(?![\s)])|\([^()]*\))+(?=\s*\)\s*\{)/,lookbehind:!0,inside:Prism.languages.javascript}],constant:/\b[A-Z](?:[A-Z_]|\dx?)*\b/}),Prism.languages.insertBefore("javascript","string",{hashbang:{pattern:/^#!.*/,greedy:!0,alias:"comment"},"template-string":{pattern:/`(?:\\[\s\S]|\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}|(?!\$\{)[^\\`])*`/,greedy:!0,inside:{"template-punctuation":{pattern:/^`|`$/,alias:"string"},interpolation:{pattern:/((?:^|[^\\])(?:\\{2})*)\$\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})+\}/,lookbehind:!0,inside:{"interpolation-punctuation":{pattern:/^\$\{|\}$/,alias:"punctuation"},rest:Prism.languages.javascript}},string:/[\s\S]+/}},"string-property":{pattern:/((?:^|[,{])[ \t]*)(["'])(?:\\(?:\r\n|[\s\S])|(?!\2)[^\\\r\n])*\2(?=\s*:)/m,lookbehind:!0,greedy:!0,alias:"property"}}),Prism.languages.insertBefore("javascript","operator",{"literal-property":{pattern:/((?:^|[,{])[ \t]*)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?=\s*:)/m,lookbehind:!0,alias:"property"}}),Prism.languages.markup&&(Prism.languages.markup.tag.addInlined("script","javascript"),Prism.languages.markup.tag.addAttribute("on(?:abort|blur|change|click|composition(?:end|start|update)|dblclick|error|focus(?:in|out)?|key(?:down|up)|load|mouse(?:down|enter|leave|move|out|over|up)|reset|resize|scroll|select|slotchange|submit|unload|wheel)","javascript")),Prism.languages.js=Prism.languages.javascript;
+!function(t){var n=t.util.clone(t.languages.javascript),e="(?:\\{<S>*\\.{3}(?:[^{}]|<BRACES>)*\\})";function a(t,n){return t=t.replace(/<S>/g,(function(){return"(?:\\s|//.*(?!.)|/\\*(?:[^*]|\\*(?!/))\\*/)"})).replace(/<BRACES>/g,(function(){return"(?:\\{(?:\\{(?:\\{[^{}]*\\}|[^{}])*\\}|[^{}])*\\})"})).replace(/<SPREAD>/g,(function(){return e})),RegExp(t,n)}e=a(e).source,t.languages.jsx=t.languages.extend("markup",n),t.languages.jsx.tag.pattern=a("</?(?:[\\w.:-]+(?:<S>+(?:[\\w.:$-]+(?:=(?:\"(?:\\\\[^]|[^\\\\\"])*\"|'(?:\\\\[^]|[^\\\\'])*'|[^\\s{'\"/>=]+|<BRACES>))?|<SPREAD>))*<S>*/?)?>"),t.languages.jsx.tag.inside.tag.pattern=/^<\/?[^\s>\/]*/,t.languages.jsx.tag.inside["attr-value"].pattern=/=(?!\{)(?:"(?:\\[\s\S]|[^\\"])*"|'(?:\\[\s\S]|[^\\'])*'|[^\s'">]+)/,t.languages.jsx.tag.inside.tag.inside["class-name"]=/^[A-Z]\w*(?:\.[A-Z]\w*)*$/,t.languages.jsx.tag.inside.comment=n.comment,t.languages.insertBefore("inside","attr-name",{spread:{pattern:a("<SPREAD>"),inside:t.languages.jsx}},t.languages.jsx.tag),t.languages.insertBefore("inside","special-attr",{script:{pattern:a("=<BRACES>"),alias:"language-javascript",inside:{"script-punctuation":{pattern:/^=(?=\{)/,alias:"punctuation"},rest:t.languages.jsx}}},t.languages.jsx.tag);var s=function(t){return t?"string"==typeof t?t:"string"==typeof t.content?t.content:t.content.map(s).join(""):""},g=function(n){for(var e=[],a=0;a<n.length;a++){var o=n[a],i=!1;if("string"!=typeof o&&("tag"===o.type&&o.content[0]&&"tag"===o.content[0].type?"</"===o.content[0].content[0].content?e.length>0&&e[e.length-1].tagName===s(o.content[0].content[1])&&e.pop():"/>"===o.content[o.content.length-1].content||e.push({tagName:s(o.content[0].content[1]),openedBraces:0}):e.length>0&&"punctuation"===o.type&&"{"===o.content?e[e.length-1].openedBraces++:e.length>0&&e[e.length-1].openedBraces>0&&"punctuation"===o.type&&"}"===o.content?e[e.length-1].openedBraces--:i=!0),(i||"string"==typeof o)&&e.length>0&&0===e[e.length-1].openedBraces){var r=s(o);a<n.length-1&&("string"==typeof n[a+1]||"plain-text"===n[a+1].type)&&(r+=s(n[a+1]),n.splice(a+1,1)),a>0&&("string"==typeof n[a-1]||"plain-text"===n[a-1].type)&&(r=s(n[a-1])+r,n.splice(a-1,1),a--),n[a]=new t.Token("plain-text",r,null,r)}o.content&&"string"!=typeof o.content&&g(o.content)}};t.hooks.add("after-tokenize",(function(t){"jsx"!==t.language&&"tsx"!==t.language||g(t.tokens)}))}(Prism);
+!function(e){e.languages.typescript=e.languages.extend("javascript",{"class-name":{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|type)\s+)(?!keyof\b)(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*(?:\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>)?/,lookbehind:!0,greedy:!0,inside:null},builtin:/\b(?:Array|Function|Promise|any|boolean|console|never|number|string|symbol|unknown)\b/}),e.languages.typescript.keyword.push(/\b(?:abstract|declare|is|keyof|readonly|require)\b/,/\b(?:asserts|infer|interface|module|namespace|type)\b(?=\s*(?:[{_$a-zA-Z\xA0-\uFFFF]|$))/,/\btype\b(?=\s*(?:[\{*]|$))/),delete e.languages.typescript.parameter,delete e.languages.typescript["literal-property"];var s=e.languages.extend("typescript",{});delete s["class-name"],e.languages.typescript["class-name"].inside=s,e.languages.insertBefore("typescript","function",{decorator:{pattern:/@[$\w\xA0-\uFFFF]+/,inside:{at:{pattern:/^@/,alias:"operator"},function:/^[\s\S]+/}},"generic-function":{pattern:/#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*\s*<(?:[^<>]|<(?:[^<>]|<[^<>]*>)*>)*>(?=\s*\()/,greedy:!0,inside:{function:/^#?(?!\s)[_$a-zA-Z\xA0-\uFFFF](?:(?!\s)[$\w\xA0-\uFFFF])*/,generic:{pattern:/<[\s\S]+/,alias:"class-name",inside:s}}}}),e.languages.ts=e.languages.typescript}(Prism);
+!function(e){var a=e.util.clone(e.languages.typescript);e.languages.tsx=e.languages.extend("jsx",a),delete e.languages.tsx.parameter,delete e.languages.tsx["literal-property"];var t=e.languages.tsx.tag;t.pattern=RegExp("(^|[^\\w$]|(?=</))(?:"+t.pattern.source+")",t.pattern.flags),t.lookbehind=!0}(Prism);
+Prism.languages.json={property:{pattern:/(^|[^\\])"(?:\\.|[^\\"\r\n])*"(?=\s*:)/,lookbehind:!0,greedy:!0},string:{pattern:/(^|[^\\])"(?:\\.|[^\\"\r\n])*"(?!\s*:)/,lookbehind:!0,greedy:!0},comment:{pattern:/\/\/.*|\/\*[\s\S]*?(?:\*\/|$)/,greedy:!0},number:/-?\b\d+(?:\.\d+)?(?:e[+-]?\d+)?\b/i,punctuation:/[{}[\],]/,operator:/:/,boolean:/\b(?:false|true)\b/,null:{pattern:/\bnull\b/,alias:"keyword"}},Prism.languages.webmanifest=Prism.languages.json;
+!function(e){var n=/[*&][^\s[\]{},]+/,r=/!(?:<[\w\-%#;/?:@&=+$,.!~*'()[\]]+>|(?:[a-zA-Z\d-]*!)?[\w\-%#;/?:@&=+$.~*'()]+)?/,t="(?:"+r.source+"(?:[ \t]+"+n.source+")?|"+n.source+"(?:[ \t]+"+r.source+")?)",a="(?:[^\\s\\x00-\\x08\\x0e-\\x1f!\"#%&'*,\\-:>?@[\\]`{|}\\x7f-\\x84\\x86-\\x9f\\ud800-\\udfff\\ufffe\\uffff]|[?:-]<PLAIN>)(?:[ \t]*(?:(?![#:])<PLAIN>|:<PLAIN>))*".replace(/<PLAIN>/g,(function(){return"[^\\s\\x00-\\x08\\x0e-\\x1f,[\\]{}\\x7f-\\x84\\x86-\\x9f\\ud800-\\udfff\\ufffe\\uffff]"})),d="\"(?:[^\"\\\\\r\n]|\\\\.)*\"|'(?:[^'\\\\\r\n]|\\\\.)*'";function o(e,n){n=(n||"").replace(/m/g,"")+"m";var r="([:\\-,[{]\\s*(?:\\s<<prop>>[ \t]+)?)(?:<<value>>)(?=[ \t]*(?:$|,|\\]|\\}|(?:[\r\n]\\s*)?#))".replace(/<<prop>>/g,(function(){return t})).replace(/<<value>>/g,(function(){return e}));return RegExp(r,n)}e.languages.yaml={scalar:{pattern:RegExp("([\\-:]\\s*(?:\\s<<prop>>[ \t]+)?[|>])[ \t]*(?:((?:\r?\n|\r)[ \t]+)\\S[^\r\n]*(?:\\2[^\r\n]+)*)".replace(/<<prop>>/g,(function(){return t}))),lookbehind:!0,alias:"string"},comment:/#.*/,key:{pattern:RegExp("((?:^|[:\\-,[{\r\n?])[ \t]*(?:<<prop>>[ \t]+)?)<<key>>(?=\\s*:\\s)".replace(/<<prop>>/g,(function(){return t})).replace(/<<key>>/g,(function(){return"(?:"+a+"|"+d+")"}))),lookbehind:!0,greedy:!0,alias:"atrule"},directive:{pattern:/(^[ \t]*)%.+/m,lookbehind:!0,alias:"important"},datetime:{pattern:o("\\d{4}-\\d\\d?-\\d\\d?(?:[tT]|[ \t]+)\\d\\d?:\\d{2}:\\d{2}(?:\\.\\d*)?(?:[ \t]*(?:Z|[-+]\\d\\d?(?::\\d{2})?))?|\\d{4}-\\d{2}-\\d{2}|\\d\\d?:\\d{2}(?::\\d{2}(?:\\.\\d*)?)?"),lookbehind:!0,alias:"number"},boolean:{pattern:o("false|true","i"),lookbehind:!0,alias:"important"},null:{pattern:o("null|~","i"),lookbehind:!0,alias:"important"},string:{pattern:o(d),lookbehind:!0,greedy:!0},number:{pattern:o("[+-]?(?:0x[\\da-f]+|0o[0-7]+|(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?|\\.inf|\\.nan)","i"),lookbehind:!0},tag:r,important:n,punctuation:/---|[:[\]{}\-,|>?]|\.\.\./},e.languages.yml=e.languages.yaml}(Prism);
+!function(e){var t="\\b(?:BASH|BASHOPTS|BASH_ALIASES|BASH_ARGC|BASH_ARGV|BASH_CMDS|BASH_COMPLETION_COMPAT_DIR|BASH_LINENO|BASH_REMATCH|BASH_SOURCE|BASH_VERSINFO|BASH_VERSION|COLORTERM|COLUMNS|COMP_WORDBREAKS|DBUS_SESSION_BUS_ADDRESS|DEFAULTS_PATH|DESKTOP_SESSION|DIRSTACK|DISPLAY|EUID|GDMSESSION|GDM_LANG|GNOME_KEYRING_CONTROL|GNOME_KEYRING_PID|GPG_AGENT_INFO|GROUPS|HISTCONTROL|HISTFILE|HISTFILESIZE|HISTSIZE|HOME|HOSTNAME|HOSTTYPE|IFS|INSTANCE|JOB|LANG|LANGUAGE|LC_ADDRESS|LC_ALL|LC_IDENTIFICATION|LC_MEASUREMENT|LC_MONETARY|LC_NAME|LC_NUMERIC|LC_PAPER|LC_TELEPHONE|LC_TIME|LESSCLOSE|LESSOPEN|LINES|LOGNAME|LS_COLORS|MACHTYPE|MAILCHECK|MANDATORY_PATH|NO_AT_BRIDGE|OLDPWD|OPTERR|OPTIND|ORBIT_SOCKETDIR|OSTYPE|PAPERSIZE|PATH|PIPESTATUS|PPID|PS1|PS2|PS3|PS4|PWD|RANDOM|REPLY|SECONDS|SELINUX_INIT|SESSION|SESSIONTYPE|SESSION_MANAGER|SHELL|SHELLOPTS|SHLVL|SSH_AUTH_SOCK|TERM|UID|UPSTART_EVENTS|UPSTART_INSTANCE|UPSTART_JOB|UPSTART_SESSION|USER|WINDOWID|XAUTHORITY|XDG_CONFIG_DIRS|XDG_CURRENT_DESKTOP|XDG_DATA_DIRS|XDG_GREETER_DATA_DIR|XDG_MENU_PREFIX|XDG_RUNTIME_DIR|XDG_SEAT|XDG_SEAT_PATH|XDG_SESSION_DESKTOP|XDG_SESSION_ID|XDG_SESSION_PATH|XDG_SESSION_TYPE|XDG_VTNR|XMODIFIERS)\\b",a={pattern:/(^(["']?)\w+\2)[ \t]+\S.*/,lookbehind:!0,alias:"punctuation",inside:null},n={bash:a,environment:{pattern:RegExp("\\$"+t),alias:"constant"},variable:[{pattern:/\$?\(\([\s\S]+?\)\)/,greedy:!0,inside:{variable:[{pattern:/(^\$\(\([\s\S]+)\)\)/,lookbehind:!0},/^\$\(\(/],number:/\b0x[\dA-Fa-f]+\b|(?:\b\d+(?:\.\d*)?|\B\.\d+)(?:[Ee]-?\d+)?/,operator:/--|\+\+|\*\*=?|<<=?|>>=?|&&|\|\||[=!+\-*/%<>^&|]=?|[?~:]/,punctuation:/\(\(?|\)\)?|,|;/}},{pattern:/\$\((?:\([^)]+\)|[^()])+\)|`[^`]+`/,greedy:!0,inside:{variable:/^\$\(|^`|\)$|`$/}},{pattern:/\$\{[^}]+\}/,greedy:!0,inside:{operator:/:[-=?+]?|[!\/]|##?|%%?|\^\^?|,,?/,punctuation:/[\[\]]/,environment:{pattern:RegExp("(\\{)"+t),lookbehind:!0,alias:"constant"}}},/\$(?:\w+|[#?*!@$])/],entity:/\\(?:[abceEfnrtv\\"]|O?[0-7]{1,3}|U[0-9a-fA-F]{8}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{1,2})/};e.languages.bash={shebang:{pattern:/^#!\s*\/.*/,alias:"important"},comment:{pattern:/(^|[^"{\\$])#.*/,lookbehind:!0},"function-name":[{pattern:/(\bfunction\s+)[\w-]+(?=(?:\s*\(?:\s*\))?\s*\{)/,lookbehind:!0,alias:"function"},{pattern:/\b[\w-]+(?=\s*\(\s*\)\s*\{)/,alias:"function"}],"for-or-select":{pattern:/(\b(?:for|select)\s+)\w+(?=\s+in\s)/,alias:"variable",lookbehind:!0},"assign-left":{pattern:/(^|[\s;|&]|[<>]\()\w+(?:\.\w+)*(?=\+?=)/,inside:{environment:{pattern:RegExp("(^|[\\s;|&]|[<>]\\()"+t),lookbehind:!0,alias:"constant"}},alias:"variable",lookbehind:!0},parameter:{pattern:/(^|\s)-{1,2}(?:\w+:[+-]?)?\w+(?:\.\w+)*(?=[=\s]|$)/,alias:"variable",lookbehind:!0},string:[{pattern:/((?:^|[^<])<<-?\s*)(\w+)\s[\s\S]*?(?:\r?\n|\r)\2/,lookbehind:!0,greedy:!0,inside:n},{pattern:/((?:^|[^<])<<-?\s*)(["'])(\w+)\2\s[\s\S]*?(?:\r?\n|\r)\3/,lookbehind:!0,greedy:!0,inside:{bash:a}},{pattern:/(^|[^\\](?:\\\\)*)"(?:\\[\s\S]|\$\([^)]+\)|\$(?!\()|`[^`]+`|[^"\\`$])*"/,lookbehind:!0,greedy:!0,inside:n},{pattern:/(^|[^$\\])'[^']*'/,lookbehind:!0,greedy:!0},{pattern:/\$'(?:[^'\\]|\\[\s\S])*'/,greedy:!0,inside:{entity:n.entity}}],environment:{pattern:RegExp("\\$?"+t),alias:"constant"},variable:n.variable,function:{pattern:/(^|[\s;|&]|[<>]\()(?:add|apropos|apt|apt-cache|apt-get|aptitude|aspell|automysqlbackup|awk|basename|bash|bc|bconsole|bg|bzip2|cal|cargo|cat|cfdisk|chgrp|chkconfig|chmod|chown|chroot|cksum|clear|cmp|column|comm|composer|cp|cron|crontab|csplit|curl|cut|date|dc|dd|ddrescue|debootstrap|df|diff|diff3|dig|dir|dircolors|dirname|dirs|dmesg|docker|docker-compose|du|egrep|eject|env|ethtool|expand|expect|expr|fdformat|fdisk|fg|fgrep|file|find|fmt|fold|format|free|fsck|ftp|fuser|gawk|git|gparted|grep|groupadd|groupdel|groupmod|groups|grub-mkconfig|gzip|halt|head|hg|history|host|hostname|htop|iconv|id|ifconfig|ifdown|ifup|import|install|ip|java|jobs|join|kill|killall|less|link|ln|locate|logname|logrotate|look|lpc|lpr|lprint|lprintd|lprintq|lprm|ls|lsof|lynx|make|man|mc|mdadm|mkconfig|mkdir|mke2fs|mkfifo|mkfs|mkisofs|mknod|mkswap|mmv|more|most|mount|mtools|mtr|mutt|mv|nano|nc|netstat|nice|nl|node|nohup|notify-send|npm|nslookup|op|open|parted|passwd|paste|pathchk|ping|pkill|pnpm|podman|podman-compose|popd|pr|printcap|printenv|ps|pushd|pv|quota|quotacheck|quotactl|ram|rar|rcp|reboot|remsync|rename|renice|rev|rm|rmdir|rpm|rsync|scp|screen|sdiff|sed|sendmail|seq|service|sftp|sh|shellcheck|shuf|shutdown|sleep|slocate|sort|split|ssh|stat|strace|su|sudo|sum|suspend|swapon|sync|sysctl|tac|tail|tar|tee|time|timeout|top|touch|tr|traceroute|tsort|tty|umount|uname|unexpand|uniq|units|unrar|unshar|unzip|update-grub|uptime|useradd|userdel|usermod|users|uudecode|uuencode|v|vcpkg|vdir|vi|vim|virsh|vmstat|wait|watch|wc|wget|whereis|which|who|whoami|write|xargs|xdg-open|yarn|yes|zenity|zip|zsh|zypper)(?=$|[)\s;|&])/,lookbehind:!0},keyword:{pattern:/(^|[\s;|&]|[<>]\()(?:case|do|done|elif|else|esac|fi|for|function|if|in|select|then|until|while)(?=$|[)\s;|&])/,lookbehind:!0},builtin:{pattern:/(^|[\s;|&]|[<>]\()(?:\.|:|alias|bind|break|builtin|caller|cd|command|continue|declare|echo|enable|eval|exec|exit|export|getopts|hash|help|let|local|logout|mapfile|printf|pwd|read|readarray|readonly|return|set|shift|shopt|source|test|times|trap|type|typeset|ulimit|umask|unalias|unset)(?=$|[)\s;|&])/,lookbehind:!0,alias:"class-name"},boolean:{pattern:/(^|[\s;|&]|[<>]\()(?:false|true)(?=$|[)\s;|&])/,lookbehind:!0},"file-descriptor":{pattern:/\B&\d\b/,alias:"important"},operator:{pattern:/\d?<>|>\||\+=|=[=~]?|!=?|<<[<-]?|[&\d]?>>|\d[<>]&?|[<>][&=]?|&[>&]?|\|[&|]?/,inside:{"file-descriptor":{pattern:/^\d/,alias:"important"}}},punctuation:/\$?\(\(?|\)\)?|\.\.|[{}[\];\\]/,number:{pattern:/(^|\s)(?:[1-9]\d*|0)(?:[.,]\d+)?\b/,lookbehind:!0}},a.inside=e.languages.bash;for(var s=["comment","function-name","for-or-select","assign-left","parameter","string","environment","function","keyword","builtin","boolean","file-descriptor","operator","punctuation","number"],o=n.variable[1].inside,i=0;i<s.length;i++)o[s[i]]=e.languages.bash[s[i]];e.languages.sh=e.languages.bash,e.languages.shell=e.languages.bash}(Prism);
+Prism.languages.python={comment:{pattern:/(^|[^\\])#.*/,lookbehind:!0,greedy:!0},"string-interpolation":{pattern:/(?:f|fr|rf)(?:("""|''')[\s\S]*?\1|("|')(?:\\.|(?!\2)[^\\\r\n])*\2)/i,greedy:!0,inside:{interpolation:{pattern:/((?:^|[^{])(?:\{\{)*)\{(?!\{)(?:[^{}]|\{(?!\{)(?:[^{}]|\{(?!\{)(?:[^{}])+\})+\})+\}/,lookbehind:!0,inside:{"format-spec":{pattern:/(:)[^:(){}]+(?=\}$)/,lookbehind:!0},"conversion-option":{pattern:/![sra](?=[:}]$)/,alias:"punctuation"},rest:null}},string:/[\s\S]+/}},"triple-quoted-string":{pattern:/(?:[rub]|br|rb)?("""|''')[\s\S]*?\1/i,greedy:!0,alias:"string"},string:{pattern:/(?:[rub]|br|rb)?("|')(?:\\.|(?!\1)[^\\\r\n])*\1/i,greedy:!0},function:{pattern:/((?:^|\s)def[ \t]+)[a-zA-Z_]\w*(?=\s*\()/g,lookbehind:!0},"class-name":{pattern:/(\bclass\s+)\w+/i,lookbehind:!0},decorator:{pattern:/(^[\t ]*)@\w+(?:\.\w+)*/m,lookbehind:!0,alias:["annotation","punctuation"],inside:{punctuation:/\./}},keyword:/\b(?:_(?=\s*:)|and|as|assert|async|await|break|case|class|continue|def|del|elif|else|except|exec|finally|for|from|global|if|import|in|is|lambda|match|nonlocal|not|or|pass|print|raise|return|try|while|with|yield)\b/,builtin:/\b(?:__import__|abs|all|any|apply|ascii|basestring|bin|bool|buffer|bytearray|bytes|callable|chr|classmethod|cmp|coerce|compile|complex|delattr|dict|dir|divmod|enumerate|eval|execfile|file|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|intern|isinstance|issubclass|iter|len|list|locals|long|map|max|memoryview|min|next|object|oct|open|ord|pow|property|range|raw_input|reduce|reload|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|unichr|unicode|vars|xrange|zip)\b/,boolean:/\b(?:False|None|True)\b/,number:/\b0(?:b(?:_?[01])+|o(?:_?[0-7])+|x(?:_?[a-f0-9])+)\b|(?:\b\d+(?:_\d+)*(?:\.(?:\d+(?:_\d+)*)?)?|\B\.\d+(?:_\d+)*)(?:e[+-]?\d+(?:_\d+)*)?j?(?!\w)/i,operator:/[-+%=]=?|!=|:=|\*\*?=?|\/\/?=?|<[<=>]?|>[=>]?|[&|^~]/,punctuation:/[{}[\];(),.:]/},Prism.languages.python["string-interpolation"].inside.interpolation.inside.rest=Prism.languages.python,Prism.languages.py=Prism.languages.python;
+Prism.languages.sql={comment:{pattern:/(^|[^\\])(?:\/\*[\s\S]*?\*\/|(?:--|\/\/|#).*)/,lookbehind:!0},variable:[{pattern:/@(["'`])(?:\\[\s\S]|(?!\1)[^\\])+\1/,greedy:!0},/@[\w.$]+/],string:{pattern:/(^|[^@\\])("|')(?:\\[\s\S]|(?!\2)[^\\]|\2\2)*\2/,greedy:!0,lookbehind:!0},identifier:{pattern:/(^|[^@\\])`(?:\\[\s\S]|[^`\\]|``)*`/,greedy:!0,lookbehind:!0,inside:{punctuation:/^`|`$/}},function:/\b(?:AVG|COUNT|FIRST|FORMAT|LAST|LCASE|LEN|MAX|MID|MIN|MOD|NOW|ROUND|SUM|UCASE)(?=\s*\()/i,keyword:/\b(?:ACTION|ADD|AFTER|ALGORITHM|ALL|ALTER|ANALYZE|ANY|APPLY|AS|ASC|AUTHORIZATION|AUTO_INCREMENT|BACKUP|BDB|BEGIN|BERKELEYDB|BIGINT|BINARY|BIT|BLOB|BOOL|BOOLEAN|BREAK|BROWSE|BTREE|BULK|BY|CALL|CASCADED?|CASE|CHAIN|CHAR(?:ACTER|SET)?|CHECK(?:POINT)?|CLOSE|CLUSTERED|COALESCE|COLLATE|COLUMNS?|COMMENT|COMMIT(?:TED)?|COMPUTE|CONNECT|CONSISTENT|CONSTRAINT|CONTAINS(?:TABLE)?|CONTINUE|CONVERT|CREATE|CROSS|CURRENT(?:_DATE|_TIME|_TIMESTAMP|_USER)?|CURSOR|CYCLE|DATA(?:BASES?)?|DATE(?:TIME)?|DAY|DBCC|DEALLOCATE|DEC|DECIMAL|DECLARE|DEFAULT|DEFINER|DELAYED|DELETE|DELIMITERS?|DENY|DESC|DESCRIBE|DETERMINISTIC|DISABLE|DISCARD|DISK|DISTINCT|DISTINCTROW|DISTRIBUTED|DO|DOUBLE|DROP|DUMMY|DUMP(?:FILE)?|DUPLICATE|ELSE(?:IF)?|ENABLE|ENCLOSED|END|ENGINE|ENUM|ERRLVL|ERRORS|ESCAPED?|EXCEPT|EXEC(?:UTE)?|EXISTS|EXIT|EXPLAIN|EXTENDED|FETCH|FIELDS|FILE|FILLFACTOR|FIRST|FIXED|FLOAT|FOLLOWING|FOR(?: EACH ROW)?|FORCE|FOREIGN|FREETEXT(?:TABLE)?|FROM|FULL|FUNCTION|GEOMETRY(?:COLLECTION)?|GLOBAL|GOTO|GRANT|GROUP|HANDLER|HASH|HAVING|HOLDLOCK|HOUR|IDENTITY(?:COL|_INSERT)?|IF|IGNORE|IMPORT|INDEX|INFILE|INNER|INNODB|INOUT|INSERT|INT|INTEGER|INTERSECT|INTERVAL|INTO|INVOKER|ISOLATION|ITERATE|JOIN|KEYS?|KILL|LANGUAGE|LAST|LEAVE|LEFT|LEVEL|LIMIT|LINENO|LINES|LINESTRING|LOAD|LOCAL|LOCK|LONG(?:BLOB|TEXT)|LOOP|MATCH(?:ED)?|MEDIUM(?:BLOB|INT|TEXT)|MERGE|MIDDLEINT|MINUTE|MODE|MODIFIES|MODIFY|MONTH|MULTI(?:LINESTRING|POINT|POLYGON)|NATIONAL|NATURAL|NCHAR|NEXT|NO|NONCLUSTERED|NULLIF|NUMERIC|OFF?|OFFSETS?|ON|OPEN(?:DATASOURCE|QUERY|ROWSET)?|OPTIMIZE|OPTION(?:ALLY)?|ORDER|OUT(?:ER|FILE)?|OVER|PARTIAL|PARTITION|PERCENT|PIVOT|PLAN|POINT|POLYGON|PRECEDING|PRECISION|PREPARE|PREV|PRIMARY|PRINT|PRIVILEGES|PROC(?:EDURE)?|PUBLIC|PURGE|QUICK|RAISERROR|READS?|REAL|RECONFIGURE|REFERENCES|RELEASE|RENAME|REPEAT(?:ABLE)?|REPLACE|REPLICATION|REQUIRE|RESIGNAL|RESTORE|RESTRICT|RETURN(?:ING|S)?|REVOKE|RIGHT|ROLLBACK|ROUTINE|ROW(?:COUNT|GUIDCOL|S)?|RTREE|RULE|SAVE(?:POINT)?|SCHEMA|SECOND|SELECT|SERIAL(?:IZABLE)?|SESSION(?:_USER)?|SET(?:USER)?|SHARE|SHOW|SHUTDOWN|SIMPLE|SMALLINT|SNAPSHOT|SOME|SONAME|SQL|START(?:ING)?|STATISTICS|STATUS|STRIPED|SYSTEM_USER|TABLES?|TABLESPACE|TEMP(?:ORARY|TABLE)?|TERMINATED|TEXT(?:SIZE)?|THEN|TIME(?:STAMP)?|TINY(?:BLOB|INT|TEXT)|TOP?|TRAN(?:SACTIONS?)?|TRIGGER|TRUNCATE|TSEQUAL|TYPES?|UNBOUNDED|UNCOMMITTED|UNDEFINED|UNION|UNIQUE|UNLOCK|UNPIVOT|UNSIGNED|UPDATE(?:TEXT)?|USAGE|USE|USER|USING|VALUES?|VAR(?:BINARY|CHAR|CHARACTER|YING)|VIEW|WAITFOR|WARNINGS|WHEN|WHERE|WHILE|WITH(?: ROLLUP|IN)?|WORK|WRITE(?:TEXT)?|YEAR)\b/i,boolean:/\b(?:FALSE|NULL|TRUE)\b/i,number:/\b0x[\da-f]+\b|\b\d+(?:\.\d*)?|\B\.\d+\b/i,operator:/[-+*\/=%^~]|&&?|\|\|?|!=?|<(?:=>?|<|>)?|>[>=]?|\b(?:AND|BETWEEN|DIV|ILIKE|IN|IS|LIKE|NOT|OR|REGEXP|RLIKE|SOUNDS LIKE|XOR)\b/i,punctuation:/[;[\]()`,.]/};
+Prism.languages.go=Prism.languages.extend("clike",{string:{pattern:/(^|[^\\])"(?:\\.|[^"\\\r\n])*"|`[^`]*`/,lookbehind:!0,greedy:!0},keyword:/\b(?:break|case|chan|const|continue|default|defer|else|fallthrough|for|func|go(?:to)?|if|import|interface|map|package|range|return|select|struct|switch|type|var)\b/,boolean:/\b(?:_|false|iota|nil|true)\b/,number:[/\b0(?:b[01_]+|o[0-7_]+)i?\b/i,/\b0x(?:[a-f\d_]+(?:\.[a-f\d_]*)?|\.[a-f\d_]+)(?:p[+-]?\d+(?:_\d+)*)?i?(?!\w)/i,/(?:\b\d[\d_]*(?:\.[\d_]*)?|\B\.\d[\d_]*)(?:e[+-]?[\d_]+)?i?(?!\w)/i],operator:/[*\/%^!=]=?|\+[=+]?|-[=-]?|\|[=|]?|&(?:=|&|\^=?)?|>(?:>=?|=)?|<(?:<=?|=|-)?|:=|\.\.\./,builtin:/\b(?:append|bool|byte|cap|close|complex|complex(?:64|128)|copy|delete|error|float(?:32|64)|u?int(?:8|16|32|64)?|imag|len|make|new|panic|print(?:ln)?|real|recover|rune|string|uintptr)\b/}),Prism.languages.insertBefore("go","string",{char:{pattern:/'(?:\\.|[^'\\\r\n]){0,10}'/,greedy:!0}}),delete Prism.languages.go["class-name"];
+!function(e){for(var a="/\\*(?:[^*/]|\\*(?!/)|/(?!\\*)|<self>)*\\*/",t=0;t<2;t++)a=a.replace(/<self>/g,(function(){return a}));a=a.replace(/<self>/g,(function(){return"[^\\s\\S]"})),e.languages.rust={comment:[{pattern:RegExp("(^|[^\\\\])"+a),lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/b?"(?:\\[\s\S]|[^\\"])*"|b?r(#*)"(?:[^"]|"(?!\1))*"\1/,greedy:!0},char:{pattern:/b?'(?:\\(?:x[0-7][\da-fA-F]|u\{(?:[\da-fA-F]_*){1,6}\}|.)|[^\\\r\n\t'])'/,greedy:!0},attribute:{pattern:/#!?\[(?:[^\[\]"]|"(?:\\[\s\S]|[^\\"])*")*\]/,greedy:!0,alias:"attr-name",inside:{string:null}},"closure-params":{pattern:/([=(,:]\s*|\bmove\s*)\|[^|]*\||\|[^|]*\|(?=\s*(?:\{|->))/,lookbehind:!0,greedy:!0,inside:{"closure-punctuation":{pattern:/^\||\|$/,alias:"punctuation"},rest:null}},"lifetime-annotation":{pattern:/'\w+/,alias:"symbol"},"fragment-specifier":{pattern:/(\$\w+:)[a-z]+/,lookbehind:!0,alias:"punctuation"},variable:/\$\w+/,"function-definition":{pattern:/(\bfn\s+)\w+/,lookbehind:!0,alias:"function"},"type-definition":{pattern:/(\b(?:enum|struct|trait|type|union)\s+)\w+/,lookbehind:!0,alias:"class-name"},"module-declaration":[{pattern:/(\b(?:crate|mod)\s+)[a-z][a-z_\d]*/,lookbehind:!0,alias:"namespace"},{pattern:/(\b(?:crate|self|super)\s*)::\s*[a-z][a-z_\d]*\b(?:\s*::(?:\s*[a-z][a-z_\d]*\s*::)*)?/,lookbehind:!0,alias:"namespace",inside:{punctuation:/::/}}],keyword:[/\b(?:Self|abstract|as|async|await|become|box|break|const|continue|crate|do|dyn|else|enum|extern|final|fn|for|if|impl|in|let|loop|macro|match|mod|move|mut|override|priv|pub|ref|return|self|static|struct|super|trait|try|type|typeof|union|unsafe|unsized|use|virtual|where|while|yield)\b/,/\b(?:bool|char|f(?:32|64)|[ui](?:8|16|32|64|128|size)|str)\b/],function:/\b[a-z_]\w*(?=\s*(?:::\s*<|\())/,macro:{pattern:/\b\w+!/,alias:"property"},constant:/\b[A-Z_][A-Z_\d]+\b/,"class-name":/\b[A-Z]\w*\b/,namespace:{pattern:/(?:\b[a-z][a-z_\d]*\s*::\s*)*\b[a-z][a-z_\d]*\s*::(?!\s*<)/,inside:{punctuation:/::/}},number:/\b(?:0x[\dA-Fa-f](?:_?[\dA-Fa-f])*|0o[0-7](?:_?[0-7])*|0b[01](?:_?[01])*|(?:(?:\d(?:_?\d)*)?\.)?\d(?:_?\d)*(?:[Ee][+-]?\d+)?)(?:_?(?:f32|f64|[iu](?:8|16|32|64|size)?))?\b/,boolean:/\b(?:false|true)\b/,punctuation:/->|\.\.=|\.{1,3}|::|[{}[\];(),:]/,operator:/[-+*\/%!^]=?|=[=>]?|&[&=]?|\|[|=]?|<<?=?|>>?=?|[@?]/},e.languages.rust["closure-params"].inside.rest=e.languages.rust,e.languages.rust.attribute.inside.string=e.languages.rust.string}(Prism);
+!function(e){e.languages.diff={coord:[/^(?:\*{3}|-{3}|\+{3}).*$/m,/^@@.*@@$/m,/^\d.*$/m]};var n={"deleted-sign":"-","deleted-arrow":"<","inserted-sign":"+","inserted-arrow":">",unchanged:" ",diff:"!"};Object.keys(n).forEach((function(a){var i=n[a],r=[];/^\w+$/.test(a)||r.push(/\w+/.exec(a)[0]),"diff"===a&&r.push("bold"),e.languages.diff[a]={pattern:RegExp("^(?:["+i+"].*(?:\r\n?|\n|(?![\\s\\S])))+","m"),alias:r,inside:{line:{pattern:/(.)(?=[\s\S]).*(?:\r\n?|\n)?/,lookbehind:!0},prefix:{pattern:/[\s\S]/,alias:/\w+/.exec(a)[0]}}}})),Object.defineProperty(e.languages.diff,"PREFIXES",{value:n})}(Prism);
+!function(n){function e(n){return n=n.replace(/<inner>/g,(function(){return"(?:\\\\.|[^\\\\\n\r]|(?:\n|\r\n?)(?![\r\n]))"})),RegExp("((?:^|[^\\\\])(?:\\\\{2})*)(?:"+n+")")}var t="(?:\\\\.|``(?:[^`\r\n]|`(?!`))+``|`[^`\r\n]+`|[^\\\\|\r\n`])+",a="\\|?__(?:\\|__)+\\|?(?:(?:\n|\r\n?)|(?![^]))".replace(/__/g,(function(){return t})),i="\\|?[ \t]*:?-{3,}:?[ \t]*(?:\\|[ \t]*:?-{3,}:?[ \t]*)+\\|?(?:\n|\r\n?)";n.languages.markdown=n.languages.extend("markup",{}),n.languages.insertBefore("markdown","prolog",{"front-matter-block":{pattern:/(^(?:\s*[\r\n])?)---(?!.)[\s\S]*?[\r\n]---(?!.)/,lookbehind:!0,greedy:!0,inside:{punctuation:/^---|---$/,"front-matter":{pattern:/\S+(?:\s+\S+)*/,alias:["yaml","language-yaml"],inside:n.languages.yaml}}},blockquote:{pattern:/^>(?:[\t ]*>)*/m,alias:"punctuation"},table:{pattern:RegExp("^"+a+i+"(?:"+a+")*","m"),inside:{"table-data-rows":{pattern:RegExp("^("+a+i+")(?:"+a+")*$"),lookbehind:!0,inside:{"table-data":{pattern:RegExp(t),inside:n.languages.markdown},punctuation:/\|/}},"table-line":{pattern:RegExp("^("+a+")"+i+"$"),lookbehind:!0,inside:{punctuation:/\||:?-{3,}:?/}},"table-header-row":{pattern:RegExp("^"+a+"$"),inside:{"table-header":{pattern:RegExp(t),alias:"important",inside:n.languages.markdown},punctuation:/\|/}}}},code:[{pattern:/((?:^|\n)[ \t]*\n|(?:^|\r\n?)[ \t]*\r\n?)(?: {4}|\t).+(?:(?:\n|\r\n?)(?: {4}|\t).+)*/,lookbehind:!0,alias:"keyword"},{pattern:/^```[\s\S]*?^```$/m,greedy:!0,inside:{"code-block":{pattern:/^(```.*(?:\n|\r\n?))[\s\S]+?(?=(?:\n|\r\n?)^```$)/m,lookbehind:!0},"code-language":{pattern:/^(```).+/,lookbehind:!0},punctuation:/```/}}],title:[{pattern:/\S.*(?:\n|\r\n?)(?:==+|--+)(?=[ \t]*$)/m,alias:"important",inside:{punctuation:/==+$|--+$/}},{pattern:/(^\s*)#.+/m,lookbehind:!0,alias:"important",inside:{punctuation:/^#+|#+$/}}],hr:{pattern:/(^\s*)([*-])(?:[\t ]*\2){2,}(?=\s*$)/m,lookbehind:!0,alias:"punctuation"},list:{pattern:/(^\s*)(?:[*+-]|\d+\.)(?=[\t ].)/m,lookbehind:!0,alias:"punctuation"},"url-reference":{pattern:/!?\[[^\]]+\]:[\t ]+(?:\S+|<(?:\\.|[^>\\])+>)(?:[\t ]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\)))?/,inside:{variable:{pattern:/^(!?\[)[^\]]+/,lookbehind:!0},string:/(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^)\\])*\))$/,punctuation:/^[\[\]!:]|[<>]/},alias:"url"},bold:{pattern:e("\\b__(?:(?!_)<inner>|_(?:(?!_)<inner>)+_)+__\\b|\\*\\*(?:(?!\\*)<inner>|\\*(?:(?!\\*)<inner>)+\\*)+\\*\\*"),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^..)[\s\S]+(?=..$)/,lookbehind:!0,inside:{}},punctuation:/\*\*|__/}},italic:{pattern:e("\\b_(?:(?!_)<inner>|__(?:(?!_)<inner>)+__)+_\\b|\\*(?:(?!\\*)<inner>|\\*\\*(?:(?!\\*)<inner>)+\\*\\*)+\\*"),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^.)[\s\S]+(?=.$)/,lookbehind:!0,inside:{}},punctuation:/[*_]/}},strike:{pattern:e("(~~?)(?:(?!~)<inner>)+\\2"),lookbehind:!0,greedy:!0,inside:{content:{pattern:/(^~~?)[\s\S]+(?=\1$)/,lookbehind:!0,inside:{}},punctuation:/~~?/}},"code-snippet":{pattern:/(^|[^\\`])(?:``[^`\r\n]+(?:`[^`\r\n]+)*``(?!`)|`[^`\r\n]+`(?!`))/,lookbehind:!0,greedy:!0,alias:["code","keyword"]},url:{pattern:e('!?\\[(?:(?!\\])<inner>)+\\](?:\\([^\\s)]+(?:[\t ]+"(?:\\\\.|[^"\\\\])*")?\\)|[ \t]?\\[(?:(?!\\])<inner>)+\\])'),lookbehind:!0,greedy:!0,inside:{operator:/^!/,content:{pattern:/(^\[)[^\]]+(?=\])/,lookbehind:!0,inside:{}},variable:{pattern:/(^\][ \t]?\[)[^\]]+(?=\]$)/,lookbehind:!0},url:{pattern:/(^\]\()[^\s)]+/,lookbehind:!0},string:{pattern:/(^[ \t]+)"(?:\\.|[^"\\])*"(?=\)$)/,lookbehind:!0}}}}),["url","bold","italic","strike"].forEach((function(e){["url","bold","italic","strike","code-snippet"].forEach((function(t){e!==t&&(n.languages.markdown[e].inside.content.inside[t]=n.languages.markdown[t])}))})),n.hooks.add("after-tokenize",(function(n){"markdown"!==n.language&&"md"!==n.language||function n(e){if(e&&"string"!=typeof e)for(var t=0,a=e.length;t<a;t++){var i=e[t];if("code"===i.type){var r=i.content[1],o=i.content[3];if(r&&o&&"code-language"===r.type&&"code-block"===o.type&&"string"==typeof r.content){var l=r.content.replace(/\b#/g,"sharp").replace(/\b\+\+/g,"pp"),s="language-"+(l=(/[a-z][\w-]*/i.exec(l)||[""])[0].toLowerCase());o.alias?"string"==typeof o.alias?o.alias=[o.alias,s]:o.alias.push(s):o.alias=[s]}}else n(i.content)}}(n.tokens)})),n.hooks.add("wrap",(function(e){if("code-block"===e.type){for(var t="",a=0,i=e.classes.length;a<i;a++){var s=e.classes[a],d=/language-(.+)/.exec(s);if(d){t=d[1];break}}var p=n.languages[t];if(p)e.content=n.highlight(e.content.replace(r,"").replace(/&(\w{1,8}|#x?[\da-f]{1,8});/gi,(function(n,e){var t;return"#"===(e=e.toLowerCase())[0]?(t="x"===e[1]?parseInt(e.slice(2),16):Number(e.slice(1)),l(t)):o[e]||n})),p,t);else if(t&&"none"!==t&&n.plugins.autoloader){var u="md-"+(new Date).valueOf()+"-"+Math.floor(1e16*Math.random());e.attributes.id=u,n.plugins.autoloader.loadLanguages(t,(function(){var e=document.getElementById(u);e&&(e.innerHTML=n.highlight(e.textContent,n.languages[t],t))}))}}}));var r=RegExp(n.languages.markup.tag.pattern.source,"gi"),o={amp:"&",lt:"<",gt:">",quot:'"'},l=String.fromCodePoint||String.fromCharCode;n.languages.md=n.languages.markdown}(Prism);
+!function(e){function n(e){return e.replace(/__/g,(function(){return"(?:[\\w-]+|'[^'\n\r]*'|\"(?:\\\\.|[^\\\\\"\r\n])*\")"}))}e.languages.toml={comment:{pattern:/#.*/,greedy:!0},table:{pattern:RegExp(n("(^[\t ]*\\[\\s*(?:\\[\\s*)?)__(?:\\s*\\.\\s*__)*(?=\\s*\\])"),"m"),lookbehind:!0,greedy:!0,alias:"class-name"},key:{pattern:RegExp(n("(^[\t ]*|[{,]\\s*)__(?:\\s*\\.\\s*__)*(?=\\s*=)"),"m"),lookbehind:!0,greedy:!0,alias:"property"},string:{pattern:/"""(?:\\[\s\S]|[^\\])*?"""|'''[\s\S]*?'''|'[^'\n\r]*'|"(?:\\.|[^\\"\r\n])*"/,greedy:!0},date:[{pattern:/\b\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)?\b/i,alias:"number"},{pattern:/\b\d{2}:\d{2}:\d{2}(?:\.\d+)?\b/,alias:"number"}],number:/(?:\b0(?:x[\da-zA-Z]+(?:_[\da-zA-Z]+)*|o[0-7]+(?:_[0-7]+)*|b[10]+(?:_[10]+)*))\b|[-+]?\b\d+(?:_\d+)*(?:\.\d+(?:_\d+)*)?(?:[eE][+-]?\d+(?:_\d+)*)?\b|[-+]?\b(?:inf|nan)\b/,boolean:/\b(?:false|true)\b/,punctuation:/[.,=[\]{}]/}}(Prism);
+!function(e){var n="(?:[ \t]+(?![ \t])(?:<SP_BS>)?|<SP_BS>)".replace(/<SP_BS>/g,(function(){return"\\\\[\r\n](?:\\s|\\\\[\r\n]|#.*(?!.))*(?![\\s#]|\\\\[\r\n])"})),r="\"(?:[^\"\\\\\r\n]|\\\\(?:\r\n|[^]))*\"|'(?:[^'\\\\\r\n]|\\\\(?:\r\n|[^]))*'",t="--[\\w-]+=(?:<STR>|(?![\"'])(?:[^\\s\\\\]|\\\\.)+)".replace(/<STR>/g,(function(){return r})),o={pattern:RegExp(r),greedy:!0},i={pattern:/(^[ \t]*)#.*/m,lookbehind:!0,greedy:!0};function a(e,r){return e=e.replace(/<OPT>/g,(function(){return t})).replace(/<SP>/g,(function(){return n})),RegExp(e,r)}e.languages.docker={instruction:{pattern:/(^[ \t]*)(?:ADD|ARG|CMD|COPY|ENTRYPOINT|ENV|EXPOSE|FROM|HEALTHCHECK|LABEL|MAINTAINER|ONBUILD|RUN|SHELL|STOPSIGNAL|USER|VOLUME|WORKDIR)(?=\s)(?:\\.|[^\r\n\\])*(?:\\$(?:\s|#.*$)*(?![\s#])(?:\\.|[^\r\n\\])*)*/im,lookbehind:!0,greedy:!0,inside:{options:{pattern:a("(^(?:ONBUILD<SP>)?\\w+<SP>)<OPT>(?:<SP><OPT>)*","i"),lookbehind:!0,greedy:!0,inside:{property:{pattern:/(^|\s)--[\w-]+/,lookbehind:!0},string:[o,{pattern:/(=)(?!["'])(?:[^\s\\]|\\.)+/,lookbehind:!0}],operator:/\\$/m,punctuation:/=/}},keyword:[{pattern:a("(^(?:ONBUILD<SP>)?HEALTHCHECK<SP>(?:<OPT><SP>)*)(?:CMD|NONE)\\b","i"),lookbehind:!0,greedy:!0},{pattern:a("(^(?:ONBUILD<SP>)?FROM<SP>(?:<OPT><SP>)*(?!--)[^ \t\\\\]+<SP>)AS","i"),lookbehind:!0,greedy:!0},{pattern:a("(^ONBUILD<SP>)\\w+","i"),lookbehind:!0,greedy:!0},{pattern:/^\w+/,greedy:!0}],comment:i,string:o,variable:/\$(?:\w+|\{[^{}"'\\]*\})/,operator:/\\$/m}},comment:i},e.languages.dockerfile=e.languages.docker}(Prism);
+</script>
+<!-- SYNTAX-HIGHLIGHT:js:end -->
+
+</body>
+</html>
