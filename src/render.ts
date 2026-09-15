@@ -410,7 +410,7 @@ export function renderIndex(site: Site, corpus: Topic[], instanceName?: string):
 
 function indexTemplate(site: Site, instanceName?: string): string {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ed-paged="off">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
