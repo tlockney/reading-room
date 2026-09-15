@@ -104,10 +104,16 @@
     :root[data-ed-paged="on"] body{
       /* padding = per-page inset: a hair below the progress rule, and a band
          at the foot reserved for the counter and corner buttons */
-      height:100dvh;box-sizing:border-box;overflow:hidden;margin:0 !important;padding:18px 0 88px !important;
+      /* A real (accelerated) horizontal scroll container, not overflow:hidden:
+         iOS WebKit only tile-paints far-off columns reliably inside one, and a
+         hidden-overflow box left distant pages blank. Scrollbars are hidden and
+         touch-action keeps the browser from panning it; JS owns the turns. */
+      height:100dvh;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;margin:0 !important;padding:18px 0 88px !important;
       column-width:100vw;column-gap:0;column-fill:auto;
       touch-action:pan-y pinch-zoom;overscroll-behavior:none;
+      scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;
     }
+    :root[data-ed-paged="on"] body::-webkit-scrollbar{display:none;}
     :root[data-ed-paged="on"]{overflow:hidden;}
     :root[data-ed-paged="on"] pre{overflow:visible;white-space:pre-wrap;overflow-wrap:anywhere;}
     :root[data-ed-paged="on"] table{display:table;overflow:visible;width:100%;break-inside:avoid;}
