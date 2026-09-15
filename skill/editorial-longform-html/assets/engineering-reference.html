@@ -691,7 +691,60 @@
     code{overflow-wrap:anywhere;}
     table{display:block;overflow-x:auto;max-width:100%;}
   }
+
+  /* Paged reading (narrow viewports only). The body becomes a fixed-height
+     multi-column box, one column per screen; turning a page scrolls it by one
+     viewport width. Nothing is transformed, so fixed chrome stays put. */
+  .edpaged-toggle{
+    display:none;position:fixed;bottom:52px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edpaged-toggle:hover{color:var(--copper-soft);border-color:var(--copper);}
+  :root[data-ed-theme="off"] .edpaged-toggle{bottom:18px;}
+  :root[data-ed-paged="off"] .edpaged-toggle{display:none !important;}
+  :root.edzoom-open .edpaged-toggle{display:none !important;}
+  .edpaged-count,.edpaged-rule{display:none;}
+  @media(max-width:720px){
+    .edpaged-toggle{display:block;}
+    :root[data-ed-paged="on"] body{
+      /* padding = per-page inset: a hair below the progress rule, and a band
+         at the foot reserved for the counter and corner buttons */
+      height:100dvh;box-sizing:border-box;overflow:hidden;margin:0 !important;padding:18px 0 88px !important;
+      column-width:100vw;column-gap:0;column-fill:auto;
+      touch-action:pan-y pinch-zoom;overscroll-behavior:none;
+    }
+    :root[data-ed-paged="on"]{overflow:hidden;}
+    :root[data-ed-paged="on"] pre{overflow:visible;white-space:pre-wrap;overflow-wrap:anywhere;}
+    :root[data-ed-paged="on"] table{display:table;overflow:visible;width:100%;break-inside:avoid;}
+    :root[data-ed-paged="on"] th,:root[data-ed-paged="on"] td{overflow-wrap:anywhere;}
+    :root[data-ed-paged="on"] figure,:root[data-ed-paged="on"] img{break-inside:avoid;}
+    :root[data-ed-paged="on"] img,:root[data-ed-paged="on"] figure svg{max-height:calc(100dvh - 120px);}
+    :root[data-ed-paged="on"] h1,:root[data-ed-paged="on"] h2,:root[data-ed-paged="on"] h3{break-inside:avoid;break-after:avoid;}
+    :root[data-ed-paged="on"] .edpaged-count{
+      display:block;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1100;
+      font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+      text-transform:uppercase;color:var(--ink-mute);background:var(--bg-soft);
+      border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;pointer-events:none;
+      white-space:nowrap;
+    }
+    :root[data-ed-paged="on"] .edpaged-rule{
+      display:block;position:fixed;top:0;left:0;height:2px;width:0;z-index:1100;
+      background:var(--copper);transition:width .3s;pointer-events:none;
+    }
+  }
+  @media print{.edpaged-toggle,.edpaged-count,.edpaged-rule{display:none !important;}}
+  :root.edzoom-open .edpaged-count,:root.edzoom-open .edpaged-rule{display:none !important;}
 </style>
+<script>
+(function(){
+  var r=document.documentElement;
+  if(r.getAttribute('data-ed-paged')==='off')return;
+  var s=null;try{s=localStorage.getItem('editorial-paged');}catch(_){}
+  if(s==='on'&&window.matchMedia&&matchMedia('(max-width:720px)').matches)r.setAttribute('data-ed-paged','on');
+})();
+</script>
 <script>
 (function(){
   if(document.documentElement.getAttribute('data-ed-theme')==='off'){
@@ -903,6 +956,149 @@ const example = 'JetBrains Mono, 13px';</code></pre>
   label();
   var b=document.querySelector('.edtheme');
   if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<button class="edpaged-toggle" type="button" aria-label="Toggle paged reading">Paged</button>
+<script>
+(function(){
+  if(window.__edpaged)return;
+  var root=document.documentElement;
+  /* Pure paging math, exposed for the Deno test suite (paged_test.ts). */
+  var P={
+    /* page index holding absolute x-offset `x` when pages are `w` wide */
+    pageOf:function(x,w){return w>0?Math.max(0,Math.floor((x+1)/w)):0;},
+    /* page count from the multicol scroll width */
+    count:function(scrollWidth,w){return w>0?Math.max(1,Math.round(scrollWidth/w)):1;},
+    /* where a drag of dx px (positive = finger moved right) at vx px/ms lands */
+    snap:function(page,dx,w,vx,count){
+      var t=page;
+      if(dx<=-w*0.2||vx<=-0.5)t=page+1;else if(dx>=w*0.2||vx>=0.5)t=page-1;
+      return Math.max(0,Math.min(count-1,t));
+    },
+    /* position memory: last id-bearing mark at/before `page` plus pages past it */
+    anchorFor:function(marks,page){
+      var m=null;
+      for(var i=0;i<marks.length;i++){if(marks[i].page<=page)m=marks[i];else break;}
+      return m?{id:m.id,delta:page-m.page}:{id:null,delta:page};
+    },
+    /* the page an anchor resolves to against a fresh set of marks */
+    restore:function(marks,saved,count){
+      var base=0,d=(saved&&typeof saved.delta==='number')?saved.delta:0;
+      if(saved&&saved.id){for(var i=0;i<marks.length;i++){if(marks[i].id===saved.id){base=marks[i].page;break;}}}
+      return Math.max(0,Math.min(count-1,base+d));
+    }
+  };
+  window.__edpaged=P;
+  if(root.getAttribute('data-ed-paged')==='off')return;
+  var KEY='editorial-paged',POS,body,toggle,count,rule,mq;
+  var page=0,pages=1,w=0,anchor=null,timer=null,pd=null,dragged=false;
+  function on(){return root.getAttribute('data-ed-paged')==='on';}
+  function pref(){var s=null;try{s=localStorage.getItem(KEY);}catch(_){}return s==='on';}
+  function xOf(el){return el.getBoundingClientRect().left+body.scrollLeft;}
+  function marks(){
+    var out=[],els=body.querySelectorAll('h1[id],h2[id],h3[id],h4[id],section[id]');
+    for(var i=0;i<els.length;i++)out.push({id:els[i].id,page:P.pageOf(xOf(els[i]),w)});
+    return out;
+  }
+  function measure(){w=body.clientWidth||window.innerWidth;pages=P.count(body.scrollWidth,w);}
+  function show(){
+    count.textContent='§ '+(page+1)+' / '+pages;
+    rule.style.width=(pages>1?(page/(pages-1))*100:100)+'%';
+  }
+  function go(n,smooth){
+    page=Math.max(0,Math.min(pages-1,n));
+    body.scrollTo({left:page*w,top:0,behavior:smooth?'smooth':'auto'});
+    show();anchor=P.anchorFor(marks(),page);
+    try{localStorage.setItem(POS,JSON.stringify(anchor));}catch(_){}
+  }
+  function saved(){try{var s=localStorage.getItem(POS);return s?JSON.parse(s):null;}catch(_){return null;}}
+  function hashTarget(){
+    if(!location.hash)return null;
+    try{return document.getElementById(decodeURIComponent(location.hash.slice(1)));}catch(_){return null;}
+  }
+  function label(){if(toggle)toggle.textContent=on()?'Scroll':'Paged';}
+  function enter(){
+    var at=null;
+    if(window.scrollY>10){at=document.elementFromPoint(window.innerWidth/2,100);}
+    root.setAttribute('data-ed-paged','on');measure();
+    var h=hashTarget(),s=saved();
+    if(h)go(P.pageOf(xOf(h),w),false);
+    else if(at&&at!==body)go(P.pageOf(xOf(at),w),false);
+    else go(s?P.restore(marks(),s,pages):0,false);
+    label();
+  }
+  function leave(){
+    var a=anchor;
+    root.removeAttribute('data-ed-paged');body.scrollTo({left:0,top:0});
+    if(a&&a.id){var el=document.getElementById(a.id);if(el)el.scrollIntoView();}
+    label();
+  }
+  function relayout(){if(!on())return;measure();go(P.restore(marks(),anchor,pages),false);}
+  function schedule(){if(!on())return;clearTimeout(timer);timer=setTimeout(relayout,120);}
+  function endDrag(e){
+    if(!pd)return;var d=pd;pd=null;
+    if(!d.move)return;
+    dragged=true;setTimeout(function(){dragged=false;},60);
+    var dx=e.clientX-d.x,vx=dx/Math.max(1,Date.now()-d.t);
+    go(P.snap(page,dx,w,vx,pages),true);
+  }
+  function init(){
+    body=document.body;POS='editorial-paged-pos:'+location.pathname;
+    toggle=document.querySelector('.edpaged-toggle');
+    count=document.createElement('div');count.className='edpaged-count';count.setAttribute('aria-live','polite');
+    rule=document.createElement('div');rule.className='edpaged-rule';rule.setAttribute('aria-hidden','true');
+    body.appendChild(count);body.appendChild(rule);
+    mq=window.matchMedia?matchMedia('(max-width:720px)'):null;
+    if(on()){measure();var h=hashTarget(),s=saved();go(h?P.pageOf(xOf(h),w):(s?P.restore(marks(),s,pages):0),false);}
+    label();
+    if(toggle)toggle.addEventListener('click',function(){
+      if(on()){leave();try{localStorage.setItem(KEY,'off');}catch(_){}}
+      else{try{localStorage.setItem(KEY,'on');}catch(_){}enter();}
+    });
+    if(mq){var onMq=function(){if(!pref())return;if(mq.matches){if(!on())enter();}else if(on())leave();};
+      if(mq.addEventListener)mq.addEventListener('change',onMq);else if(mq.addListener)mq.addListener(onMq);}
+    document.addEventListener('click',function(e){
+      if(!on()||!e.target.closest)return;
+      var a=e.target.closest('a[href^="#"]');
+      if(a){
+        var id='';try{id=decodeURIComponent(a.getAttribute('href').slice(1));}catch(_){}
+        var el=id&&document.getElementById(id);
+        if(el){e.preventDefault();go(P.pageOf(xOf(el),w),true);try{history.replaceState(null,'','#'+id);}catch(_){}}
+        return;
+      }
+      if(dragged)return;
+      if(e.target.closest('a,button,input,textarea,select,summary,label,.edzoom-able,pre,table,.edzoom-overlay'))return;
+      var x=e.clientX/w;
+      if(x<0.3)go(page-1,true);else if(x>0.7)go(page+1,true);
+    });
+    body.addEventListener('pointerdown',function(e){
+      if(!on()||(e.pointerType==='mouse'&&e.button!==0))return;
+      pd={x:e.clientX,y:e.clientY,t:Date.now(),sl:body.scrollLeft,move:false};
+    });
+    body.addEventListener('pointermove',function(e){
+      if(!pd)return;
+      var dx=e.clientX-pd.x,dy=e.clientY-pd.y;
+      if(!pd.move){if(Math.abs(dx)<8||Math.abs(dx)<Math.abs(dy))return;pd.move=true;}
+      body.scrollLeft=pd.sl-dx;
+    });
+    body.addEventListener('pointerup',endDrag);
+    body.addEventListener('pointercancel',function(){if(pd&&pd.move)go(page,true);pd=null;});
+    document.addEventListener('keydown',function(e){
+      if(!on()||root.classList.contains('edzoom-open'))return;
+      var t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
+      if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')go(page+1,true);
+      else if(e.key==='ArrowLeft'||e.key==='PageUp')go(page-1,true);
+      else return;
+      e.preventDefault();
+    });
+    window.addEventListener('resize',schedule);
+    window.addEventListener('load',schedule);
+    if(document.fonts&&document.fonts.ready)document.fonts.ready.then(schedule);
+    try{new MutationObserver(function(ms){
+      for(var i=0;i<ms.length;i++){var t=ms[i].target;if(t.closest&&t.closest('.edpaged-count,.edpaged-rule,.edzoom-overlay'))continue;schedule();return;}
+    }).observe(body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
 })();
 </script>
 <!-- EDITORIAL-BODY:end -->

@@ -119,6 +119,11 @@ Deno.test("renderIndex omits the instance tag with no name (build purity)", () =
   assertStringIncludes(html, `<div class="eyebrow">${DEFAULT_SITE.eyebrow}</div>`);
 });
 
+Deno.test("renderIndex opts the library index out of paged reading", () => {
+  const html = renderIndex(DEFAULT_SITE, []);
+  assertStringIncludes(html, '<html lang="en" data-ed-paged="off">');
+});
+
 Deno.test("editorial head includes theme-opt-out CSS rule", () => {
   const out = injectEditorialHead(MINIMAL);
   assertStringIncludes(out, '[data-ed-theme="off"] .edtheme{display:none !important;}');

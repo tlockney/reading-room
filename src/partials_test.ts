@@ -50,3 +50,14 @@ Deno.test("hint is a CSS pseudo-element, not a DOM span (Mermaid-safe)", () => {
   assertEquals(body.includes("edzoom-hint"), false, "body must not create a hint span");
   assertEquals(body.includes("createElement('span')"), false);
 });
+
+Deno.test("partials carry the paged-reading mode (narrow viewports, opt-out, chrome)", () => {
+  assert(head.includes(".edpaged-toggle"));
+  assert(head.includes('[data-ed-paged="on"] body'));
+  assert(head.includes("column-width:100vw"));
+  assert(head.includes('[data-ed-paged="off"] .edpaged-toggle{display:none !important;}'));
+  assert(head.includes("editorial-paged")); // localStorage key, no-flash restore
+  assert(body.includes("window.__edpaged"));
+  assert(body.includes('class="edpaged-toggle"'));
+  assert(body.includes("getAttribute('data-ed-paged')==='off'"));
+});

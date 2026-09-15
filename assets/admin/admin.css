@@ -452,3 +452,12 @@
   color: var(--copper, #a85a1a);
   border-color: var(--copper, #a85a1a);
 }
+
+/* Paged reading: margin cards and marks are laid out from vertical scroll
+   offsets, which mean nothing in the column layout. Hide them; the
+   selection-driven annotate affordance still works. */
+:root[data-ed-paged="on"] .rradmin-card,
+:root[data-ed-paged="on"] .rradmin-mark,
+:root[data-ed-paged="on"] .rr-switcher {
+  display: none;
+}

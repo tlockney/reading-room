@@ -84,7 +84,60 @@
     code{overflow-wrap:anywhere;}
     table{display:block;overflow-x:auto;max-width:100%;}
   }
+
+  /* Paged reading (narrow viewports only). The body becomes a fixed-height
+     multi-column box, one column per screen; turning a page scrolls it by one
+     viewport width. Nothing is transformed, so fixed chrome stays put. */
+  .edpaged-toggle{
+    display:none;position:fixed;bottom:52px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edpaged-toggle:hover{color:var(--copper-soft);border-color:var(--copper);}
+  :root[data-ed-theme="off"] .edpaged-toggle{bottom:18px;}
+  :root[data-ed-paged="off"] .edpaged-toggle{display:none !important;}
+  :root.edzoom-open .edpaged-toggle{display:none !important;}
+  .edpaged-count,.edpaged-rule{display:none;}
+  @media(max-width:720px){
+    .edpaged-toggle{display:block;}
+    :root[data-ed-paged="on"] body{
+      /* padding = per-page inset: a hair below the progress rule, and a band
+         at the foot reserved for the counter and corner buttons */
+      height:100dvh;box-sizing:border-box;overflow:hidden;margin:0 !important;padding:18px 0 88px !important;
+      column-width:100vw;column-gap:0;column-fill:auto;
+      touch-action:pan-y pinch-zoom;overscroll-behavior:none;
+    }
+    :root[data-ed-paged="on"]{overflow:hidden;}
+    :root[data-ed-paged="on"] pre{overflow:visible;white-space:pre-wrap;overflow-wrap:anywhere;}
+    :root[data-ed-paged="on"] table{display:table;overflow:visible;width:100%;break-inside:avoid;}
+    :root[data-ed-paged="on"] th,:root[data-ed-paged="on"] td{overflow-wrap:anywhere;}
+    :root[data-ed-paged="on"] figure,:root[data-ed-paged="on"] img{break-inside:avoid;}
+    :root[data-ed-paged="on"] img,:root[data-ed-paged="on"] figure svg{max-height:calc(100dvh - 120px);}
+    :root[data-ed-paged="on"] h1,:root[data-ed-paged="on"] h2,:root[data-ed-paged="on"] h3{break-inside:avoid;break-after:avoid;}
+    :root[data-ed-paged="on"] .edpaged-count{
+      display:block;position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:1100;
+      font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+      text-transform:uppercase;color:var(--ink-mute);background:var(--bg-soft);
+      border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;pointer-events:none;
+      white-space:nowrap;
+    }
+    :root[data-ed-paged="on"] .edpaged-rule{
+      display:block;position:fixed;top:0;left:0;height:2px;width:0;z-index:1100;
+      background:var(--copper);transition:width .3s;pointer-events:none;
+    }
+  }
+  @media print{.edpaged-toggle,.edpaged-count,.edpaged-rule{display:none !important;}}
+  :root.edzoom-open .edpaged-count,:root.edzoom-open .edpaged-rule{display:none !important;}
 </style>
+<script>
+(function(){
+  var r=document.documentElement;
+  if(r.getAttribute('data-ed-paged')==='off')return;
+  var s=null;try{s=localStorage.getItem('editorial-paged');}catch(_){}
+  if(s==='on'&&window.matchMedia&&matchMedia('(max-width:720px)').matches)r.setAttribute('data-ed-paged','on');
+})();
+</script>
 <script>
 (function(){
   if(document.documentElement.getAttribute('data-ed-theme')==='off'){
