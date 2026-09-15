@@ -711,10 +711,16 @@
     :root[data-ed-paged="on"] body{
       /* padding = per-page inset: a hair below the progress rule, and a band
          at the foot reserved for the counter and corner buttons */
-      height:100dvh;box-sizing:border-box;overflow:hidden;margin:0 !important;padding:18px 0 88px !important;
+      /* A real (accelerated) horizontal scroll container, not overflow:hidden:
+         iOS WebKit only tile-paints far-off columns reliably inside one, and a
+         hidden-overflow box left distant pages blank. Scrollbars are hidden and
+         touch-action keeps the browser from panning it; JS owns the turns. */
+      height:100dvh;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;margin:0 !important;padding:18px 0 88px !important;
       column-width:100vw;column-gap:0;column-fill:auto;
       touch-action:pan-y pinch-zoom;overscroll-behavior:none;
+      scrollbar-width:none;-ms-overflow-style:none;-webkit-overflow-scrolling:touch;
     }
+    :root[data-ed-paged="on"] body::-webkit-scrollbar{display:none;}
     :root[data-ed-paged="on"]{overflow:hidden;}
     :root[data-ed-paged="on"] pre{overflow:visible;white-space:pre-wrap;overflow-wrap:anywhere;}
     :root[data-ed-paged="on"] table{display:table;overflow:visible;width:100%;break-inside:avoid;}
@@ -1005,12 +1011,25 @@ const example = 'JetBrains Mono, 13px';</code></pre>
     count.textContent='§ '+(page+1)+' / '+pages;
     rule.style.width=(pages>1?(page/(pages-1))*100:100)+'%';
   }
+  function remember(){anchor=P.anchorFor(marks(),page);try{localStorage.setItem(POS,JSON.stringify(anchor));}catch(_){}}
   function go(n,smooth){
     page=Math.max(0,Math.min(pages-1,n));
     body.scrollTo({left:page*w,top:0,behavior:smooth?'smooth':'auto'});
-    show();anchor=P.anchorFor(marks(),page);
-    try{localStorage.setItem(POS,JSON.stringify(anchor));}catch(_){}
+    show();remember();
   }
+  /* Once the scroller is at rest: square up to a page boundary (the body is a
+     real scroll container now, so a stray native scroll can leave it between
+     pages) and nudge a repaint, which iOS WebKit otherwise skips for columns
+     far from the origin, leaving a settled page blank. */
+  var settleTimer=null;
+  function settle(){
+    if(!on()||pd||w<=0)return;
+    var n=Math.max(0,Math.min(pages-1,Math.round(body.scrollLeft/w)));
+    if(Math.abs(body.scrollLeft-n*w)>1)body.scrollTo({left:n*w,top:0,behavior:'auto'});
+    if(n!==page){page=n;show();remember();}
+    body.style.visibility='hidden';void body.offsetHeight;body.style.visibility='';
+  }
+  function scheduleSettle(){clearTimeout(settleTimer);settleTimer=setTimeout(settle,160);}
   function saved(){try{var s=localStorage.getItem(POS);return s?JSON.parse(s):null;}catch(_){return null;}}
   function hashTarget(){
     if(!location.hash)return null;
@@ -1091,6 +1110,7 @@ const example = 'JetBrains Mono, 13px';</code></pre>
       else return;
       e.preventDefault();
     });
+    body.addEventListener('scroll',scheduleSettle,{passive:true});
     window.addEventListener('resize',schedule);
     window.addEventListener('load',schedule);
     if(document.fonts&&document.fonts.ready)document.fonts.ready.then(schedule);
