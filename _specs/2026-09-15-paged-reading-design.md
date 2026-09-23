@@ -48,10 +48,14 @@ standalone docs get it baked in. The cost is the drift test: the skill template 
 
 ### D2. Narrow viewports only, scroll by default, remembered per device
 
-The toggle (`Paged` / `Scroll`, named for the target state like `Dark` / `Light`) is only rendered
-at the bundle's existing 720px mobile breakpoint. The preference is stored in `localStorage` under
-`editorial-paged`. If a paged viewport is widened past the breakpoint, the layout reverts to scroll
-and re-enters paged when narrowed again; the preference is untouched.
+The toggle (`Paged` / `Scroll`, named for the target state like `Dark` / `Light`) is rendered on
+phones and on touch devices held in portrait:
+`(max-width:720px),(pointer:coarse) and (orientation:portrait)`. The 720px arm alone (0.7.0–0.7.1)
+excluded every iPad, whose portrait widths start at 744px (mini) and 834px (11" Pro). Landscape on a
+tablet deliberately falls back to scrolling: in that orientation the reader is usually zoomed in and
+reading by scroll. Desktops never match the touch arm. The preference is stored in `localStorage`
+under `editorial-paged`. Rotating or resizing out of the query reverts to scroll and re-enters paged
+when it matches again; the preference is untouched.
 
 ### D3. Opt-out attribute, mirroring the theme toggle
 

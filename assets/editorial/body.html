@@ -188,7 +188,7 @@
     count=document.createElement('div');count.className='edpaged-count';count.setAttribute('aria-live','polite');
     rule=document.createElement('div');rule.className='edpaged-rule';rule.setAttribute('aria-hidden','true');
     body.appendChild(count);body.appendChild(rule);
-    mq=window.matchMedia?matchMedia('(max-width:720px)'):null;
+    mq=window.matchMedia?matchMedia('(max-width:720px),(pointer:coarse) and (orientation:portrait)'):null;
     if(on()){measure();var h=hashTarget(),s=saved();go(h?P.pageOf(xOf(h),w):(s?P.restore(marks(),s,pages):0),false);}
     label();
     if(toggle)toggle.addEventListener('click',function(){
