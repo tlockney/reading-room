@@ -61,3 +61,13 @@ Deno.test("partials carry the paged-reading mode (narrow viewports, opt-out, chr
   assert(body.includes('class="edpaged-toggle"'));
   assert(body.includes("getAttribute('data-ed-paged')==='off'"));
 });
+
+Deno.test("paged mode is offered on phones and on touch devices in portrait, in CSS and both scripts", () => {
+  // One query, three places: the CSS block, the head no-flash restore, and the
+  // body script's live matchMedia. Tablets in landscape deliberately fall back
+  // to scrolling (that orientation means zooming in and reading by scroll).
+  const q = "(max-width:720px),(pointer:coarse) and (orientation:portrait)";
+  assert(head.includes(`@media ${q}{`), "CSS block");
+  assert(head.includes(`matchMedia('${q}')`), "head no-flash restore");
+  assert(body.includes(`matchMedia('${q}')`), "body live query");
+});

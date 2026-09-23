@@ -85,7 +85,8 @@
     table{display:block;overflow-x:auto;max-width:100%;}
   }
 
-  /* Paged reading (narrow viewports only). The body becomes a fixed-height
+  /* Paged reading: phones, and touch devices held in portrait (landscape on a
+     tablet means zooming and scrolling, so paging is not offered there). The body becomes a fixed-height
      multi-column box, one column per screen; turning a page scrolls it by one
      viewport width. Nothing is transformed, so fixed chrome stays put. */
   .edpaged-toggle{
@@ -99,7 +100,7 @@
   :root[data-ed-paged="off"] .edpaged-toggle{display:none !important;}
   :root.edzoom-open .edpaged-toggle{display:none !important;}
   .edpaged-count,.edpaged-rule{display:none;}
-  @media(max-width:720px){
+  @media (max-width:720px),(pointer:coarse) and (orientation:portrait){
     .edpaged-toggle{display:block;}
     :root[data-ed-paged="on"] body{
       /* padding = per-page inset: a hair below the progress rule, and a band
@@ -141,7 +142,7 @@
   var r=document.documentElement;
   if(r.getAttribute('data-ed-paged')==='off')return;
   var s=null;try{s=localStorage.getItem('editorial-paged');}catch(_){}
-  if(s==='on'&&window.matchMedia&&matchMedia('(max-width:720px)').matches)r.setAttribute('data-ed-paged','on');
+  if(s==='on'&&window.matchMedia&&matchMedia('(max-width:720px),(pointer:coarse) and (orientation:portrait)').matches)r.setAttribute('data-ed-paged','on');
 })();
 </script>
 <script>
