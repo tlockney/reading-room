@@ -217,6 +217,10 @@ the skill template too — the drift test will tell you.
 2. Commit, tag `v<version>`, push the tag.
 3. The `publish` workflow tests and runs `deno publish` (JSR OIDC, no token).
 4. Per-machine upgrade: re-run `deno install -g -f` at the new version (see "Installed CLI" below).
+   For other machines, once JSR shows the version, `scripts/upgrade-remote.sh <version> [host ...]`
+   does it over SSH: CLI into `~/.deno/bin`, agent reinstall keeping its `--root` / `--port` /
+   `READONLY`, and a wait until the agent serves the new version (kickstarting once if the first
+   launchd launch stalls). With no hosts it upgrades every peer in the local `/api/peers`.
 
 ## Installed CLI
 
