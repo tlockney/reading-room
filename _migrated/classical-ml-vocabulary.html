@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<!--
+  Long-form editorial reference doc template.
+  Drop-in starting point for the editorial-print aesthetic.
+
+  REGIONS. The file is split into marked regions — <!== NAME:start ==> …
+  <!== NAME:end ==> (written with = here only because this outer comment
+  can't nest; in the file they are ordinary HTML comments). Exactly three
+  regions belong to the DOCUMENT:
+
+      DOC-TITLE   the <title> line
+      DOC-CSS     per-doc style overrides (empty by default)
+      CONTENT     the entire authored body
+
+  Everything else — FONTS, MERMAID, TEMPLATE-CSS, SYNTAX-HIGHLIGHT,
+  EDITORIAL-HEAD, EDITORIAL-BODY, PRINT-OVERRIDES — is TEMPLATE CHROME.
+  Don't hand-edit chrome in a finished doc, and never put document
+  content outside CONTENT. That split is what lets
+  `assets/doc-tool.py retemplate <doc.html>` re-apply an updated
+  template to an existing document, and `doc-tool.py fonts embed|link
+  <doc.html>` swap the font strategy in one command.
+
+  Search-and-replace TODO markers before publishing. Components that are
+  always present: masthead, TOC, sections, footer. Components that are
+  optional (delete if not needed): Mermaid script block, the syntax-
+  highlight pair (SYNTAX-HIGHLIGHT:css in <head> + SYNTAX-HIGHLIGHT:js
+  before </body> — delete BOTH if the doc has no code samples), series-nav,
+  restricted banner, figure.diagram. The floating mini-map is included
+  by default; remove the <nav class="minimap"> block if you don't want
+  it (its CSS is harmless when no markup uses it). The shared editorial
+  bundle (EDITORIAL-HEAD before the head close, EDITORIAL-BODY before the
+  body close) adds click-to-zoom for figures, a light/dark theme toggle,
+  and mobile overflow fixes; it is canonical in the Reading Room repo and
+  inlined here. Both scripts are no-ops when unused. Aside from the
+  editorial bundle, syntax highlighting (inlined Prism), and the optional
+  Mermaid import, this style is static HTML/CSS — all three scripted pieces
+  are readability aids, self-contained, and no-ops when unused.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DOC-TITLE:start --><title>Classical ML Vocabulary · AI/ML Learning Path</title>
+<!-- DOC-TITLE:end -->
+<!-- FONTS:start — swap this whole region with:
+       assets/doc-tool.py fonts embed <doc.html>   (artifact / CSP-safe)
+       assets/doc-tool.py fonts link  <doc.html>   (back to the default)
+     FONTS-LINK is the default loading path: works off the network
+     (browser, off-disk, email). Under the Claude Code ARTIFACT CSP the
+     link is blocked and the page silently falls back to default
+     serif/mono — gutting the look, since the typefaces are the
+     aesthetic. The embed form inlines assets/fonts-embedded.css instead.
+     The two are mutually exclusive — never ship both. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- FONTS:end -->
+
+
+<!-- TEMPLATE-CSS:start — the design. Chrome: don't edit per-doc.
+     Per-doc overrides go in the DOC-CSS region further down. -->
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;        /* 820 for how-tos */
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Restricted / internal-only banner — OPTIONAL, delete if not needed.
+     Sits above the masthead. Small copper-outlined chip; makes it
+     immediately obvious if the doc surfaces somewhere it shouldn't. */
+  .restricted-banner {
+    margin: 0 0 20px;
+    padding: 10px 16px;
+    background: rgba(168, 90, 26, 0.08);
+    border: 1px solid var(--copper);
+    border-radius: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    text-align: center;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  /* Self-link on the document title — clicking resets the URL hash so the
+     canonical document URL appears in the address bar (no section anchor). */
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* Series-nav — OPTIONAL, for multi-part document sets.
+     Sits between the masthead and the TOC. Mark the current part with
+     class="current". Delete if this is a standalone document. */
+  .series-nav {
+    margin: 0 0 56px;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--forest);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .series-nav .series-label {
+    display: block;
+    color: var(--forest);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: 0.22em;
+  }
+  .series-nav ol { list-style: none; padding: 0; margin: 0; }
+  .series-nav li { margin: 4px 0; font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.1em; }
+  .series-nav li a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  .series-nav li a:hover { border-bottom-color: var(--copper); }
+  .series-nav li.current { color: var(--ink); font-weight: 600; }
+  .series-nav li.current::before { content: "▸ "; color: var(--copper); }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;            /* drop to 1 for how-tos / short docs */
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* For how-to / step-based docs, swap the ::before content above for: */
+  /* content: "STEP / " counter(toc, decimal-leading-zero); */
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Self-anchoring section headings. Wrap each section h2's contents in
+     an <a href="#section-id" class="heading-link"> so a click sets the URL
+     hash and the section URL can be copied from the address bar. */
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* SYNTAX-HIGHLIGHT:css:start — editorial Prism theme (warm palette).
+     Pairs with the inlined Prism bundle in the SYNTAX-HIGHLIGHT:js block
+     before </body>. Token colors stay in the warm editorial ramp — copper
+     for control/keywords, gold/olive/sand/tan for the rest, khaki for
+     comments. No cool hues. The <pre> surface is dark in BOTH light and
+     dark themes, so one token palette reads correctly in both. Rules are
+     scoped to <pre> so inline <code> is never tinted. Harmless when no code
+     blocks are present. To drop highlighting entirely, delete this CSS
+     block AND the SYNTAX-HIGHLIGHT:js script block before </body>. */
+  pre[class*="language-"], code[class*="language-"] {
+    font-family: "JetBrains Mono", monospace;
+    text-shadow: none;          /* kill stock Prism-theme glow */
+    tab-size: 2; hyphens: none;
+  }
+  pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+    color: #968b6c; font-style: italic;          /* khaki — recede */
+  }
+  pre .token.punctuation, pre .token.template-punctuation { color: #b8ac8a; }
+  pre .token.namespace { opacity: 0.8; }
+  /* copper — control words & "look here" */
+  pre .token.keyword, pre .token.tag, pre .token.selector,
+  pre .token.atrule, pre .token.rule, pre .token.important,
+  pre .token.instruction, pre .token.for-or-select, pre .token.coord {
+    color: #d98a44; font-weight: 600;
+  }
+  /* amber-tan — operators & links */
+  pre .token.operator, pre .token.entity, pre .token.combinator,
+  pre .token.url, pre .token.atrule .token.url { color: #c9a06a; }
+  /* gold — numeric & identity literals, function names */
+  pre .token.number, pre .token.boolean, pre .token.constant,
+  pre .token.symbol, pre .token.function, pre .token.function-definition,
+  pre .token.macro { color: #e3b25e; }
+  /* olive — string-like text */
+  pre .token.string, pre .token.char, pre .token.attr-value,
+  pre .token.regex, pre .token.template-string, pre .token.string-property {
+    color: #a9b87f;
+  }
+  /* sand/tan — types, keys, properties, builtins */
+  pre .token.class-name, pre .token.builtin, pre .token.type,
+  pre .token.key, pre .token.property, pre .token.attr-name,
+  pre .token.title, pre .token.namespace { color: #cdb58a; }
+  /* light tan — variables & parameters */
+  pre .token.variable, pre .token.parameter, pre .token.property-access {
+    color: #d9c9a8;
+  }
+  pre .token.bold { font-weight: 600; }
+  pre .token.italic { font-style: italic; }
+  /* diff — warm bands; scoped to the diff language so markdown ins/del stay inline */
+  pre[class*="language-diff"] .token.inserted {
+    color: #a9b87f; background: rgba(169,184,127,0.10); display: block;
+  }
+  pre[class*="language-diff"] .token.deleted {
+    color: #cf8a5a; background: rgba(207,138,90,0.11); display: block;
+  }
+  pre .token.inserted { color: #a9b87f; }
+  pre .token.deleted { color: #cf8a5a; }
+  /* Print: <pre> flips to light paper, so retune tokens to dark-on-light.
+     Keep copper keywords + grey italic comments for light structure; drop
+     the bright screen colors and diff bands that wouldn't read on paper. */
+  @media print {
+    pre .token { color: #1a1a1a; background: none; }
+    pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+      color: #6b6357; font-style: italic;
+    }
+    pre .token.keyword, pre .token.tag, pre .token.selector, pre .token.atrule,
+    pre .token.rule, pre .token.important, pre .token.instruction,
+    pre .token.for-or-select, pre .token.coord { color: #a85a1a; }
+    /* override the higher-specificity diff rules so paper diffs read as
+       dark text (the leading +/- still marks them); drop the warm bands. */
+    pre .token.inserted, pre .token.deleted,
+    pre[class*="language-diff"] .token.inserted,
+    pre[class*="language-diff"] .token.deleted { color: #1a1a1a; background: none; }
+  }
+  /* SYNTAX-HIGHLIGHT:css:end */
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — apply to first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption — for inline SVG, Mermaid, or images. */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Mermaid */
+  .mermaid { margin: 24px 0 32px; text-align: center; background: transparent; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom lightbox, dark-mode theme, and mobile fixes come from the shared
+     editorial bundle (the EDITORIAL-HEAD and EDITORIAL-BODY blocks below),
+     canonical in the Reading Room repo (assets/editorial/). Don't add
+     figure-zoom or theme CSS here — edit the partials and re-sync. */
+
+  /* Floating mini-map TOC. Shown only at viewport >= 1180px, where the
+     gutter outside the 880px content column is wide enough to hold it.
+     Mirror the main TOC entries — the mini-map is a persistent companion,
+     not an alternate navigation. Delete the <nav class="minimap"> block
+     in the body if you don't want it. */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  /* Progressive enhancement: on browsers that support scroll-driven
+     animations, the mini-map fades in once the user has scrolled past
+     the masthead. Browsers without support get the always-visible
+     version above. No JavaScript fallback is needed. */
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print. Break hygiene is per-block, not per-section — long-form
+     sections routinely exceed a page, and a section-level avoid rule
+     just shoves them to the next page leaving half-blank sheets. */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section > h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    pre, table, figure, .note, .tldr { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+<!-- TEMPLATE-CSS:end -->
+
+<!-- DOC-CSS:start — per-document style overrides. This region is carried
+     across `doc-tool.py retemplate`, so anything doc-specific belongs
+     HERE, not in TEMPLATE-CSS. Use the existing tokens (--copper,
+     --forest, --ink-*) rather than new colors; if you need more than a
+     handful of rules, the document probably wants a different style. -->
+<style>
+  /* (no per-doc overrides) */
+</style>
+<!-- DOC-CSS:end -->
+
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  /* The hint is a CSS pseudo-element, not a DOM node, so async renderers
+     (Mermaid rewrites its host's innerHTML) can't wipe it. */
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+<!-- PRINT-OVERRIDES:start -->
+<style>
+  /* Print fixes that must sit AFTER the editorial bundle to out-cascade
+     its dark-theme rules: a reader printing from the dark theme (the
+     data-theme attribute persists in localStorage) still gets ink on
+     paper. Keep this block below EDITORIAL-HEAD:end when re-syncing. */
+  @media print{
+    :root[data-theme="dark"]{
+      --bg:#ffffff; --bg-soft:#f5f1e6; --bg-code:#f5f5f5;
+      --ink:#000; --ink-soft:#3a3a36; --ink-mute:#6b6357;
+      --forest:#1f3a32; --forest-deep:#142822;
+      --copper:#a85a1a; --copper-soft:#c87a2f;
+      --rule:#c9bfa3; --rule-strong:#8a7e5e;
+    }
+    :root[data-theme="dark"] body{background:#fff;}
+    :root[data-theme="dark"] pre{background:#f5f5f5;}
+    :root[data-theme="dark"] figure svg,
+    :root[data-theme="dark"] .mermaid svg,
+    :root[data-theme="dark"] figure img{
+      background:none;border:none;border-radius:0;padding:0;}
+    /* Paper cannot scroll: a wrapper that scrolls on screen CLIPS on
+       paper, silently dropping whatever sits past the page edge. Narrow
+       print margins can also push the viewport under the 720px query
+       that turns tables into scroll containers. */
+    table{display:table;overflow:visible;max-width:100%;}
+    pre{overflow:visible;white-space:pre-wrap;}
+    figure.diagram svg{max-width:100%;height:auto;}
+    /* Folded notebook code (collapse-notebook.py): reveal it on paper — a
+       disclosure control the reader can't click is just lost content.
+       ::details-content is what actually works; overriding the children
+       directly does not reveal a closed <details>. */
+    details.nb-code::details-content{content-visibility:visible !important;}
+    details.nb-code>*:not(summary){display:block;}
+    details.nb-code>summary{display:none;}
+    details.nb-code{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+<!-- PRINT-OVERRIDES:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+<!-- CONTENT:start — everything the document actually says lives between
+     these two markers, and nothing else does. Keep it that way: it is
+     the only region `doc-tool.py retemplate` carries into a refreshed
+     template. -->
+  <header class="masthead">
+    <div class="eyebrow">Primer · AI/ML Learning Path</div>
+    <h1><a href="#" class="title-link">Classical ML <em>Vocabulary</em></a></h1>
+    <p class="lede">The vocabulary of pre-deep-learning machine learning—the models that still own most tabular-data problems, and the discipline vocabulary that makes papers, docs, and vendor decks readable. The Phase 2 counterpart to the LLM Discourse Primer: read once for grounding, annotate as Phase 2 makes each term concrete.</p>
+    <div class="meta">
+      <span><strong>Status</strong> · Reference</span>
+      <span><strong>Companion</strong> · <a href="statistics-for-engineers">Statistics for Engineers</a></span>
+      <span><strong>Updated</strong> · 2026-08-31</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#taxonomy">The taxonomy: what kind of learning</a></li>
+      <li><a href="#data">Data vocabulary</a></li>
+      <li><a href="#families">The model families</a></li>
+      <li><a href="#discipline">The discipline</a></li>
+      <li><a href="#metrics">The metric zoo</a></li>
+      <li><a href="#claims">Reading an ML claim</a></li>
+      <li><a href="#index">Term index</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#taxonomy">The taxonomy</a></li>
+      <li><a href="#data">Data vocabulary</a></li>
+      <li><a href="#families">Model families</a></li>
+      <li><a href="#discipline">The discipline</a></li>
+      <li><a href="#metrics">The metric zoo</a></li>
+      <li><a href="#claims">Reading an ML claim</a></li>
+      <li><a href="#index">Term index</a></li>
+    </ol>
+  </nav>
+
+  <section id="taxonomy">
+    <h2><a href="#taxonomy" class="heading-link"><span class="num">§ 01</span>The taxonomy: what kind of learning</a></h2>
+    <p class="lead-para">Three families, distinguished by what the training data looks like. Nearly every method you'll meet in Phase 2—and most of what vendors are selling—sits cleanly in one of them, so the taxonomy is the first thing that makes the field's sprawl navigable.</p>
+
+    <p><strong>Supervised learning:</strong> the data comes with answers. Each example is a set of inputs plus the correct output—a house and its sale price, a transaction and whether it was fraud. The model learns the mapping. This is most of applied ML, and it splits into <strong>regression</strong> (predict a number) and <strong>classification</strong> (predict a category).</p>
+    <p><strong>Unsupervised learning:</strong> data without answers. The model finds structure on its own—groups of similar customers, points that don't look like the others. Clustering and anomaly detection live here. Harder to evaluate, because there's no &ldquo;correct&rdquo; to compare against.</p>
+    <p><strong>Reinforcement learning:</strong> no dataset at all—an agent acts, gets rewards, and learns a policy. Mostly outside this path's scope, except that a variant of it reappears in LLM post-training (RLHF, reasoning-model training).</p>
+
+    <p class="tldr">Problem-shape intuition: &ldquo;predict this column from those columns&rdquo; is supervised. &ldquo;Tell me what's interesting in here&rdquo; is unsupervised. &ldquo;Learn to play the game&rdquo; is reinforcement.</p>
+  </section>
+
+  <section id="data">
+    <h2><a href="#data" class="heading-link"><span class="num">§ 02</span>Data vocabulary</a></h2>
+    <p><strong>Features</strong> are the input columns—what the model gets to look at. In <code>predict churn from tenure, plan, and support tickets</code>, those three are features. The <strong>label</strong> (or <strong>target</strong>) is the output column—the thing being predicted. Supervised learning is exactly &ldquo;features in, label out.&rdquo;</p>
+    <p><strong>Tabular data</strong> is rows and columns, the spreadsheet/SQL shape. Worth naming because it's the territory classical ML still owns; deep learning's wins came first in unstructured data (images, audio, text).</p>
+    <p><strong>Feature engineering</strong> is constructing better features from raw ones—day-of-week from a timestamp, ratios, rolling averages. In classical ML this is where much of the real work and domain knowledge goes; deep learning's pitch was partly &ldquo;the network learns the features itself.&rdquo;</p>
+    <p><strong>Dimensionality</strong> is the number of features. High-dimensional data (thousands of features, few examples) breaks geometric intuition and invites overfitting—the &ldquo;curse of dimensionality&rdquo; is that everything becomes far apart and sparse.</p>
+  </section>
+
+  <section id="families">
+    <h2><a href="#families" class="heading-link"><span class="num">§ 03</span>The model families</a></h2>
+    <p>One paragraph each—what it is, and when it wins.</p>
+
+    <h3>Linear regression</h3>
+    <p>Fit a weighted sum of the features to predict a number: <code>price ≈ w₁·sqft + w₂·age + b</code>. The weights are directly readable—&ldquo;each square foot adds $w₁, all else equal&rdquo;—which makes it the interpretability benchmark everything else is compared against. Wins when relationships are roughly linear, when you need to explain the model to a regulator, or as the baseline you must beat to justify anything fancier.</p>
+
+    <h3>Logistic regression</h3>
+    <p>Despite the name, a <em>classifier</em>—the naming trap is that &ldquo;regression&rdquo; here is historical. It's linear regression pushed through a squashing function so the output is a probability between 0 and 1: &ldquo;73% likely to churn.&rdquo; Still linear at heart, still interpretable, and a shockingly strong baseline for most classification problems. If a deep model can't beat logistic regression on your tabular problem, use logistic regression.</p>
+
+    <h3>Decision trees</h3>
+    <p>A learned flowchart: if <code>tenure &lt; 6 months</code>, go left; if <code>support_tickets &gt; 3</code>, predict churn. Trivially interpretable, handles non-linear relationships and mixed feature types without preprocessing—and overfits catastrophically if grown deep, memorizing the training data branch by branch. Almost never used alone; used in bulk (next two entries).</p>
+
+    <h3>Random forests</h3>
+    <p>Train hundreds of trees, each on a random subset of the data and features, and average their votes. The randomness makes the trees' errors uncorrelated, so averaging cancels them—an <strong>ensemble</strong>. Nearly tuning-free, hard to overfit badly, and a robust default for tabular problems: the &ldquo;just try a random forest first&rdquo; advice is common because it's good.</p>
+
+    <h3>Gradient boosting</h3>
+    <p>Also many trees, but built <em>sequentially</em>—each new tree trained to correct the errors of the ensemble so far. More knobs than a forest, more prone to overfitting if pushed, and, tuned well, the strongest thing on tabular data. This is XGBoost, LightGBM, CatBoost—the family that wins tabular Kaggle competitions and quietly powers a large share of production ML.</p>
+    <div class="note">
+      <span class="note-label">Why not neural nets here</span>
+      <p>Tabular data still belongs to boosted trees rather than deep learning: tabular features are already meaningful (no representation to learn), datasets are often small by deep-learning standards, and trees natively handle the sharp thresholds and interactions tabular data is full of.</p>
+    </div>
+
+    <h3>k-means</h3>
+    <p>The workhorse clusterer: pick k, and the algorithm partitions points into k groups around k centers, alternately assigning points to the nearest center and moving centers to their group's mean. Fast, simple, and its two famous weaknesses are that you must choose k yourself and it assumes clusters are roughly round blobs.</p>
+
+    <h3>Isolation forests</h3>
+    <p>Anomaly detection by a clever inversion: build random trees that split the data arbitrarily, and measure how quickly each point gets isolated in its own leaf. Outliers isolate in a few splits; normal points, buried in dense regions, take many. No labels needed, which matters because anomalies are precisely what you don't have labeled examples of. The natural tool for &ldquo;flag the weird meter readings.&rdquo;</p>
+
+    <h3>Honorable mentions</h3>
+    <p><strong>kNN</strong> (predict from the k nearest examples—no training, all lookup), <strong>SVMs</strong> (find the maximally separating boundary; pre-boosting champions, now niche), <strong>naive Bayes</strong> (count-based probabilities under a feature-independence assumption; the classic spam filter), <strong>PCA</strong> (unsupervised dimensionality reduction—recast the features as fewer, decorrelated ones). You'll meet these in docs and papers more often than you'll reach for them.</p>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="discipline">
+    <h2><a href="#discipline" class="heading-link"><span class="num">§ 04</span>The discipline</a></h2>
+    <p>The vocabulary of <em>not fooling yourself</em>—the section that makes you dangerous in a review meeting.</p>
+
+    <h3>Train / validation / test splits</h3>
+    <p>The model learns on the <strong>training set</strong>. You tune knobs by checking the <strong>validation set</strong>. The <strong>test set</strong> is opened once, at the end, to estimate real-world performance. The moment you make a decision based on test-set results, it has silently become a validation set and its number is no longer honest.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 880 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-split-title fig-split-desc">
+        <title id="fig-split-title">Train / validation / test split, and the direction leakage flows</title>
+        <desc id="fig-split-desc">A horizontal bar divided into train, validation, and test segments, each annotated with the question it answers. A dashed copper arrow curves backward from the test segment to the training segment, labeled leakage.</desc>
+        <defs>
+          <marker id="leak-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--copper)"/>
+          </marker>
+        </defs>
+        <!-- leakage arc -->
+        <path d="M744,96 C700,30 380,30 290,88" fill="none" stroke="var(--copper)" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#leak-arrow)"/>
+        <text x="515" y="38" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">leakage — information flowing backward</text>
+        <!-- bar -->
+        <rect x="60" y="100" width="456" height="42" fill="var(--forest)" opacity="0.85"/>
+        <rect x="516" y="100" width="152" height="42" fill="var(--forest)" opacity="0.45"/>
+        <rect x="668" y="100" width="152" height="42" fill="var(--forest)" opacity="0.16"/>
+        <rect x="60" y="100" width="760" height="42" fill="none" stroke="var(--forest)" stroke-width="1.5"/>
+        <line x1="516" y1="100" x2="516" y2="142" stroke="var(--bg)" stroke-width="2"/>
+        <line x1="668" y1="100" x2="668" y2="142" stroke="var(--bg)" stroke-width="2"/>
+        <!-- labels -->
+        <g font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)" text-anchor="middle">
+          <text x="288" y="166">train</text>
+          <text x="288" y="184" fill="var(--ink-mute)">fit the model</text>
+          <text x="592" y="166">validation</text>
+          <text x="592" y="184" fill="var(--ink-mute)">tune choices</text>
+          <text x="744" y="166">test</text>
+          <text x="744" y="184" fill="var(--ink-mute)">touch once, at the end</text>
+        </g>
+      </svg>
+      <figcaption>Three splits, three questions—and one direction information must never flow. Anything that lets the training side "see" validation or test data (a feature computed on the full dataset, a decision made off the test score) is leakage, and the test number stops being honest.</figcaption>
+    </figure>
+
+    <h3>Cross-validation</h3>
+    <p>When data is scarce, rotate the split: train on 4/5 of the data, validate on the remaining fifth, repeat five times with a different fifth held out, average. More reliable than a single split, at 5× the training cost.</p>
+
+    <h3>Overfitting, underfitting, bias–variance</h3>
+    <p><strong>Overfitting:</strong> the model memorized the training data's noise and quirks—great training score, poor on anything new. <strong>Underfitting:</strong> the model is too simple to capture the real pattern—poor everywhere. The diagnostic is the gap: high train score with a much lower validation score means overfit.</p>
+    <p><strong>Bias–variance</strong> is the formal frame for that tradeoff. Bias is error from being too rigid (a linear model on a curved pattern); variance is error from being too flexible (a deep tree that changes wildly with each new sample). Model complexity trades one for the other; the game is finding the sweet spot for your data size.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-overfit-title fig-overfit-desc">
+        <title id="fig-overfit-title">Training vs. validation error as model complexity grows</title>
+        <desc id="fig-overfit-desc">Two curves over model complexity. Training error falls continuously. Validation error falls, reaches a minimum marked in copper with the label stop here, then rises again. The left region is labeled underfit, the right overfit, and the widening gap between the curves on the right is bracketed and labeled.</desc>
+        <!-- axes -->
+        <line x1="90" y1="250" x2="830" y2="250" stroke="var(--rule)" stroke-width="1"/>
+        <line x1="90" y1="250" x2="90" y2="40" stroke="var(--rule)" stroke-width="1"/>
+        <text x="830" y="272" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">model complexity →</text>
+        <text x="84" y="52" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">error</text>
+        <!-- curves -->
+        <path d="M110,95 C260,168 350,160 445,152 C580,146 700,92 810,52" fill="none" stroke="var(--forest)" stroke-width="2.5"/>
+        <path d="M110,82 C300,185 520,222 810,238" fill="none" stroke="var(--ink-soft)" stroke-width="1.8"/>
+        <text x="655" y="76" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--forest)">validation error</text>
+        <text x="640" y="216" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">training error</text>
+        <!-- stop-here marker -->
+        <line x1="445" y1="250" x2="445" y2="152" stroke="var(--copper)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <circle cx="445" cy="152" r="5" fill="var(--copper)"/>
+        <text x="445" y="132" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">stop here — validation minimum</text>
+        <!-- gap bracket -->
+        <path d="M778,62 h12 v166 h-12" fill="none" stroke="var(--ink-soft)" stroke-width="1.2"/>
+        <text x="800" y="150" font-family="'JetBrains Mono', monospace" font-size="11" fill="var(--ink-soft)" transform="rotate(90 800 150)" text-anchor="middle">the gap = overfit</text>
+        <!-- zones -->
+        <g font-family="'JetBrains Mono', monospace" font-size="12" letter-spacing="2" fill="var(--ink-mute)" text-anchor="middle">
+          <text x="205" y="286">UNDERFIT</text>
+          <text x="690" y="286">OVERFIT</text>
+        </g>
+      </svg>
+      <figcaption>The diagnostic in one picture: training error always improves with complexity, so it can't tell you when to stop—validation error can. Left of the minimum both scores are poor (too rigid); right of it the widening gap between the curves is the model memorizing noise.</figcaption>
+    </figure>
+
+    <h3>Leakage</h3>
+    <p>Information about the answer sneaking into the features—the most common way ML projects produce fake results. The sneaky version is temporal: predicting customer churn using a feature like <code>days_since_last_login</code> computed <em>after</em> the churn happened, or normalizing the whole dataset before splitting so the training set has statistically &ldquo;seen&rdquo; the test set.</p>
+    <div class="note caveat">
+      <span class="note-label">Caveat · The production collapse</span>
+      <p>Leaky models score brilliantly in development and collapse in production, because production doesn't have the leaked future. When a result looks too good, hunt for leakage before celebrating.</p>
+    </div>
+
+    <h3>Regularization and hyperparameters</h3>
+    <p><strong>Regularization</strong> penalizes complexity during training to curb overfitting—<strong>L2/ridge</strong> shrinks all weights smoothly; <strong>L1/lasso</strong> drives some to exactly zero, doubling as feature selection. The knob that turns the bias–variance dial directly; the <code>C</code> or <code>alpha</code> parameter you'll see everywhere in scikit-learn is this.</p>
+    <p>Parameters the model <em>learns</em> (weights, splits); <strong>hyperparameters</strong> <em>you choose</em> (tree depth, k, regularization strength). Tuning is a search—grid or random—scored by cross-validation, and the validation set exists precisely so this search doesn't burn the test set.</p>
+
+    <h3>Baselines</h3>
+    <p>The dumb model you must beat: predict the mean, predict the majority class, predict &ldquo;same as yesterday.&rdquo; A 94%-accurate model is impressive until you learn that always guessing &ldquo;no fraud&rdquo; scores 99%. Always demand the baseline number next to the model's number; the gap between them is the model's actual contribution.</p>
+  </section>
+
+  <section id="metrics">
+    <h2><a href="#metrics" class="heading-link"><span class="num">§ 05</span>The metric zoo</a></h2>
+    <p><strong>Why accuracy fails.</strong> Accuracy—fraction of predictions that were right—is the intuitive metric and the misleading one, because it hides <em>which</em> errors happen. On imbalanced data (fraud at 1%, rare-disease screening) a model that never fires scores 99%. Every metric below exists to see what accuracy hides.</p>
+
+    <h3>The confusion matrix</h3>
+    <p>The 2×2 table underneath everything: predictions vs. reality. Every classification metric is an arithmetic view of these four cells.</p>
+    <table>
+      <thead><tr><th></th><th>Actually positive</th><th>Actually negative</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Predicted positive</strong></td><td>True positive</td><td>False positive (false alarm)</td></tr>
+        <tr><td><strong>Predicted negative</strong></td><td>False negative (miss)</td><td>True negative</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Precision and recall—two different questions</h3>
+    <p><strong>Precision:</strong> of the things the model flagged, how many were real? The false-alarm question. Low precision = alert fatigue. <strong>Recall:</strong> of the real things out there, how many did the model catch? The miss question. Low recall = silent failures.</p>
+    <p>They trade off against each other through the decision threshold: flag more aggressively and recall rises while precision falls. Which one matters more is a <em>product</em> decision, not an ML one—a leak-detection alert that pages a human wants high precision; a safety screen wants high recall. Asking &ldquo;precision or recall?&rdquo; when someone reports a single number is the reviewer move.</p>
+
+    <h3>The rest of the zoo</h3>
+    <p><strong>F1</strong> is the harmonic mean of precision and recall—a single number when you must have one, at the cost of hiding the tradeoff you probably care about.</p>
+    <p><strong>ROC/AUC</strong>, honestly: a curve tracing the tradeoff across every possible threshold, and the area under it—a threshold-independent summary of ranking quality, where 0.5 is coin-flipping and 1.0 is perfect. Useful for comparing models; routinely flattering on imbalanced data (precision-recall curves are the skeptic's alternative). It measures whether the model <em>ranks</em> positives above negatives, not whether its deployed threshold makes good decisions.</p>
+    <p><strong>Regression metrics:</strong> <strong>MAE</strong> (mean absolute error)—average miss, in the target's own units, robust to outliers. <strong>RMSE</strong> (root mean squared error)—similar but squares errors first, so large misses dominate; the one to watch when big errors are disproportionately costly. RMSE ≥ MAE always; a wide gap means the errors include some whoppers.</p>
+    <div class="note">
+      <span class="note-label">The base-rate connection</span>
+      <p>Precision and recall are conditional probabilities, and their behavior under rare events is the base-rate math in <a href="statistics-for-engineers">Statistics for Engineers</a>—a 99%-accurate detector of a 1-in-1000 event is mostly wrong when it fires. That single idea, transplanted into metric form, is most of what goes wrong in anomaly-detection products.</p>
+    </div>
+  </section>
+
+  <section id="claims">
+    <h2><a href="#claims" class="heading-link"><span class="num">§ 06</span>Reading an ML claim</a></h2>
+    <p>The skeptic's checklist, for papers, vendor decks, and your own team's demos alike:</p>
+    <ul>
+      <li><strong>What's the baseline?</strong> No baseline, no claim. &ldquo;94% accurate&rdquo; means nothing without &ldquo;and always-predict-no scores 99%.&rdquo;</li>
+      <li><strong>How was it validated?</strong> A single train/test split, or cross-validation? Was the test set used once, or repeatedly (and thus burned)? For time-series: was the split chronological? Random splits on temporal data are leakage by construction—the model trains on the future.</li>
+      <li><strong>What's the class balance?</strong> Imbalance determines which metrics are honest. Accuracy on a 99/1 problem is a red flag by itself.</li>
+      <li><strong>Where could leakage hide?</strong> Features computed after the outcome, preprocessing fit on the full dataset, duplicate rows straddling the split, IDs that encode the answer.</li>
+      <li><strong>Precision or recall—and who chose the threshold?</strong> A single headline number hides the tradeoff and the product decision embedded in it.</li>
+      <li><strong>Would plain code do?</strong> The question from Phase 5, worth carrying everywhere: many an &ldquo;ML system&rdquo; is a threshold and a lookup table wearing a costume.</li>
+    </ul>
+  </section>
+
+  <section id="index">
+    <h2><a href="#index" class="heading-link"><span class="num">§ 07</span>Term index</a></h2>
+    <p>supervised/unsupervised <a href="#taxonomy">§1</a> · regression vs. classification <a href="#taxonomy">§1</a> · reinforcement learning <a href="#taxonomy">§1</a> · features/label <a href="#data">§2</a> · tabular data <a href="#data">§2</a> · feature engineering <a href="#data">§2</a> · dimensionality <a href="#data">§2</a> · linear regression <a href="#families">§3</a> · logistic regression <a href="#families">§3</a> · decision trees <a href="#families">§3</a> · random forests <a href="#families">§3</a> · gradient boosting/XGBoost <a href="#families">§3</a> · k-means <a href="#families">§3</a> · isolation forests <a href="#families">§3</a> · kNN/SVM/naive Bayes/PCA <a href="#families">§3</a> · train/validation/test <a href="#discipline">§4</a> · cross-validation <a href="#discipline">§4</a> · overfitting/underfitting <a href="#discipline">§4</a> · bias–variance <a href="#discipline">§4</a> · leakage <a href="#discipline">§4</a> · regularization/L1/L2 <a href="#discipline">§4</a> · hyperparameters <a href="#discipline">§4</a> · baselines <a href="#discipline">§4</a> · accuracy <a href="#metrics">§5</a> · confusion matrix <a href="#metrics">§5</a> · precision/recall <a href="#metrics">§5</a> · F1 <a href="#metrics">§5</a> · ROC/AUC <a href="#metrics">§5</a> · MAE/RMSE <a href="#metrics">§5</a></p>
+  </section>
+
+  <footer>
+    <span>classical-ml-vocabulary</span>
+    <span>AI/ML Learning Path · Reference</span>
+    <span>2026·08·31</span>
+  </footer>
+<!-- CONTENT:end -->
+</div>
+
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

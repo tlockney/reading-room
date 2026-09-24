@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<!--
+  Long-form editorial reference doc template.
+  Drop-in starting point for the editorial-print aesthetic.
+
+  REGIONS. The file is split into marked regions — <!== NAME:start ==> …
+  <!== NAME:end ==> (written with = here only because this outer comment
+  can't nest; in the file they are ordinary HTML comments). Exactly three
+  regions belong to the DOCUMENT:
+
+      DOC-TITLE   the <title> line
+      DOC-CSS     per-doc style overrides (empty by default)
+      CONTENT     the entire authored body
+
+  Everything else — FONTS, MERMAID, TEMPLATE-CSS, SYNTAX-HIGHLIGHT,
+  EDITORIAL-HEAD, EDITORIAL-BODY, PRINT-OVERRIDES — is TEMPLATE CHROME.
+  Don't hand-edit chrome in a finished doc, and never put document
+  content outside CONTENT. That split is what lets
+  `assets/doc-tool.py retemplate <doc.html>` re-apply an updated
+  template to an existing document, and `doc-tool.py fonts embed|link
+  <doc.html>` swap the font strategy in one command.
+
+  Search-and-replace TODO markers before publishing. Components that are
+  always present: masthead, TOC, sections, footer. Components that are
+  optional (delete if not needed): Mermaid script block, the syntax-
+  highlight pair (SYNTAX-HIGHLIGHT:css in <head> + SYNTAX-HIGHLIGHT:js
+  before </body> — delete BOTH if the doc has no code samples), series-nav,
+  restricted banner, figure.diagram. The floating mini-map is included
+  by default; remove the <nav class="minimap"> block if you don't want
+  it (its CSS is harmless when no markup uses it). The shared editorial
+  bundle (EDITORIAL-HEAD before the head close, EDITORIAL-BODY before the
+  body close) adds click-to-zoom for figures, a light/dark theme toggle,
+  and mobile overflow fixes; it is canonical in the Reading Room repo and
+  inlined here. Both scripts are no-ops when unused. Aside from the
+  editorial bundle, syntax highlighting (inlined Prism), and the optional
+  Mermaid import, this style is static HTML/CSS — all three scripted pieces
+  are readability aids, self-contained, and no-ops when unused.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DOC-TITLE:start --><title>AI/ML Learning Path · Guide</title>
+<!-- DOC-TITLE:end -->
+<!-- FONTS:start — swap this whole region with:
+       assets/doc-tool.py fonts embed <doc.html>   (artifact / CSP-safe)
+       assets/doc-tool.py fonts link  <doc.html>   (back to the default)
+     FONTS-LINK is the default loading path: works off the network
+     (browser, off-disk, email). Under the Claude Code ARTIFACT CSP the
+     link is blocked and the page silently falls back to default
+     serif/mono — gutting the look, since the typefaces are the
+     aesthetic. The embed form inlines assets/fonts-embedded.css instead.
+     The two are mutually exclusive — never ship both. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- FONTS:end -->
+
+
+<!-- TEMPLATE-CSS:start — the design. Chrome: don't edit per-doc.
+     Per-doc overrides go in the DOC-CSS region further down. -->
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;        /* 820 for how-tos */
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Restricted / internal-only banner — OPTIONAL, delete if not needed.
+     Sits above the masthead. Small copper-outlined chip; makes it
+     immediately obvious if the doc surfaces somewhere it shouldn't. */
+  .restricted-banner {
+    margin: 0 0 20px;
+    padding: 10px 16px;
+    background: rgba(168, 90, 26, 0.08);
+    border: 1px solid var(--copper);
+    border-radius: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    text-align: center;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  /* Self-link on the document title — clicking resets the URL hash so the
+     canonical document URL appears in the address bar (no section anchor). */
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* Series-nav — OPTIONAL, for multi-part document sets.
+     Sits between the masthead and the TOC. Mark the current part with
+     class="current". Delete if this is a standalone document. */
+  .series-nav {
+    margin: 0 0 56px;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--forest);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .series-nav .series-label {
+    display: block;
+    color: var(--forest);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: 0.22em;
+  }
+  .series-nav ol { list-style: none; padding: 0; margin: 0; }
+  .series-nav li { margin: 4px 0; font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.1em; }
+  .series-nav li a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  .series-nav li a:hover { border-bottom-color: var(--copper); }
+  .series-nav li.current { color: var(--ink); font-weight: 600; }
+  .series-nav li.current::before { content: "▸ "; color: var(--copper); }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;            /* drop to 1 for how-tos / short docs */
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* For how-to / step-based docs, swap the ::before content above for: */
+  /* content: "STEP / " counter(toc, decimal-leading-zero); */
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Self-anchoring section headings. Wrap each section h2's contents in
+     an <a href="#section-id" class="heading-link"> so a click sets the URL
+     hash and the section URL can be copied from the address bar. */
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* SYNTAX-HIGHLIGHT:css:start — editorial Prism theme (warm palette).
+     Pairs with the inlined Prism bundle in the SYNTAX-HIGHLIGHT:js block
+     before </body>. Token colors stay in the warm editorial ramp — copper
+     for control/keywords, gold/olive/sand/tan for the rest, khaki for
+     comments. No cool hues. The <pre> surface is dark in BOTH light and
+     dark themes, so one token palette reads correctly in both. Rules are
+     scoped to <pre> so inline <code> is never tinted. Harmless when no code
+     blocks are present. To drop highlighting entirely, delete this CSS
+     block AND the SYNTAX-HIGHLIGHT:js script block before </body>. */
+  pre[class*="language-"], code[class*="language-"] {
+    font-family: "JetBrains Mono", monospace;
+    text-shadow: none;          /* kill stock Prism-theme glow */
+    tab-size: 2; hyphens: none;
+  }
+  pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+    color: #968b6c; font-style: italic;          /* khaki — recede */
+  }
+  pre .token.punctuation, pre .token.template-punctuation { color: #b8ac8a; }
+  pre .token.namespace { opacity: 0.8; }
+  /* copper — control words & "look here" */
+  pre .token.keyword, pre .token.tag, pre .token.selector,
+  pre .token.atrule, pre .token.rule, pre .token.important,
+  pre .token.instruction, pre .token.for-or-select, pre .token.coord {
+    color: #d98a44; font-weight: 600;
+  }
+  /* amber-tan — operators & links */
+  pre .token.operator, pre .token.entity, pre .token.combinator,
+  pre .token.url, pre .token.atrule .token.url { color: #c9a06a; }
+  /* gold — numeric & identity literals, function names */
+  pre .token.number, pre .token.boolean, pre .token.constant,
+  pre .token.symbol, pre .token.function, pre .token.function-definition,
+  pre .token.macro { color: #e3b25e; }
+  /* olive — string-like text */
+  pre .token.string, pre .token.char, pre .token.attr-value,
+  pre .token.regex, pre .token.template-string, pre .token.string-property {
+    color: #a9b87f;
+  }
+  /* sand/tan — types, keys, properties, builtins */
+  pre .token.class-name, pre .token.builtin, pre .token.type,
+  pre .token.key, pre .token.property, pre .token.attr-name,
+  pre .token.title, pre .token.namespace { color: #cdb58a; }
+  /* light tan — variables & parameters */
+  pre .token.variable, pre .token.parameter, pre .token.property-access {
+    color: #d9c9a8;
+  }
+  pre .token.bold { font-weight: 600; }
+  pre .token.italic { font-style: italic; }
+  /* diff — warm bands; scoped to the diff language so markdown ins/del stay inline */
+  pre[class*="language-diff"] .token.inserted {
+    color: #a9b87f; background: rgba(169,184,127,0.10); display: block;
+  }
+  pre[class*="language-diff"] .token.deleted {
+    color: #cf8a5a; background: rgba(207,138,90,0.11); display: block;
+  }
+  pre .token.inserted { color: #a9b87f; }
+  pre .token.deleted { color: #cf8a5a; }
+  /* Print: <pre> flips to light paper, so retune tokens to dark-on-light.
+     Keep copper keywords + grey italic comments for light structure; drop
+     the bright screen colors and diff bands that wouldn't read on paper. */
+  @media print {
+    pre .token { color: #1a1a1a; background: none; }
+    pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+      color: #6b6357; font-style: italic;
+    }
+    pre .token.keyword, pre .token.tag, pre .token.selector, pre .token.atrule,
+    pre .token.rule, pre .token.important, pre .token.instruction,
+    pre .token.for-or-select, pre .token.coord { color: #a85a1a; }
+    /* override the higher-specificity diff rules so paper diffs read as
+       dark text (the leading +/- still marks them); drop the warm bands. */
+    pre .token.inserted, pre .token.deleted,
+    pre[class*="language-diff"] .token.inserted,
+    pre[class*="language-diff"] .token.deleted { color: #1a1a1a; background: none; }
+  }
+  /* SYNTAX-HIGHLIGHT:css:end */
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — apply to first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption — for inline SVG, Mermaid, or images. */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Mermaid */
+  .mermaid { margin: 24px 0 32px; text-align: center; background: transparent; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom lightbox, dark-mode theme, and mobile fixes come from the shared
+     editorial bundle (the EDITORIAL-HEAD and EDITORIAL-BODY blocks below),
+     canonical in the Reading Room repo (assets/editorial/). Don't add
+     figure-zoom or theme CSS here — edit the partials and re-sync. */
+
+  /* Floating mini-map TOC. Shown only at viewport >= 1180px, where the
+     gutter outside the 880px content column is wide enough to hold it.
+     Mirror the main TOC entries — the mini-map is a persistent companion,
+     not an alternate navigation. Delete the <nav class="minimap"> block
+     in the body if you don't want it. */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  /* Progressive enhancement: on browsers that support scroll-driven
+     animations, the mini-map fades in once the user has scrolled past
+     the masthead. Browsers without support get the always-visible
+     version above. No JavaScript fallback is needed. */
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print. Break hygiene is per-block, not per-section — long-form
+     sections routinely exceed a page, and a section-level avoid rule
+     just shoves them to the next page leaving half-blank sheets. */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section > h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    pre, table, figure, .note, .tldr { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+<!-- TEMPLATE-CSS:end -->
+
+<!-- DOC-CSS:start — per-document style overrides. This region is carried
+     across `doc-tool.py retemplate`, so anything doc-specific belongs
+     HERE, not in TEMPLATE-CSS. Use the existing tokens (--copper,
+     --forest, --ink-*) rather than new colors; if you need more than a
+     handful of rules, the document probably wants a different style. -->
+<style>
+  /* (no per-doc overrides) */
+</style>
+<!-- DOC-CSS:end -->
+
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  /* The hint is a CSS pseudo-element, not a DOM node, so async renderers
+     (Mermaid rewrites its host's innerHTML) can't wipe it. */
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+<!-- PRINT-OVERRIDES:start -->
+<style>
+  /* Print fixes that must sit AFTER the editorial bundle to out-cascade
+     its dark-theme rules: a reader printing from the dark theme (the
+     data-theme attribute persists in localStorage) still gets ink on
+     paper. Keep this block below EDITORIAL-HEAD:end when re-syncing. */
+  @media print{
+    :root[data-theme="dark"]{
+      --bg:#ffffff; --bg-soft:#f5f1e6; --bg-code:#f5f5f5;
+      --ink:#000; --ink-soft:#3a3a36; --ink-mute:#6b6357;
+      --forest:#1f3a32; --forest-deep:#142822;
+      --copper:#a85a1a; --copper-soft:#c87a2f;
+      --rule:#c9bfa3; --rule-strong:#8a7e5e;
+    }
+    :root[data-theme="dark"] body{background:#fff;}
+    :root[data-theme="dark"] pre{background:#f5f5f5;}
+    :root[data-theme="dark"] figure svg,
+    :root[data-theme="dark"] .mermaid svg,
+    :root[data-theme="dark"] figure img{
+      background:none;border:none;border-radius:0;padding:0;}
+    /* Paper cannot scroll: a wrapper that scrolls on screen CLIPS on
+       paper, silently dropping whatever sits past the page edge. Narrow
+       print margins can also push the viewport under the 720px query
+       that turns tables into scroll containers. */
+    table{display:table;overflow:visible;max-width:100%;}
+    pre{overflow:visible;white-space:pre-wrap;}
+    figure.diagram svg{max-width:100%;height:auto;}
+    /* Folded notebook code (collapse-notebook.py): reveal it on paper — a
+       disclosure control the reader can't click is just lost content.
+       ::details-content is what actually works; overriding the children
+       directly does not reveal a closed <details>. */
+    details.nb-code::details-content{content-visibility:visible !important;}
+    details.nb-code>*:not(summary){display:block;}
+    details.nb-code>summary{display:none;}
+    details.nb-code{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+<!-- PRINT-OVERRIDES:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+<!-- CONTENT:start — everything the document actually says lives between
+     these two markers, and nothing else does. Keep it that way: it is
+     the only region `doc-tool.py retemplate` carries into a refreshed
+     template. -->
+  <header class="masthead">
+    <div class="eyebrow">Guide · AI/ML Learning Path</div>
+    <h1><a href="#" class="title-link">The AI/ML <em>Learning</em> Path</a></h1>
+    <p class="lede">A self-directed path to hands-on AI/ML competency—able to build, evaluate, and make architecture calls, not a researcher. Six phases, artifact-based progression, no calendar. This is the reading copy; the working notes—progress, glossary, per-unit notes—live in the Obsidian vault.</p>
+    <div class="meta">
+      <span><strong>Status</strong> · Active — Phase 0</span>
+      <span><strong>Owner</strong> · Thomas</span>
+      <span><strong>Updated</strong> · 2026·08·31</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#principles">Design principles</a></li>
+      <li><a href="#phases">The phases at a glance</a></li>
+      <li><a href="#working">Working the path</a></li>
+      <li><a href="#phase-0">Phase 0 — Orientation Map</a></li>
+      <li><a href="#phase-1">Phase 1 — Use Models Seriously</a></li>
+      <li><a href="#phase-2">Phase 2 — Classical ML Fundamentals</a></li>
+      <li><a href="#phase-3">Phase 3 — Neural Nets from Scratch</a></li>
+      <li><a href="#phase-4">Phase 4 — LLM Internals and Evaluation</a></li>
+      <li><a href="#phase-5">Phase 5 — Production Judgment</a></li>
+      <li><a href="#shelf">The reference shelf</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#principles">Principles</a></li>
+      <li><a href="#phases">At a glance</a></li>
+      <li><a href="#working">Working the path</a></li>
+      <li><a href="#phase-0">Phase 0</a></li>
+      <li><a href="#phase-1">Phase 1</a></li>
+      <li><a href="#phase-2">Phase 2</a></li>
+      <li><a href="#phase-3">Phase 3</a></li>
+      <li><a href="#phase-4">Phase 4</a></li>
+      <li><a href="#phase-5">Phase 5</a></li>
+      <li><a href="#shelf">Reference shelf</a></li>
+    </ol>
+  </nav>
+
+  <section id="principles">
+    <h2><a href="#principles" class="heading-link"><span class="num">§ 01</span>Design principles</a></h2>
+    <p class="lead-para">This is a long-deferred dive, finally taken, and preparation for the next years of technology and product leadership wherever that happens. Metron provides useful grounding and real data along the way, but the capability being built is portable: it should serve the current role, the advisory practice, and whatever comes after equally well. Four principles shape everything below.</p>
+    <ol>
+      <li><strong>Top-down, build-first.</strong> Use a thing, then peel back layers to understand it. Every phase produces a working artifact before it explains the math underneath.</li>
+      <li><strong>Just-in-time math.</strong> No prerequisite courses. Each phase has a math sidebar naming the 2–4 concepts it actually needs, with a targeted resource. Reactivation, not instruction from zero.</li>
+      <li><strong>One thread, small closed loops.</strong> One active phase at a time. Each unit fits a 60–90 minute session and ends with something runnable or a note written. Writing the note <em>is</em> the comprehension check.</li>
+      <li><strong>No calendar.</strong> Progression is artifact-based. You're "at" whatever the last committed artifact says. Gaps cost nothing.</li>
+    </ol>
+  </section>
+
+  <section id="phases">
+    <h2><a href="#phases" class="heading-link"><span class="num">§ 02</span>The phases at a glance</a></h2>
+    <table>
+      <thead><tr><th>Phase</th><th>Focus</th><th>Stack</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td><a href="#phase-0">0 — Orientation Map</a></td><td>Mental model of the field</td><td>Notes only</td><td>Detailed</td></tr>
+        <tr><td><a href="#phase-1">1 — Use Models Seriously</a></td><td>APIs, embeddings, RAG</td><td>TypeScript/Deno</td><td>Detailed</td></tr>
+        <tr><td><a href="#phase-2">2 — Classical ML Fundamentals</a></td><td>Regression, trees, clustering</td><td>Python</td><td>Skeleton</td></tr>
+        <tr><td><a href="#phase-3">3 — Neural Nets from Scratch</a></td><td>Backprop, training loops</td><td>Python/PyTorch</td><td>Skeleton</td></tr>
+        <tr><td><a href="#phase-4">4 — LLM Internals and Evaluation</a></td><td>Tokens, attention, evals</td><td>Mixed</td><td>Skeleton</td></tr>
+        <tr><td><a href="#phase-5">5 — Production Judgment</a></td><td>Cost, failure modes, architecture</td><td>Memo + review</td><td>Skeleton</td></tr>
+      </tbody>
+    </table>
+    <figure class="diagram">
+      <svg viewBox="0 0 880 272" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-stair-title fig-stair-desc" font-family="JetBrains Mono, ui-monospace, monospace">
+        <title id="fig-stair-title">The six phases as an ascending staircase</title>
+        <desc id="fig-stair-desc">Six steps rising left to right: Phase 0 (notes) and Phase 1 (TypeScript/Deno) under the band "use models"; Phase 2 (Python) and Phase 3 (PyTorch) under "understand internals"; Phase 4 (mixed) and Phase 5 (memo) under "judgment". A thread beneath marks Phases 0 and 1 as detailed, the rest as skeletons fleshed out on approach.</desc>
+        <!-- band labels -->
+        <text x="170" y="150" text-anchor="middle" font-size="10" fill="var(--ink-soft)" letter-spacing="2">USE MODELS</text>
+        <line x1="40" y1="158" x2="300" y2="158" stroke="var(--rule)" stroke-width="1"/>
+        <text x="440" y="98" text-anchor="middle" font-size="10" fill="var(--ink-soft)" letter-spacing="2">UNDERSTAND INTERNALS</text>
+        <line x1="310" y1="106" x2="570" y2="106" stroke="var(--rule)" stroke-width="1"/>
+        <text x="710" y="46" text-anchor="middle" font-size="10" fill="var(--ink-soft)" letter-spacing="2">JUDGMENT</text>
+        <line x1="580" y1="54" x2="840" y2="54" stroke="var(--rule)" stroke-width="1"/>
+        <!-- steps -->
+        <rect x="40" y="196" width="125" height="36" fill="var(--forest)" fill-opacity="0.10" stroke="var(--forest)" stroke-width="1.3"/>
+        <rect x="175" y="170" width="125" height="62" fill="var(--forest)" fill-opacity="0.10" stroke="var(--forest)" stroke-width="1.3"/>
+        <rect x="310" y="144" width="125" height="88" fill="none" stroke="var(--forest)" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <rect x="445" y="118" width="125" height="114" fill="none" stroke="var(--forest)" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <rect x="580" y="92" width="125" height="140" fill="none" stroke="var(--forest)" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <rect x="715" y="66" width="125" height="166" fill="none" stroke="var(--copper)" stroke-width="1.4" stroke-dasharray="5 4"/>
+        <!-- step labels -->
+        <text x="102" y="215" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">P0</text>
+        <text x="102" y="227" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Notes</text>
+        <text x="237" y="192" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">P1</text>
+        <text x="237" y="206" text-anchor="middle" font-size="9" fill="var(--ink-soft)">TS/Deno</text>
+        <text x="372" y="166" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">P2</text>
+        <text x="372" y="180" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Python</text>
+        <text x="507" y="140" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">P3</text>
+        <text x="507" y="154" text-anchor="middle" font-size="9" fill="var(--ink-soft)">PyTorch</text>
+        <text x="642" y="114" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">P4</text>
+        <text x="642" y="128" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Mixed</text>
+        <text x="777" y="88" text-anchor="middle" font-size="12" fill="var(--copper)" font-weight="600">P5</text>
+        <text x="777" y="102" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Memo</text>
+        <!-- baseline and detailed/skeleton thread -->
+        <line x1="40" y1="232" x2="840" y2="232" stroke="var(--rule)" stroke-width="1"/>
+        <line x1="40" y1="248" x2="300" y2="248" stroke="var(--forest)" stroke-width="1.5"/>
+        <text x="170" y="266" text-anchor="middle" font-size="10" fill="var(--ink-soft)">detailed</text>
+        <line x1="310" y1="248" x2="840" y2="248" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="5 4"/>
+        <text x="575" y="266" text-anchor="middle" font-size="10" fill="var(--ink-soft)">skeleton — fleshed out on approach</text>
+      </svg>
+      <figcaption>The path climbs from using models (Phases 0–1, home-turf stack) through understanding internals (2–3, where Python and the math reactivation live) to judgment (4–5, ending in the capstone memo). Only the first two phases are detailed; the rest stay skeletal until approached.</figcaption>
+    </figure>
+    <p>Skeleton phases get fleshed out as you approach them—detailing them now would bake in assumptions Phase 1 will probably revise.</p>
+  </section>
+
+  <section id="working">
+    <h2><a href="#working" class="heading-link"><span class="num">§ 03</span>Working the path</a></h2>
+    <h3>The session ritual</h3>
+    <ol>
+      <li>Open the Progress note in Obsidian.</li>
+      <li>Find the next unchecked unit. Open its phase note.</li>
+      <li>Do the unit. Stop when the artifact exists—resist continuing.</li>
+      <li>Write or update the unit's note (a few sentences in your own words is enough).</li>
+      <li>Check the box. Done.</li>
+    </ol>
+    <h3>Re-entry after a gap</h3>
+    <p>Don't re-read everything. Open the Progress note, skim your <em>own</em> note for the last completed unit (not the source material), do the next unit. If the last unit's note doesn't make sense to you anymore, redo that unit—that's signal, not failure.</p>
+    <h3>Standing resources</h3>
+    <ul>
+      <li><a href="https://www.3blue1brown.com/">3Blue1Brown</a>—linear algebra, calculus, and neural net intuition. The math sidebar workhorse.</li>
+      <li><a href="https://statquest.org/">StatQuest</a>—stats concepts, short and unpretentious.</li>
+      <li><a href="https://karpathy.ai/">Andrej Karpathy's videos</a>—the Phase 3 backbone; his LLM intro appears in Phase 0.</li>
+      <li><a href="https://simonwillison.net/">Simon Willison's blog</a>—running commentary on the LLM ecosystem from an engineer's perspective.</li>
+    </ul>
+    <div class="note">
+      <span class="note-label">Glossary</span>
+      <p>Maintain the AI-ML Glossary note in Obsidian as you go. Add a term the moment you look one up; a one-line definition in your own words beats a pasted one. Mark guesses with <code>(?)</code> and fix them when the relevant phase teaches you better—the <code>(?)</code> marks become a nice progress signal.</p>
+    </div>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="phase-0">
+    <h2><a href="#phase-0" class="heading-link"><span class="num">§ 04</span>Phase 0 — Orientation Map</a></h2>
+    <p><strong>Goal:</strong> a single mental-model note that maps the field, which you'll annotate for the rest of the path. <strong>Size:</strong> 1–2 sessions. <strong>Stack:</strong> notes only.</p>
+    <h3>0.1 — The map</h3>
+    <p>Watch, then write. Two inputs:</p>
+    <ul>
+      <li>Karpathy, <a href="https://www.youtube.com/watch?v=zjkBMFhNj_g">Intro to Large Language Models</a> (1 hr)—what an LLM physically is, training vs. inference, why it's "just" a big file of numbers plus a small amount of code.</li>
+      <li>3Blue1Brown, <a href="https://www.youtube.com/watch?v=aircAruvnKk">But what is a neural network?</a> (20 min)—a preview, not mastery. You'll return to this material properly in Phase 3.</li>
+    </ul>
+    <p><strong>Artifact:</strong> a note titled <code>How ML Actually Works - My Map</code> covering, in your own words: the taxonomy (classical ML vs. deep learning vs. generative/LLM, and what kinds of problems each owns); training vs. inference and why they have wildly different cost profiles; what "a model" physically is—an architecture (code) plus weights (a file of numbers), and where the knowledge lives; and a hand-drawn or Excalidraw diagram of the taxonomy. Drawing it forces the choices that reading lets you skip.</p>
+    <p>Expect wrong or fuzzy entries. The point of the map is having something concrete to correct later—each phase should send you back here to annotate.</p>
+    <h3>0.2 — The glossary seed</h3>
+    <p>Create the glossary and seed it with one-line definitions, your own words, for: <em>model, weights/parameters, training, inference, loss, gradient, embedding, token, context window, fine-tuning, hyperparameter, overfitting</em>. Some definitions will be guesses—mark those with <code>(?)</code>.</p>
+    <p><strong>Artifact:</strong> the glossary note, all twelve terms present.</p>
+    <h3>Math sidebar</h3>
+    <p>None. That's deliberate—Phase 0 is orientation, and adding math here front-loads exactly the kind of prerequisite work this path avoids.</p>
+    <h3>Exit criterion</h3>
+    <p>You can explain to a smart engineer, without notes: where LLMs sit in the ML taxonomy, and the difference between training and inference—including why inference is what you pay for per-request and training is what cost someone $100M.</p>
+  </section>
+
+  <section id="phase-1">
+    <h2><a href="#phase-1" class="heading-link"><span class="num">§ 05</span>Phase 1 — Use Models Seriously</a></h2>
+    <p><strong>Goal:</strong> working fluency with model APIs, embeddings, and retrieval—the material most directly relevant to product and architecture decisions. Ends with a RAG CLI over your own Readwise highlights. <strong>Size:</strong> 6 units. <strong>Stack:</strong> TypeScript/Deno, Anthropic API (or Bedrock—see 1.1), SQLite + sqlite-vec.</p>
+    <p>This is home turf: API-shaped work in your preferred stack. The unfamiliar part is what's <em>inside</em> the calls, and that's the point.</p>
+    <h3>1.1 — First structured call</h3>
+    <p>A Deno CLI script that calls the Messages API and validates the response into a typed structure (Zod or plain type guards). Play with: system vs. user prompts, temperature, max tokens. Break it on purpose—malformed outputs, truncation—and handle it. Bedrock vs. direct Anthropic API: pick one and stop thinking about it. Direct API has less ceremony; Bedrock exercises your AWS muscles and matches what Metron would likely deploy. <strong>Artifact:</strong> <code>ask.ts</code>.</p>
+    <h3>1.2 — Tool use</h3>
+    <p>Define 2–3 tools (current weather, filesystem search, a calculator), pass the schemas, run the loop: model requests tool → you execute → return result → model continues. This is the primitive under every "agent" product; seeing the loop demystifies the category. <strong>Artifact:</strong> <code>agent.ts</code>, with visible tracing of each round trip.</p>
+    <h3>1.3 — Embeddings by hand</h3>
+    <p>Generate embeddings for ~20 short texts (Voyage AI or Bedrock Titan—same rule as 1.1: pick one and stop thinking about it). Write cosine similarity yourself in TypeScript—it's ten lines—and build a tiny "find the most similar sentence" demo. Then poke at the failure modes: negation, sarcasm, near-duplicates. <strong>Artifact:</strong> <code>similarity.ts</code> plus a note on what embeddings capture and what they miss.</p>
+    <div class="note caveat">
+      <span class="note-label">Caveat · one model</span>
+      <p>Whichever embedding model you pick, write it down: the index you build in 1.4 and every query in 1.5 must use the <em>same</em> model (and version). Mixing them is the classic first RAG bug—everything runs, nothing retrieves well. Background: <a href="/docs/embeddings-retrieval">Embeddings &amp; Retrieval</a>.</p>
+    </div>
+    <p><strong>Math sidebar (before or during this unit):</strong> vectors, dot products, cosine similarity—3Blue1Brown, <a href="https://www.3blue1brown.com/topics/linear-algebra">Essence of Linear Algebra</a>, chapters 1–3 and 9. One idea to hold onto: "similarity = angle between arrows in a very high-dimensional space." Everything in units 1.4–1.5 leans on it.</p>
+    <h3>1.4 — Chunk and index the corpus</h3>
+    <p>Pull highlights from your readwise-sqlite database. Chunk them (highlights are conveniently pre-chunked—note why that matters, and what you'd do with long documents instead). Embed and store in SQLite with sqlite-vec. <strong>Artifact:</strong> <code>index.ts</code> plus a populated vector table, with a count-and-spot-check step so you trust the index.</p>
+    <h3>1.5 — Retrieval + generation</h3>
+    <p>The full RAG loop: embed the query, retrieve top-k, stuff into the prompt with instructions to ground answers in the provided passages and cite them. Compare answers with retrieval on vs. off. Try adversarial questions the corpus can't answer—does it admit that or confabulate? <strong>Artifact:</strong> <code>ask-my-highlights.ts</code>—the working RAG CLI. This one you'll actually keep using.</p>
+    <h3>1.6 — Evaluate it</h3>
+    <p>Write 10–15 question/expected-answer pairs against your corpus. Score the pipeline: retrieval hit rate (did the right passage surface?) separately from answer quality (LLM-as-judge, or your own rubric). Change one thing—top-k, chunking, prompt—and measure the effect. This unit is deliberately small. It plants the flag for Phase 4: <em>the eval set is the product spec.</em> <strong>Artifact:</strong> <code>eval.ts</code> plus a short results note.</p>
+    <div class="note caveat">
+      <span class="note-label">Caveat · small-n noise</span>
+      <p>With 15 questions, a one-answer swing is noise, not signal. The "is the difference real?" section of <a href="/docs/statistics-for-engineers">Statistics for Engineers</a> is the ten-minute read that keeps this unit honest.</p>
+    </div>
+    <h3>Stretch (optional, explicitly not required)</h3>
+    <p>Hybrid search (keyword + vector), reranking, streaming responses. Parked here so they don't become scope creep inside the units above.</p>
+    <h3>Exit criteria</h3>
+    <ul>
+      <li>The RAG CLI works against your real highlights and you use it at least once for a real question.</li>
+      <li>You can explain to a smart engineer: what an embedding is, why RAG exists (vs. fine-tuning, vs. long context), and the main knobs that change RAG quality.</li>
+      <li>Your Phase 0 map has at least two annotations correcting or sharpening earlier entries.</li>
+    </ul>
+  </section>
+
+  <section id="phase-2">
+    <h2><a href="#phase-2" class="heading-link"><span class="num">§ 06</span>Phase 2 — Classical ML Fundamentals <em>(skeleton)</em></a></h2>
+    <p><strong>Goal:</strong> working knowledge of the pre-deep-learning toolkit—regression, classification, trees/ensembles, clustering—and the discipline around it (train/test splits, validation, overfitting). This is where Python enters. Time-series anomaly detection and forecasting anchor the applied units—territory that's broadly valuable across domains and that happens to map directly onto Metron's sensor data if you choose to use it. <strong>Size:</strong> ~6–7 units, detailed near the end of Phase 1. <strong>Stack:</strong> Python (uv), Jupyter or marimo notebooks, pandas, scikit-learn.</p>
+    <h3>Planned units</h3>
+    <ol>
+      <li>Python-for-polyglots setup—uv, notebooks, pandas idioms. Short; you know how programming works. The <a href="/docs/python-env-polyglots">Python Environment for Polyglots</a> guide carries the detail.</li>
+      <li>Linear regression on a real dataset—fit, residuals, what the coefficients mean.</li>
+      <li>Classification—logistic regression, precision/recall/confusion matrices.</li>
+      <li>Trees and ensembles—decision trees, random forests, gradient boosting; why tabular data still belongs to them.</li>
+      <li>Clustering and anomaly detection—k-means, isolation forests; applied to time-series—a public energy/water/traffic dataset, homelab sensor data from Home Assistant, or Metron flow data; pick whichever is richest and easiest to get.</li>
+      <li>The discipline unit—overfitting, bias-variance, cross-validation, leakage. The unit that makes you dangerous in a review meeting.</li>
+    </ol>
+    <h3>Math sidebar (planned)</h3>
+    <p>Distributions, mean/variance/standard deviation, correlation, sampling. <a href="/docs/statistics-for-engineers">Statistics for Engineers</a> is the backbone here, with StatQuest for anything that needs a second angle—this is the phase that quietly delivers most of the missing statistics background.</p>
+    <h3>Likely resources</h3>
+    <ul>
+      <li>Géron, <em>Hands-On Machine Learning</em> (3rd ed.)—chapters 1–7 roughly cover this phase.</li>
+      <li><a href="/docs/classical-ml-vocabulary">Classical ML Vocabulary</a>—the reference for every term this phase introduces.</li>
+      <li>StatQuest playlists on regression, classification metrics, and bias-variance.</li>
+    </ul>
+    <h3>Exit criterion (draft)</h3>
+    <p>Given a tabular dataset and a question, you can pick a sensible model family, fit it, validate it honestly, and explain why the honest number is lower than the naive one.</p>
+  </section>
+
+  <section id="phase-3">
+    <h2><a href="#phase-3" class="heading-link"><span class="num">§ 07</span>Phase 3 — Neural Nets from Scratch <em>(skeleton)</em></a></h2>
+    <p><strong>Goal:</strong> convert "I use models" into "I understand what's happening." Build a tiny neural network and its training loop from scratch, then meet PyTorch as a labor-saving device rather than a black box. This is where the calculus reactivation happens. <strong>Size:</strong> ~5–6 units, detailed near the end of Phase 2. <strong>Stack:</strong> Python, then PyTorch.</p>
+    <h3>Planned units</h3>
+    <ol>
+      <li>Karpathy's <a href="https://www.youtube.com/watch?v=VMj-3S1tku0">micrograd</a>—build backprop by hand on scalar values. The single highest-leverage video in the field.</li>
+      <li>A tiny network on a toy problem, trained with your own gradient descent loop.</li>
+      <li>First makemore sessions—bigram model, then a simple neural language model. Watching a language model emerge from first principles.</li>
+      <li>Port to PyTorch—same model, framework does the gradients. Note exactly what the framework saved you.</li>
+      <li>Training-run literacy—loss curves, learning rates, what "it's not converging" looks like.</li>
+    </ol>
+    <h3>Math sidebar (planned)</h3>
+    <p>Derivatives, chain rule, gradient descent. 3Blue1Brown's <a href="https://www.3blue1brown.com/topics/calculus">Essence of Calculus</a> (selected chapters) plus his neural-network backprop videos. Your rusted math inclination gets its real workout here—budget for it and don't rush the sidebar.</p>
+    <h3>Exit criterion (draft)</h3>
+    <p>You can explain backprop with a pencil—small example, actual numbers—and read a PyTorch training loop knowing what every line is for.</p>
+  </section>
+
+  <section id="phase-4">
+    <h2><a href="#phase-4" class="heading-link"><span class="num">§ 08</span>Phase 4 — LLM Internals and Evaluation <em>(skeleton)</em></a></h2>
+    <p><strong>Goal:</strong> intuition-level understanding of how LLMs work (tokenization, attention, sampling) and—most important for the role—real competence in evaluation: how to know whether an AI feature works, and how to decide between prompting, RAG, and fine-tuning. <strong>Size:</strong> ~5–6 units, detailed near the end of Phase 3. <strong>Stack:</strong> mixed—Python for internals, TypeScript for the eval harness (it should feel like production code).</p>
+    <h3>Planned units</h3>
+    <ol>
+      <li>Tokenization—BPE, why token counts surprise people, cost implications.</li>
+      <li>Attention at intuition level—3Blue1Brown's <a href="https://www.3blue1brown.com/topics/neural-networks">transformer videos</a>. Understanding the picture, not implementing the paper.</li>
+      <li>Inference mechanics and economics—prefill vs. decode, the KV-cache, quantization, why long context and prompt caching cost what they do. Verifies <a href="/docs/llm-discourse-primer">LLM Discourse Primer</a> §5–6 against real understanding.</li>
+      <li>Sampling—temperature, top-p, why the same prompt gives different answers; softmax and log-probabilities.</li>
+      <li>The post-training landscape—SFT, preference optimization, reasoning-model training; what each does to behavior. Verifies primer §3.</li>
+      <li>The decision framework—prompting vs. RAG vs. fine-tuning: costs, failure modes, when each wins. Written as a one-page decision note you could hand a PM.</li>
+      <li>Evals in depth—build a real eval harness in TypeScript; graded rubrics, LLM-as-judge and its pitfalls, regression testing prompts like code. Extends unit 1.6's seed; the <a href="/docs/evals-primer">Evals</a> primer is the reference.</li>
+      <li>Stretch: Karpathy's build-GPT-from-scratch, if Phase 3 left appetite for it.</li>
+    </ol>
+    <p>A standing task for this phase: sweep the <a href="/docs/llm-discourse-primer">Discourse Primer</a> and the glossary, correcting anything the units proved wrong or shallow.</p>
+    <h3>Math sidebar (planned)</h3>
+    <p>Probability basics, conditional probability, softmax, log-likelihood, sampling. <a href="/docs/statistics-for-engineers">Statistics for Engineers</a> + 3Blue1Brown.</p>
+    <h3>Exit criterion (draft)</h3>
+    <p>Given a proposed LLM feature, you can specify its eval set before its implementation, and defend a prompting/RAG/fine-tuning recommendation with cost and failure-mode reasoning.</p>
+  </section>
+
+  <section id="phase-5">
+    <h2><a href="#phase-5" class="heading-link"><span class="num">§ 09</span>Phase 5 — Production Judgment <em>(skeleton)</em></a></h2>
+    <p><strong>Goal:</strong> cash the path out into leadership judgment—the kind that transfers across roles. Cost modeling, latency, observability, security, failure modes, evaluating vendor claims, and—critically—when not to use ML at all. Capstone: an architecture memo for a real decision actually in front of you. <strong>Size:</strong> ~4–5 units, detailed near the end of Phase 4. <strong>Stack:</strong> memo-writing and architecture review; small spikes only where a number needs verifying.</p>
+    <h3>Planned units</h3>
+    <ol>
+      <li>Cost and latency modeling—tokens as the unit of cost; caching, batching, model-size tiering; a real spreadsheet for a hypothetical feature at Metron's scale.</li>
+      <li>Failure modes and safety—hallucination in product contexts, prompt injection, data boundaries; what "the model is wrong X% of the time" means for UX design.</li>
+      <li>Observability and lifecycle—logging, drift, versioning prompts and models, feedback loops.</li>
+      <li>The "should this even be ML?" unit—heuristics vs. classical ML vs. LLMs vs. plain code; build vs. buy; reading vendor claims with the internals knowledge from Phases 3–4. The honest decision tree.</li>
+      <li><strong>Capstone:</strong> an architecture memo for a real audience and a real decision—a Metron feature, an advisory client, or a side project you'd actually build. Problem, approach, eval plan, cost model, risks. The memo is the proof the path worked, and the template is reusable for every such decision afterward.</li>
+    </ol>
+    <h3>Math sidebar</h3>
+    <p>None new—this phase applies what the others built.</p>
+    <h3>Exit criterion (draft)</h3>
+    <p>The memo exists, and you'd be comfortable defending it in a real architecture review.</p>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="shelf">
+    <h2><a href="#shelf" class="heading-link"><span class="num">§ 10</span>The reference shelf</a></h2>
+    <p>The path's reference library, filed here in the Reading Room. Each doc is readable now, ahead of the phase that exercises it; the phases verify and deepen them, and corrections accumulate in companion Obsidian notes until they're folded back in. Markdown sources live in the vault under <code>AI-ML Learning Path/Reference/</code>.</p>
+    <table>
+      <thead><tr><th>Document</th><th>What it covers</th><th>Pairs with</th></tr></thead>
+      <tbody>
+        <tr><td><a href="/docs/llm-discourse-primer">LLM Discourse Primer</a></td><td>The vocabulary of current LLM discussion, lifecycle-ordered</td><td>Anytime; Phases 3–4 verify</td></tr>
+        <tr><td><a href="/docs/statistics-for-engineers">Statistics for Engineers</a></td><td>Distributions, sampling, correlation, and when a difference is real</td><td>Phases 1–2, eval work everywhere</td></tr>
+        <tr><td><a href="/docs/classical-ml-vocabulary">Classical ML Vocabulary</a></td><td>Model families, the discipline terms, the metric zoo</td><td>Phase 2</td></tr>
+        <tr><td><a href="/docs/python-env-polyglots">Python Environment for Polyglots</a></td><td>uv, notebooks, pandas idioms for someone who already programs</td><td>Phase 2, unit 2.1</td></tr>
+        <tr><td><a href="/docs/local-models-hardware">Local Models &amp; Hardware</a></td><td>The VRAM math, Ollama/llama.cpp, running models on your own machines</td><td>Anytime</td></tr>
+        <tr><td><a href="/docs/embeddings-retrieval">Embeddings &amp; Retrieval</a></td><td>What embeddings capture, chunking, the RAG loop and its knobs</td><td>Phase 1</td></tr>
+        <tr><td><a href="/docs/evals-primer">Evals</a></td><td>Eval sets as product specs, scoring ladders, judge pitfalls</td><td>Unit 1.6, Phase 4</td></tr>
+      </tbody>
+    </table>
+    <div class="note good">
+      <span class="note-label">Division of labor</span>
+      <p>Reference material lives here, in HTML, for reading. Working notes—Progress, the Glossary, the Phase 0 map, per-unit notes—live in Obsidian, where writing happens. Neither duplicates the other.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>ai-ml-learning-path</span>
+    <span>AI/ML Learning Path · Guide</span>
+    <span>2026·08·31</span>
+  </footer>
+
+<!-- CONTENT:end -->
+</div>
+
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>

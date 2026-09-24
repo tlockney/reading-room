@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<!--
+  Long-form editorial reference doc template.
+  Drop-in starting point for the editorial-print aesthetic.
+
+  REGIONS. The file is split into marked regions — <!== NAME:start ==> …
+  <!== NAME:end ==> (written with = here only because this outer comment
+  can't nest; in the file they are ordinary HTML comments). Exactly three
+  regions belong to the DOCUMENT:
+
+      DOC-TITLE   the <title> line
+      DOC-CSS     per-doc style overrides (empty by default)
+      CONTENT     the entire authored body
+
+  Everything else — FONTS, MERMAID, TEMPLATE-CSS, SYNTAX-HIGHLIGHT,
+  EDITORIAL-HEAD, EDITORIAL-BODY, PRINT-OVERRIDES — is TEMPLATE CHROME.
+  Don't hand-edit chrome in a finished doc, and never put document
+  content outside CONTENT. That split is what lets
+  `assets/doc-tool.py retemplate <doc.html>` re-apply an updated
+  template to an existing document, and `doc-tool.py fonts embed|link
+  <doc.html>` swap the font strategy in one command.
+
+  Search-and-replace TODO markers before publishing. Components that are
+  always present: masthead, TOC, sections, footer. Components that are
+  optional (delete if not needed): Mermaid script block, the syntax-
+  highlight pair (SYNTAX-HIGHLIGHT:css in <head> + SYNTAX-HIGHLIGHT:js
+  before </body> — delete BOTH if the doc has no code samples), series-nav,
+  restricted banner, figure.diagram. The floating mini-map is included
+  by default; remove the <nav class="minimap"> block if you don't want
+  it (its CSS is harmless when no markup uses it). The shared editorial
+  bundle (EDITORIAL-HEAD before the head close, EDITORIAL-BODY before the
+  body close) adds click-to-zoom for figures, a light/dark theme toggle,
+  and mobile overflow fixes; it is canonical in the Reading Room repo and
+  inlined here. Both scripts are no-ops when unused. Aside from the
+  editorial bundle, syntax highlighting (inlined Prism), and the optional
+  Mermaid import, this style is static HTML/CSS — all three scripted pieces
+  are readability aids, self-contained, and no-ops when unused.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DOC-TITLE:start --><title>LLM Discourse Primer · AI/ML Learning Path</title>
+<!-- DOC-TITLE:end -->
+<!-- FONTS:start — swap this whole region with:
+       assets/doc-tool.py fonts embed <doc.html>   (artifact / CSP-safe)
+       assets/doc-tool.py fonts link  <doc.html>   (back to the default)
+     FONTS-LINK is the default loading path: works off the network
+     (browser, off-disk, email). Under the Claude Code ARTIFACT CSP the
+     link is blocked and the page silently falls back to default
+     serif/mono — gutting the look, since the typefaces are the
+     aesthetic. The embed form inlines assets/fonts-embedded.css instead.
+     The two are mutually exclusive — never ship both. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- FONTS:end -->
+
+
+<!-- TEMPLATE-CSS:start — the design. Chrome: don't edit per-doc.
+     Per-doc overrides go in the DOC-CSS region further down. -->
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;        /* 820 for how-tos */
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Restricted / internal-only banner — OPTIONAL, delete if not needed.
+     Sits above the masthead. Small copper-outlined chip; makes it
+     immediately obvious if the doc surfaces somewhere it shouldn't. */
+  .restricted-banner {
+    margin: 0 0 20px;
+    padding: 10px 16px;
+    background: rgba(168, 90, 26, 0.08);
+    border: 1px solid var(--copper);
+    border-radius: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    text-align: center;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  /* Self-link on the document title — clicking resets the URL hash so the
+     canonical document URL appears in the address bar (no section anchor). */
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* Series-nav — OPTIONAL, for multi-part document sets.
+     Sits between the masthead and the TOC. Mark the current part with
+     class="current". Delete if this is a standalone document. */
+  .series-nav {
+    margin: 0 0 56px;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--forest);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .series-nav .series-label {
+    display: block;
+    color: var(--forest);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: 0.22em;
+  }
+  .series-nav ol { list-style: none; padding: 0; margin: 0; }
+  .series-nav li { margin: 4px 0; font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.1em; }
+  .series-nav li a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  .series-nav li a:hover { border-bottom-color: var(--copper); }
+  .series-nav li.current { color: var(--ink); font-weight: 600; }
+  .series-nav li.current::before { content: "▸ "; color: var(--copper); }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;            /* drop to 1 for how-tos / short docs */
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* For how-to / step-based docs, swap the ::before content above for: */
+  /* content: "STEP / " counter(toc, decimal-leading-zero); */
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Self-anchoring section headings. Wrap each section h2's contents in
+     an <a href="#section-id" class="heading-link"> so a click sets the URL
+     hash and the section URL can be copied from the address bar. */
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* SYNTAX-HIGHLIGHT:css:start — editorial Prism theme (warm palette).
+     Pairs with the inlined Prism bundle in the SYNTAX-HIGHLIGHT:js block
+     before </body>. Token colors stay in the warm editorial ramp — copper
+     for control/keywords, gold/olive/sand/tan for the rest, khaki for
+     comments. No cool hues. The <pre> surface is dark in BOTH light and
+     dark themes, so one token palette reads correctly in both. Rules are
+     scoped to <pre> so inline <code> is never tinted. Harmless when no code
+     blocks are present. To drop highlighting entirely, delete this CSS
+     block AND the SYNTAX-HIGHLIGHT:js script block before </body>. */
+  pre[class*="language-"], code[class*="language-"] {
+    font-family: "JetBrains Mono", monospace;
+    text-shadow: none;          /* kill stock Prism-theme glow */
+    tab-size: 2; hyphens: none;
+  }
+  pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+    color: #968b6c; font-style: italic;          /* khaki — recede */
+  }
+  pre .token.punctuation, pre .token.template-punctuation { color: #b8ac8a; }
+  pre .token.namespace { opacity: 0.8; }
+  /* copper — control words & "look here" */
+  pre .token.keyword, pre .token.tag, pre .token.selector,
+  pre .token.atrule, pre .token.rule, pre .token.important,
+  pre .token.instruction, pre .token.for-or-select, pre .token.coord {
+    color: #d98a44; font-weight: 600;
+  }
+  /* amber-tan — operators & links */
+  pre .token.operator, pre .token.entity, pre .token.combinator,
+  pre .token.url, pre .token.atrule .token.url { color: #c9a06a; }
+  /* gold — numeric & identity literals, function names */
+  pre .token.number, pre .token.boolean, pre .token.constant,
+  pre .token.symbol, pre .token.function, pre .token.function-definition,
+  pre .token.macro { color: #e3b25e; }
+  /* olive — string-like text */
+  pre .token.string, pre .token.char, pre .token.attr-value,
+  pre .token.regex, pre .token.template-string, pre .token.string-property {
+    color: #a9b87f;
+  }
+  /* sand/tan — types, keys, properties, builtins */
+  pre .token.class-name, pre .token.builtin, pre .token.type,
+  pre .token.key, pre .token.property, pre .token.attr-name,
+  pre .token.title, pre .token.namespace { color: #cdb58a; }
+  /* light tan — variables & parameters */
+  pre .token.variable, pre .token.parameter, pre .token.property-access {
+    color: #d9c9a8;
+  }
+  pre .token.bold { font-weight: 600; }
+  pre .token.italic { font-style: italic; }
+  /* diff — warm bands; scoped to the diff language so markdown ins/del stay inline */
+  pre[class*="language-diff"] .token.inserted {
+    color: #a9b87f; background: rgba(169,184,127,0.10); display: block;
+  }
+  pre[class*="language-diff"] .token.deleted {
+    color: #cf8a5a; background: rgba(207,138,90,0.11); display: block;
+  }
+  pre .token.inserted { color: #a9b87f; }
+  pre .token.deleted { color: #cf8a5a; }
+  /* Print: <pre> flips to light paper, so retune tokens to dark-on-light.
+     Keep copper keywords + grey italic comments for light structure; drop
+     the bright screen colors and diff bands that wouldn't read on paper. */
+  @media print {
+    pre .token { color: #1a1a1a; background: none; }
+    pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+      color: #6b6357; font-style: italic;
+    }
+    pre .token.keyword, pre .token.tag, pre .token.selector, pre .token.atrule,
+    pre .token.rule, pre .token.important, pre .token.instruction,
+    pre .token.for-or-select, pre .token.coord { color: #a85a1a; }
+    /* override the higher-specificity diff rules so paper diffs read as
+       dark text (the leading +/- still marks them); drop the warm bands. */
+    pre .token.inserted, pre .token.deleted,
+    pre[class*="language-diff"] .token.inserted,
+    pre[class*="language-diff"] .token.deleted { color: #1a1a1a; background: none; }
+  }
+  /* SYNTAX-HIGHLIGHT:css:end */
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — apply to first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption — for inline SVG, Mermaid, or images. */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Mermaid */
+  .mermaid { margin: 24px 0 32px; text-align: center; background: transparent; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom lightbox, dark-mode theme, and mobile fixes come from the shared
+     editorial bundle (the EDITORIAL-HEAD and EDITORIAL-BODY blocks below),
+     canonical in the Reading Room repo (assets/editorial/). Don't add
+     figure-zoom or theme CSS here — edit the partials and re-sync. */
+
+  /* Floating mini-map TOC. Shown only at viewport >= 1180px, where the
+     gutter outside the 880px content column is wide enough to hold it.
+     Mirror the main TOC entries — the mini-map is a persistent companion,
+     not an alternate navigation. Delete the <nav class="minimap"> block
+     in the body if you don't want it. */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  /* Progressive enhancement: on browsers that support scroll-driven
+     animations, the mini-map fades in once the user has scrolled past
+     the masthead. Browsers without support get the always-visible
+     version above. No JavaScript fallback is needed. */
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print. Break hygiene is per-block, not per-section — long-form
+     sections routinely exceed a page, and a section-level avoid rule
+     just shoves them to the next page leaving half-blank sheets. */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section > h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    pre, table, figure, .note, .tldr { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+<!-- TEMPLATE-CSS:end -->
+
+<!-- DOC-CSS:start — per-document style overrides. This region is carried
+     across `doc-tool.py retemplate`, so anything doc-specific belongs
+     HERE, not in TEMPLATE-CSS. Use the existing tokens (--copper,
+     --forest, --ink-*) rather than new colors; if you need more than a
+     handful of rules, the document probably wants a different style. -->
+<style>
+  /* (no per-doc overrides) */
+</style>
+<!-- DOC-CSS:end -->
+
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  /* The hint is a CSS pseudo-element, not a DOM node, so async renderers
+     (Mermaid rewrites its host's innerHTML) can't wipe it. */
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+<!-- PRINT-OVERRIDES:start -->
+<style>
+  /* Print fixes that must sit AFTER the editorial bundle to out-cascade
+     its dark-theme rules: a reader printing from the dark theme (the
+     data-theme attribute persists in localStorage) still gets ink on
+     paper. Keep this block below EDITORIAL-HEAD:end when re-syncing. */
+  @media print{
+    :root[data-theme="dark"]{
+      --bg:#ffffff; --bg-soft:#f5f1e6; --bg-code:#f5f5f5;
+      --ink:#000; --ink-soft:#3a3a36; --ink-mute:#6b6357;
+      --forest:#1f3a32; --forest-deep:#142822;
+      --copper:#a85a1a; --copper-soft:#c87a2f;
+      --rule:#c9bfa3; --rule-strong:#8a7e5e;
+    }
+    :root[data-theme="dark"] body{background:#fff;}
+    :root[data-theme="dark"] pre{background:#f5f5f5;}
+    :root[data-theme="dark"] figure svg,
+    :root[data-theme="dark"] .mermaid svg,
+    :root[data-theme="dark"] figure img{
+      background:none;border:none;border-radius:0;padding:0;}
+    /* Paper cannot scroll: a wrapper that scrolls on screen CLIPS on
+       paper, silently dropping whatever sits past the page edge. Narrow
+       print margins can also push the viewport under the 720px query
+       that turns tables into scroll containers. */
+    table{display:table;overflow:visible;max-width:100%;}
+    pre{overflow:visible;white-space:pre-wrap;}
+    figure.diagram svg{max-width:100%;height:auto;}
+    /* Folded notebook code (collapse-notebook.py): reveal it on paper — a
+       disclosure control the reader can't click is just lost content.
+       ::details-content is what actually works; overriding the children
+       directly does not reveal a closed <details>. */
+    details.nb-code::details-content{content-visibility:visible !important;}
+    details.nb-code>*:not(summary){display:block;}
+    details.nb-code>summary{display:none;}
+    details.nb-code{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+<!-- PRINT-OVERRIDES:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+<!-- CONTENT:start — everything the document actually says lives between
+     these two markers, and nothing else does. Keep it that way: it is
+     the only region `doc-tool.py retemplate` carries into a refreshed
+     template. -->
+  <header class="masthead">
+    <div class="eyebrow">Primer · AI/ML Learning Path</div>
+    <h1><a href="#" class="title-link">The LLM <em>Discourse</em> Primer</a></h1>
+    <p class="lede">The vocabulary of current LLM discussion, organized around the lifecycle of a model: built, shaped, shrunk, served. Read once for grounding before any phase of the learning path; annotate as Phases 3–4 verify and deepen each piece.</p>
+    <div class="meta">
+      <span><strong>Status</strong> · Living reference</span>
+      <span><strong>Owner</strong> · Thomas</span>
+      <span><strong>Updated</strong> · 2026·08·31</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#anatomy">Anatomy — what "120B parameters" means</a></li>
+      <li><a href="#pretraining">Pretraining — where the model comes from</a></li>
+      <li><a href="#post-training">Post-training — where the assistant comes from</a></li>
+      <li><a href="#fine-tuning">Fine-tuning — the term doing double duty</a></li>
+      <li><a href="#smaller">Making models smaller — quantization and distillation</a></li>
+      <li><a href="#inference">Inference — what serving actually involves</a></li>
+      <li><a href="#app-layer">The application layer</a></li>
+      <li><a href="#failure-modes">Failure modes and safety</a></li>
+      <li><a href="#announcements">Reading a model announcement</a></li>
+      <li><a href="#term-index">Term index</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#anatomy">Anatomy</a></li>
+      <li><a href="#pretraining">Pretraining</a></li>
+      <li><a href="#post-training">Post-training</a></li>
+      <li><a href="#fine-tuning">Fine-tuning</a></li>
+      <li><a href="#smaller">Smaller models</a></li>
+      <li><a href="#inference">Inference</a></li>
+      <li><a href="#app-layer">Application layer</a></li>
+      <li><a href="#failure-modes">Failure modes</a></li>
+      <li><a href="#announcements">Announcements</a></li>
+      <li><a href="#term-index">Term index</a></li>
+    </ol>
+  </nav>
+
+  <section id="anatomy">
+    <h2><a href="#anatomy" class="heading-link"><span class="num">§ 01</span>Anatomy: what "120B parameters" means</a></h2>
+    <p class="lead-para">A model's <strong>parameters</strong> (interchangeably, <strong>weights</strong>) are the learned numbers—the entries in its matrices. "120B" means 120 billion of them. Parameter count is the standard shorthand for model size and rough capability class, though it's an increasingly leaky proxy.</p>
+    <p>Why the number matters practically: memory. Each parameter is stored at some precision—16-bit floating point (<strong>fp16</strong>/<strong>bf16</strong>) is the common native format, 2 bytes each. So a 120B model at fp16 needs ~240&nbsp;GB just to hold the weights, before anything else.</p>
+    <p class="tldr">One multiplication—parameters × bytes per parameter—explains most conversations about what hardware can run what model.</p>
+    <table>
+      <thead><tr><th>Model size</th><th>fp16 (2 B/param)</th><th>8-bit</th><th>4-bit</th></tr></thead>
+      <tbody>
+        <tr><td>8B</td><td>~16 GB</td><td>~8 GB</td><td>~4 GB</td></tr>
+        <tr><td>70B</td><td>~140 GB</td><td>~70 GB</td><td>~35 GB</td></tr>
+        <tr><td>120B</td><td>~240 GB</td><td>~120 GB</td><td>~60 GB</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Dense vs. MoE (Mixture of Experts):</strong> in a dense model, every parameter participates in every token. An MoE model contains many "expert" sub-networks and routes each token through only a few—so you'll see phrasing like "120B total, 5B active." Total parameters determine memory; active parameters determine per-token compute. This is why MoE models can be both large and fast, and why comparing models by headline parameter count alone misleads.</p>
+    <p>The architecture those matrices implement is, in every current frontier model, the <strong>transformer</strong>—and its core mechanism is <strong>attention</strong>, which lets each token look back at every earlier token when predicting the next one. That's all the vocabulary you need for now; §6's KV-cache is attention wearing its operational costume, and Phase 4 builds the real picture.</p>
+    <p>Model families ship in <strong>sizes</strong> (e.g., 3B/12B/70B variants of the same design), trading capability against cost. Discourse convention: the size suffix in a model name is almost always the parameter count. Two adjacent terms: a <strong>frontier model</strong> is one at the current capability edge (and a <strong>frontier lab</strong> is one that trains them); <strong>multimodal</strong>—or "omni"—means the model consumes and sometimes produces images, audio, or video as well as text, by mapping them into the same token stream.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 880 236" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-lifecycle-title fig-lifecycle-desc" font-family="JetBrains Mono, ui-monospace, monospace">
+        <title id="fig-lifecycle-title">The model lifecycle</title>
+        <desc id="fig-lifecycle-desc">Four stages left to right: built (pretraining), shaped (post-training and fine-tuning), shrunk (quantization and distillation), served (inference). The application layer sits above the served stage; a failure-modes band runs beneath all four stages.</desc>
+        <defs>
+          <marker id="lc-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-soft)"/>
+          </marker>
+        </defs>
+        <rect x="676" y="14" width="184" height="42" fill="none" stroke="var(--forest)" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="768" y="32" text-anchor="middle" font-size="11" fill="var(--forest)" font-weight="600">APPLICATION LAYER</text>
+        <text x="768" y="47" text-anchor="middle" font-size="10" fill="var(--ink-soft)">agents · RAG · tools · §7</text>
+        <line x1="768" y1="56" x2="768" y2="86" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#lc-arrow)"/>
+        <g stroke-width="1.4">
+          <rect x="20" y="90" width="184" height="60" fill="var(--forest)" fill-opacity="0.08" stroke="var(--forest)"/>
+          <rect x="248" y="90" width="184" height="60" fill="var(--forest)" fill-opacity="0.08" stroke="var(--forest)"/>
+          <rect x="476" y="90" width="152" height="60" fill="var(--forest)" fill-opacity="0.08" stroke="var(--forest)"/>
+          <rect x="676" y="90" width="184" height="60" fill="var(--copper)" fill-opacity="0.10" stroke="var(--copper)"/>
+        </g>
+        <text x="112" y="114" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">BUILT</text>
+        <text x="112" y="132" text-anchor="middle" font-size="10" fill="var(--ink-soft)">pretraining · §2</text>
+        <text x="340" y="114" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">SHAPED</text>
+        <text x="340" y="132" text-anchor="middle" font-size="10" fill="var(--ink-soft)">post-training · §3–4</text>
+        <text x="552" y="114" text-anchor="middle" font-size="12" fill="var(--forest)" font-weight="600">SHRUNK</text>
+        <text x="552" y="132" text-anchor="middle" font-size="10" fill="var(--ink-soft)">quantize · distill · §5</text>
+        <text x="768" y="114" text-anchor="middle" font-size="12" fill="var(--copper)" font-weight="600">SERVED</text>
+        <text x="768" y="132" text-anchor="middle" font-size="10" fill="var(--ink-soft)">inference · §6</text>
+        <line x1="204" y1="120" x2="244" y2="120" stroke="var(--ink-soft)" stroke-width="1.2" marker-end="url(#lc-arrow)"/>
+        <line x1="432" y1="120" x2="472" y2="120" stroke="var(--ink-soft)" stroke-width="1.2" marker-end="url(#lc-arrow)"/>
+        <line x1="628" y1="120" x2="672" y2="120" stroke="var(--ink-soft)" stroke-width="1.2" marker-end="url(#lc-arrow)"/>
+        <rect x="20" y="178" width="840" height="36" fill="none" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="5 4"/>
+        <text x="440" y="200" text-anchor="middle" font-size="10" fill="var(--ink-soft)" letter-spacing="1">FAILURE MODES &amp; SAFETY · §8 — cuts across every stage</text>
+      </svg>
+      <figcaption>The lifecycle that organizes this primer: a model is built, shaped, shrunk, and served. Products live in the application layer above the serving stage; the failure modes run underneath all of it.</figcaption>
+    </figure>
+  </section>
+
+  <section id="pretraining">
+    <h2><a href="#pretraining" class="heading-link"><span class="num">§ 02</span>Pretraining: where the model comes from</a></h2>
+    <p><strong>Pretraining</strong> is the giant, expensive phase: next-token prediction over trillions of tokens of text. It produces a <strong>base model</strong>—a raw text-continuation engine with broad knowledge but no inclination to be helpful, follow instructions, or stop talking. When people cite "$100M training runs," this is the phase they mean.</p>
+    <p>Terms that live here: <strong>tokens</strong> as the unit of training data ("trained on 15T tokens"), <strong>compute</strong> measured in FLOPs or GPU-hours, and <strong>scaling laws</strong>—the empirical finding that capability improves predictably with more parameters, data, and compute, which drove the size race.</p>
+    <p>Tokens deserve a beat of their own, because they're the unit of <em>everything</em>—training data, context limits, billing, and latency. A <strong>tokenizer</strong> (BPE—byte-pair encoding—or a descendant) splits text into chunks from a fixed vocabulary of a few hundred thousand entries; common words are one token, rare words several. The working rule: a token is ~4 characters, ~¾ of an English word. Token counts surprise people in predictable places: code, non-English text, and numbers all fragment into more tokens than the character count suggests—which is why the same "page of text" can cost meaningfully different amounts depending on what's on it. When a pricing page says "$X per million input tokens," this is the unit it means.</p>
+  </section>
+
+  <section id="post-training">
+    <h2><a href="#post-training" class="heading-link"><span class="num">§ 03</span>Post-training: where the assistant comes from</a></h2>
+    <p><strong>Post-training</strong> is everything done to a base model to make it a usable product. It's cheap relative to pretraining and it's where much of the current action is. The main moves:</p>
+    <ul>
+      <li><strong>SFT (supervised fine-tuning):</strong> train on curated example conversations—"here's a prompt, here's a good response." Teaches format and instruction-following.</li>
+      <li><strong>Preference optimization—RLHF, DPO:</strong> train on comparisons ("response A beats response B") to shape tone, helpfulness, and refusal behavior. RLHF does this with reinforcement learning; DPO gets similar effect with a simpler, more stable method. You don't need the mechanics yet—just that this is the step that makes models <em>behave</em>.</li>
+      <li><strong>RL on verifiable rewards:</strong> the newer wave behind "reasoning models"—train the model to produce long chains of thought, rewarding it when the final answer checks out (math, code, tests). When discourse mentions "thinking models," "test-time compute," or "reasoning traces," this is the lineage.</li>
+    </ul>
+    <p>So when a lab says "we improved the model through post-training," they changed its behavior without a new pretraining run. Base model = raw material; post-training = the product.</p>
+  </section>
+
+  <section id="fine-tuning">
+    <h2><a href="#fine-tuning" class="heading-link"><span class="num">§ 04</span>Fine-tuning: the term doing double duty</a></h2>
+    <p>Confusingly, <strong>fine-tuning</strong> describes both a lab's post-training <em>and</em> what you as a customer can do: continue training a released model on your own data. For the customer sense:</p>
+    <ul>
+      <li><strong>Full fine-tuning</strong> updates all weights—expensive, rarely justified.</li>
+      <li><strong>LoRA / PEFT (parameter-efficient fine-tuning)</strong> trains a small adapter layer while freezing the base—cheap enough to be routine, and what "fine-tuned on our data" almost always means in practice.</li>
+    </ul>
+    <div class="note">
+      <span class="note-label">Decision intuition</span>
+      <p>Fine-tuning teaches <em>behavior and form</em>—style, format, domain vocabulary. It is a poor tool for adding <em>knowledge</em>, which is what retrieval (RAG) is for. Phase 4 turns this into a real decision framework; the <a href="/docs/embeddings-retrieval">Embeddings &amp; Retrieval</a> primer carries the fuller comparison.</p>
+    </div>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="smaller">
+    <h2><a href="#smaller" class="heading-link"><span class="num">§ 05</span>Making models smaller: quantization and distillation</a></h2>
+    <p><strong>Quantization</strong> stores weights at lower precision—8-bit, 4-bit, occasionally lower—shrinking memory footprint (that 240&nbsp;GB model at 4-bit: ~60&nbsp;GB) and speeding inference, at some quality cost that is often surprisingly small down to 4-bit. This is the enabling technology of the local/on-device model scene. Format names you'll see in the wild—<strong>GGUF</strong> (the llama.cpp ecosystem's file format), <strong>AWQ</strong>, <strong>GPTQ</strong>—are quantization methods and containers; "Q4" in a filename means 4-bit. The <a href="/docs/local-models-hardware">Local Models &amp; Hardware</a> guide cashes this section out on real machines.</p>
+    <p><strong>Distillation</strong> trains a small model to imitate a large one's outputs—transferring capability into a cheaper package. Many small released models are distillations of frontier ones, acknowledged or otherwise.</p>
+  </section>
+
+  <section id="inference">
+    <h2><a href="#inference" class="heading-link"><span class="num">§ 06</span>Inference: what serving a model actually involves</a></h2>
+    <p>Generation happens in two phases with very different profiles:</p>
+    <ul>
+      <li><strong>Prefill:</strong> the model processes your whole prompt in one parallel pass. Compute-heavy, but fast per token.</li>
+      <li><strong>Decode:</strong> it then generates output one token at a time, each step conditioned on everything before. This sequential loop is why responses stream.</li>
+    </ul>
+    <p>The <strong>KV-cache</strong> is the trick that makes decode viable: during attention, each token produces key and value vectors that every later token needs to look at. Rather than recomputing them for the entire context on every new token, the model caches them. Consequences worth internalizing:</p>
+    <ul>
+      <li>KV-cache memory grows with context length—this, not the weights, is what blows up GPU memory at long context, and it's the real cost of "1M-token context windows."</li>
+      <li>It's why <strong>prompt caching</strong> exists as a billed API feature: a reused system prompt's KV-cache can be stored and reattached, skipping prefill. Large discounts on cached input tokens are the provider passing that saving along.</li>
+      <li>Much serving-infrastructure discourse (paged attention, batching strategies) is KV-cache memory management.</li>
+    </ul>
+    <p>The <strong>context window</strong> is the maximum tokens (prompt + output) the model handles per request. Related decode-side vocabulary: <strong>temperature/top-p</strong> (sampling randomness), <strong>speculative decoding</strong> (a small model drafts tokens the big one verifies—an inference speedup, not a quality change).</p>
+    <p>The two phases also explain the two latency numbers serving discourse cares about: <strong>TTFT</strong> (time to first token) is prefill wearing its observable clothes, and <strong>tokens/sec</strong> is decode wearing its. A provider quoting great tokens/sec with poor TTFT is fast at streaming and slow to start—different fixes, different costs.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 880 258" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-infer-title fig-infer-desc" font-family="JetBrains Mono, ui-monospace, monospace">
+        <title id="fig-infer-title">Prefill, decode, and the KV-cache</title>
+        <desc id="fig-infer-desc">The prompt's tokens are processed in one parallel prefill pass, producing time to first token. Output tokens are then decoded one at a time. Beneath, the KV-cache starts as a slab covering the prompt and grows by one segment per decoded token; each decode step reads the whole cache and appends its own entry.</desc>
+        <defs>
+          <marker id="pd-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--ink-soft)"/>
+          </marker>
+        </defs>
+        <text x="40" y="24" font-size="11" fill="var(--forest)" font-weight="600">PREFILL — whole prompt, one parallel pass</text>
+        <text x="500" y="24" font-size="11" fill="var(--forest)" font-weight="600">DECODE — one token at a time</text>
+        <g fill="var(--forest)" fill-opacity="0.08" stroke="var(--forest)" stroke-width="1.2">
+          <rect x="40" y="38" width="26" height="26"/><rect x="72" y="38" width="26" height="26"/><rect x="104" y="38" width="26" height="26"/><rect x="136" y="38" width="26" height="26"/><rect x="168" y="38" width="26" height="26"/><rect x="200" y="38" width="26" height="26"/><rect x="232" y="38" width="26" height="26"/><rect x="264" y="38" width="26" height="26"/><rect x="296" y="38" width="26" height="26"/><rect x="328" y="38" width="26" height="26"/>
+        </g>
+        <line x1="358" y1="51" x2="496" y2="51" stroke="var(--ink-soft)" stroke-width="1.2" marker-end="url(#pd-arrow)"/>
+        <g fill="var(--forest)" fill-opacity="0.08" stroke="var(--forest)" stroke-width="1.2">
+          <rect x="500" y="38" width="26" height="26"/><rect x="556" y="38" width="26" height="26"/><rect x="612" y="38" width="26" height="26"/>
+        </g>
+        <line x1="530" y1="51" x2="552" y2="51" stroke="var(--ink-soft)" stroke-width="1" marker-end="url(#pd-arrow)"/>
+        <line x1="586" y1="51" x2="608" y2="51" stroke="var(--ink-soft)" stroke-width="1" marker-end="url(#pd-arrow)"/>
+        <line x1="642" y1="51" x2="664" y2="51" stroke="var(--ink-soft)" stroke-width="1" marker-end="url(#pd-arrow)"/>
+        <rect x="668" y="38" width="26" height="26" fill="var(--copper)" fill-opacity="0.15" stroke="var(--copper)" stroke-width="1.4"/>
+        <text x="681" y="82" text-anchor="middle" font-size="10" fill="var(--copper)">next</text>
+        <path d="M 40 96 L 40 104 L 513 104 L 513 96" fill="none" stroke="var(--ink-soft)" stroke-width="1"/>
+        <text x="276" y="122" text-anchor="middle" font-size="10" fill="var(--ink-soft)">TTFT — time to first token (prefill)</text>
+        <path d="M 545 96 L 545 104 L 694 104 L 694 96" fill="none" stroke="var(--ink-soft)" stroke-width="1"/>
+        <text x="620" y="122" text-anchor="middle" font-size="10" fill="var(--ink-soft)">tokens/sec (decode)</text>
+        <text x="40" y="164" font-size="11" fill="var(--forest)" font-weight="600">KV-CACHE</text>
+        <rect x="40" y="174" width="314" height="26" fill="var(--forest)" fill-opacity="0.12" stroke="var(--forest)" stroke-width="1.2"/>
+        <text x="197" y="191" text-anchor="middle" font-size="10" fill="var(--ink-soft)">written during prefill</text>
+        <g fill="var(--forest)" fill-opacity="0.12" stroke="var(--forest)" stroke-width="1.2">
+          <rect x="500" y="174" width="26" height="26"/><rect x="556" y="174" width="26" height="26"/><rect x="612" y="174" width="26" height="26"/>
+        </g>
+        <rect x="668" y="174" width="26" height="26" fill="var(--copper)" fill-opacity="0.15" stroke="var(--copper)" stroke-width="1.4"/>
+        <line x1="681" y1="68" x2="681" y2="170" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#pd-arrow)"/>
+        <text x="702" y="191" font-size="10" fill="var(--ink-soft)">+1 entry per decoded token</text>
+        <line x1="668" y1="212" x2="44" y2="212" stroke="var(--ink-soft)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#pd-arrow)"/>
+        <text x="356" y="232" text-anchor="middle" font-size="10" fill="var(--ink-soft)">the whole cache is read at every decode step</text>
+      </svg>
+      <figcaption>Prefill processes the whole prompt in one parallel pass and shows up as TTFT; decode emits one token at a time and shows up as tokens/sec. The KV-cache is written during prefill and grows by one entry per decoded token—which is why long context costs memory, and why a reusable prompt's cache is worth billing for.</figcaption>
+    </figure>
+  </section>
+
+  <section id="app-layer">
+    <h2><a href="#app-layer" class="heading-link"><span class="num">§ 07</span>The application layer</a></h2>
+    <p>Everything above is the model; most day-to-day discourse happens in the layer built on top of it. The vocabulary:</p>
+    <ul>
+      <li><strong>System prompt:</strong> standing instructions sent with every request, distinct from the user's message. Where products put their persona, rules, and guardrails—and the thing prompt caching (§6) exists to make cheap.</li>
+      <li><strong>Structured output / function calling:</strong> making the model emit machine-parseable JSON matching a schema, rather than prose. The plumbing under every "the model filled in the form" feature.</li>
+      <li><strong>Tool use:</strong> the request/execute/return loop—model asks for a tool call, your code runs it, the result goes back in, the model continues. An <strong>agent</strong> is this loop run repeatedly toward a goal; when discourse says "agentic," it means products built on that loop. Unit 1.2 demystifies it in an afternoon.</li>
+      <li><strong>MCP (Model Context Protocol):</strong> an open standard for plugging tools and data sources into models—USB for tool use, so every product doesn't invent its own connector format.</li>
+      <li><strong>RAG (retrieval-augmented generation):</strong> fetch relevant material first, put it in the prompt, instruct the model to ground its answer in it. The standard way to give a model knowledge it wasn't trained on—<a href="/docs/embeddings-retrieval">Embeddings &amp; Retrieval</a> owns the mechanics.</li>
+      <li><strong>Context engineering:</strong> the successor term to "prompt engineering," reflecting where the craft actually moved—deciding <em>what goes in the context window</em> (instructions, retrieved documents, tool results, history) rather than wordsmithing a single prompt.</li>
+    </ul>
+  </section>
+
+  <section id="failure-modes">
+    <h2><a href="#failure-modes" class="heading-link"><span class="num">§ 08</span>Failure modes and safety</a></h2>
+    <p>The vocabulary an engineering leader gets asked about most:</p>
+    <ul>
+      <li><strong>Hallucination</strong> (or confabulation): the model states falsehoods fluently. Not a bug being patched out—a direct consequence of next-token prediction, which optimizes for plausible continuation, not truth. Mitigations are structural: <strong>grounding</strong> (give it the facts via RAG and instruct it to stick to them), citations, and evals that measure the rate rather than hoping.</li>
+      <li><strong>Alignment:</strong> the umbrella term for making model behavior match human intent—§3's post-training machinery is alignment in practice. In discourse the word stretches from "follows instructions politely" to long-horizon safety debates; note which sense a speaker means.</li>
+      <li><strong>Jailbreak vs. prompt injection</strong>—routinely confused, importantly different. A <em>jailbreak</em> is a user talking the model out of its own rules ("ignore your instructions and…"). <em>Prompt injection</em> is an attacker hijacking your application through content it processes—a malicious instruction hidden in a webpage, email, or document your system feeds to the model. Jailbreaks embarrass the model vendor; injection compromises <em>your product</em>, and there is no reliable general defense yet—which makes it an architecture concern (what can the model touch?), not a prompt-wording concern. Phase 5 treats it properly.</li>
+      <li><strong>Red-teaming:</strong> adversarial testing—paying people (or models) to break the model before users do.</li>
+      <li><strong>System cards / model cards:</strong> the vendor's published documentation of a model's capabilities, limits, and safety evaluations. Worth skimming for what the vendor <em>admits</em>—the failure modes listed there are the ones they couldn't fix.</li>
+    </ul>
+  </section>
+
+  <section id="announcements">
+    <h2><a href="#announcements" class="heading-link"><span class="num">§ 09</span>Reading a model announcement</a></h2>
+    <p>The skeptic's checklist for release-day discourse:</p>
+    <ul>
+      <li><strong>"Open weights" ≠ open source.</strong> You get the weights file, usually under a license with conditions; training data and recipe stay private.</li>
+      <li><strong>Benchmarks</strong> (MMLU and successors, coding and math suites) are useful signals with a known failure mode: contamination (test data leaking into training) and teaching-to-the-test.</li>
+      <li>Parse the name: family, size, variant ("-instruct" or "-chat" = post-trained; "-base" = raw), sometimes quantization.</li>
+      <li>The interesting questions are usually: dense or MoE (what does it <em>really</em> cost to run), what post-training approach, what license, and what context length at what quality.</li>
+    </ul>
+    <div class="note caveat">
+      <span class="note-label">Caveat · benchmarks</span>
+      <p>Treat announcement benchmark tables as marketing until third parties and your own evals weigh in. The <a href="/docs/evals-primer">Evals</a> primer and the Phase 4 eval material are the antidote.</p>
+    </div>
+  </section>
+
+  <section id="term-index">
+    <h2><a href="#term-index" class="heading-link"><span class="num">§ 10</span>Term index</a></h2>
+    <p><a href="#inference">kv-cache §6</a> · <a href="#anatomy">parameters/weights §1</a> · <a href="#anatomy">dense/MoE §1</a> · <a href="#anatomy">fp16/bf16 §1</a> · <a href="#anatomy">transformer/attention §1</a> · <a href="#anatomy">frontier model §1</a> · <a href="#anatomy">multimodal §1</a> · <a href="#pretraining">pretraining §2</a> · <a href="#pretraining">base model §2</a> · <a href="#pretraining">scaling laws §2</a> · <a href="#pretraining">tokens/tokenizer/BPE §2</a> · <a href="#post-training">post-training §3</a> · <a href="#post-training">SFT §3</a> · <a href="#post-training">RLHF/DPO §3</a> · <a href="#post-training">reasoning models §3</a> · <a href="#fine-tuning">fine-tuning/LoRA/PEFT §4</a> · <a href="#smaller">quantization/GGUF/Q4 §5</a> · <a href="#smaller">distillation §5</a> · <a href="#inference">prefill/decode §6</a> · <a href="#inference">prompt caching §6</a> · <a href="#inference">context window §6</a> · <a href="#inference">speculative decoding §6</a> · <a href="#inference">TTFT/tokens-per-sec §6</a> · <a href="#app-layer">system prompt §7</a> · <a href="#app-layer">structured output §7</a> · <a href="#app-layer">tool use/agent §7</a> · <a href="#app-layer">MCP §7</a> · <a href="#app-layer">RAG §7</a> · <a href="#app-layer">context engineering §7</a> · <a href="#failure-modes">hallucination/grounding §8</a> · <a href="#failure-modes">alignment §8</a> · <a href="#failure-modes">jailbreak vs. prompt injection §8</a> · <a href="#failure-modes">red-teaming §8</a> · <a href="#failure-modes">model cards §8</a> · <a href="#announcements">open weights §9</a> · <a href="#announcements">benchmarks §9</a></p>
+  </section>
+
+  <footer>
+    <span>llm-discourse-primer</span>
+    <span>AI/ML Learning Path · Primer</span>
+    <span>2026·08·31</span>
+  </footer>
+
+<!-- CONTENT:end -->
+</div>
+
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>
