@@ -54,5 +54,43 @@
         "footLeft": "2026·06·08", "footRight": "x.com",
         "src": "reading-room/_migrated/wtf-is-a-loop.html", "visibility": "private" }
     ]
+  },
+  {
+    "num": "§ 05", "id": "ai-ml-learning",
+    "name": "AI/ML Learning", "short": "AI/ML",
+    "docs": [
+      { "slug": "ai-ml-learning-path", "title": "The AI/ML Learning Path",
+        "kind": "Guide · Learning Path", "desc": "Six phases from orientation to production judgment—the reading copy of the path.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/ai-ml-learning-path.html", "visibility": "private" },
+      { "slug": "llm-discourse-primer", "title": "LLM Discourse Primer",
+        "kind": "Primer · Learning Path", "desc": "The vocabulary of current LLM discussion, organized around the model lifecycle.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/llm-discourse-primer.html", "visibility": "private" },
+      { "slug": "statistics-for-engineers", "title": "Statistics for Engineers",
+        "kind": "Primer · Learning Path", "desc": "Distributions, sampling, correlation, and when a difference is real.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/statistics-for-engineers.html", "visibility": "private" },
+      { "slug": "classical-ml-vocabulary", "title": "Classical ML Vocabulary",
+        "kind": "Primer · Learning Path", "desc": "Model families, the discipline terms, and the metric zoo of pre-deep-learning ML.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/classical-ml-vocabulary.html", "visibility": "private" },
+      { "slug": "python-env-polyglots", "title": "Python Environment for Polyglots",
+        "kind": "Guide · Learning Path", "desc": "uv, notebooks, and pandas idioms for someone who already knows how programming works.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/python-env-polyglots.html", "visibility": "private" },
+      { "slug": "local-models-hardware", "title": "Local Models & Hardware",
+        "kind": "Guide · Learning Path", "desc": "The memory math, the tool ladder, and running models on your own machines.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/local-models-hardware.html", "visibility": "private" },
+      { "slug": "embeddings-retrieval", "title": "Embeddings & Retrieval",
+        "kind": "Primer · Learning Path", "desc": "What embeddings capture, chunking, and the RAG loop with its knobs and failure modes.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/embeddings-retrieval.html", "visibility": "private" },
+      { "slug": "evals-primer", "title": "Evals",
+        "kind": "Primer · Learning Path", "desc": "Eval sets as product specs, the scoring ladder, and LLM-as-judge pitfalls.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "reading-room/_migrated/evals-primer.html", "visibility": "private" }
+    ]
   }
 ]

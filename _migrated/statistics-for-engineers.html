@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<!--
+  Long-form editorial reference doc template.
+  Drop-in starting point for the editorial-print aesthetic.
+
+  REGIONS. The file is split into marked regions — <!== NAME:start ==> …
+  <!== NAME:end ==> (written with = here only because this outer comment
+  can't nest; in the file they are ordinary HTML comments). Exactly three
+  regions belong to the DOCUMENT:
+
+      DOC-TITLE   the <title> line
+      DOC-CSS     per-doc style overrides (empty by default)
+      CONTENT     the entire authored body
+
+  Everything else — FONTS, MERMAID, TEMPLATE-CSS, SYNTAX-HIGHLIGHT,
+  EDITORIAL-HEAD, EDITORIAL-BODY, PRINT-OVERRIDES — is TEMPLATE CHROME.
+  Don't hand-edit chrome in a finished doc, and never put document
+  content outside CONTENT. That split is what lets
+  `assets/doc-tool.py retemplate <doc.html>` re-apply an updated
+  template to an existing document, and `doc-tool.py fonts embed|link
+  <doc.html>` swap the font strategy in one command.
+
+  Search-and-replace TODO markers before publishing. Components that are
+  always present: masthead, TOC, sections, footer. Components that are
+  optional (delete if not needed): Mermaid script block, the syntax-
+  highlight pair (SYNTAX-HIGHLIGHT:css in <head> + SYNTAX-HIGHLIGHT:js
+  before </body> — delete BOTH if the doc has no code samples), series-nav,
+  restricted banner, figure.diagram. The floating mini-map is included
+  by default; remove the <nav class="minimap"> block if you don't want
+  it (its CSS is harmless when no markup uses it). The shared editorial
+  bundle (EDITORIAL-HEAD before the head close, EDITORIAL-BODY before the
+  body close) adds click-to-zoom for figures, a light/dark theme toggle,
+  and mobile overflow fixes; it is canonical in the Reading Room repo and
+  inlined here. Both scripts are no-ops when unused. Aside from the
+  editorial bundle, syntax highlighting (inlined Prism), and the optional
+  Mermaid import, this style is static HTML/CSS — all three scripted pieces
+  are readability aids, self-contained, and no-ops when unused.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- DOC-TITLE:start --><title>Statistics for Engineers · AI/ML Learning Path</title>
+<!-- DOC-TITLE:end -->
+<!-- FONTS:start — swap this whole region with:
+       assets/doc-tool.py fonts embed <doc.html>   (artifact / CSP-safe)
+       assets/doc-tool.py fonts link  <doc.html>   (back to the default)
+     FONTS-LINK is the default loading path: works off the network
+     (browser, off-disk, email). Under the Claude Code ARTIFACT CSP the
+     link is blocked and the page silently falls back to default
+     serif/mono — gutting the look, since the typefaces are the
+     aesthetic. The embed form inlines assets/fonts-embedded.css instead.
+     The two are mutually exclusive — never ship both. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=Source+Serif+4:opsz,wght@8..60,300..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<!-- FONTS:end -->
+
+
+<!-- TEMPLATE-CSS:start — the design. Chrome: don't edit per-doc.
+     Per-doc overrides go in the DOC-CSS region further down. -->
+<style>
+  :root {
+    --bg: #f3ecdd;
+    --bg-soft: #ece4d2;
+    --bg-code: #e6dcc4;
+    --ink: #000;            /* body text — pure black for contrast on cream */
+    --ink-soft: #3a3a36;    /* italics, captions, mini-map links */
+    --ink-mute: #6b6357;    /* footer, meta, eyebrow tags, mini-map numerals */
+    --forest: #1f3a32;
+    --forest-deep: #142822;
+    --copper: #a85a1a;
+    --copper-soft: #c87a2f;
+    --rule: #c9bfa3;
+    --rule-strong: #8a7e5e;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(at 12% 8%, rgba(168, 90, 26, 0.05) 0px, transparent 50%),
+      radial-gradient(at 88% 92%, rgba(31, 58, 50, 0.06) 0px, transparent 50%);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .grain {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.04;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 880px;        /* 820 for how-tos */
+    margin: 0 auto;
+    padding: 80px 56px 120px;
+  }
+
+  /* Restricted / internal-only banner — OPTIONAL, delete if not needed.
+     Sits above the masthead. Small copper-outlined chip; makes it
+     immediately obvious if the doc surfaces somewhere it shouldn't. */
+  .restricted-banner {
+    margin: 0 0 20px;
+    padding: 10px 16px;
+    background: rgba(168, 90, 26, 0.08);
+    border: 1px solid var(--copper);
+    border-radius: 2px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    text-align: center;
+  }
+
+  /* Masthead */
+  header.masthead {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: "Fraunces", "Source Serif 4", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 50;
+    font-weight: 400;
+    font-size: 60px;
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin: 0 0 28px;
+    color: var(--forest-deep);
+  }
+
+  h1 em {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    color: var(--copper);
+  }
+
+  /* Self-link on the document title — clicking resets the URL hash so the
+     canonical document URL appears in the address bar (no section anchor). */
+  a.title-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.title-link:hover { color: var(--copper); }
+  a.title-link:hover em { color: var(--copper-soft); }
+
+  .lede {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    max-width: 660px;
+    margin: 0;
+  }
+
+  .meta {
+    display: flex;
+    gap: 32px;
+    margin-top: 36px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    flex-wrap: wrap;
+  }
+
+  .meta span strong { color: var(--ink); font-weight: 600; }
+
+  /* Series-nav — OPTIONAL, for multi-part document sets.
+     Sits between the masthead and the TOC. Mark the current part with
+     class="current". Delete if this is a standalone document. */
+  .series-nav {
+    margin: 0 0 56px;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--forest);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .series-nav .series-label {
+    display: block;
+    color: var(--forest);
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: 0.22em;
+  }
+  .series-nav ol { list-style: none; padding: 0; margin: 0; }
+  .series-nav li { margin: 4px 0; font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: 0.1em; }
+  .series-nav li a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  .series-nav li a:hover { border-bottom-color: var(--copper); }
+  .series-nav li.current { color: var(--ink); font-weight: 600; }
+  .series-nav li.current::before { content: "▸ "; color: var(--copper); }
+
+  /* TOC */
+  nav.toc {
+    margin: 0 0 72px;
+    padding: 28px 32px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--copper);
+  }
+
+  nav.toc h2 {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--copper);
+    margin: 0 0 18px;
+    border: none;
+    padding: 0;
+  }
+
+  nav.toc ol.toc-list {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+    columns: 2;            /* drop to 1 for how-tos / short docs */
+    column-gap: 48px;
+  }
+
+  nav.toc ol.toc-list > li {
+    counter-increment: toc;
+    margin: 6px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 24;
+    font-size: 15px;
+    line-height: 1.35;
+    break-inside: avoid;
+  }
+
+  nav.toc ol.toc-list > li::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    color: var(--copper);
+    margin-right: 12px;
+    letter-spacing: 0.1em;
+  }
+
+  /* For how-to / step-based docs, swap the ::before content above for: */
+  /* content: "STEP / " counter(toc, decimal-leading-zero); */
+
+  nav.toc a {
+    color: var(--forest-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  nav.toc a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+  /* Section */
+  section { margin-bottom: 80px; scroll-margin-top: 40px; }
+
+  section > h2 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 72;
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    color: var(--forest-deep);
+    margin: 0 0 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  section > h2 .num,
+  section > h2 .kind {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0.2em;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Self-anchoring section headings. Wrap each section h2's contents in
+     an <a href="#section-id" class="heading-link"> so a click sets the URL
+     hash and the section URL can be copied from the address bar. */
+  a.heading-link {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.18s;
+  }
+  a.heading-link:hover { color: var(--copper); }
+  a.heading-link:hover .num,
+  a.heading-link:hover .kind { color: var(--copper-soft); }
+
+  h3 {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 36;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 44px 0 16px;
+    color: var(--forest);
+  }
+
+  p { margin: 0 0 18px; }
+  p strong { color: var(--forest-deep); font-weight: 600; }
+  p em { color: var(--ink-soft); }
+
+  a {
+    color: var(--copper);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--copper-soft); }
+
+  /* Code */
+  code {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.86em;
+    background: var(--bg-code);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--forest-deep);
+    border: 1px solid var(--rule);
+  }
+
+  pre {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--forest-deep);
+    color: #e6dcc4;
+    padding: 22px 26px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 20px 0 28px;
+    border-left: 3px solid var(--copper);
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* SYNTAX-HIGHLIGHT:css:start — editorial Prism theme (warm palette).
+     Pairs with the inlined Prism bundle in the SYNTAX-HIGHLIGHT:js block
+     before </body>. Token colors stay in the warm editorial ramp — copper
+     for control/keywords, gold/olive/sand/tan for the rest, khaki for
+     comments. No cool hues. The <pre> surface is dark in BOTH light and
+     dark themes, so one token palette reads correctly in both. Rules are
+     scoped to <pre> so inline <code> is never tinted. Harmless when no code
+     blocks are present. To drop highlighting entirely, delete this CSS
+     block AND the SYNTAX-HIGHLIGHT:js script block before </body>. */
+  pre[class*="language-"], code[class*="language-"] {
+    font-family: "JetBrains Mono", monospace;
+    text-shadow: none;          /* kill stock Prism-theme glow */
+    tab-size: 2; hyphens: none;
+  }
+  pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+    color: #968b6c; font-style: italic;          /* khaki — recede */
+  }
+  pre .token.punctuation, pre .token.template-punctuation { color: #b8ac8a; }
+  pre .token.namespace { opacity: 0.8; }
+  /* copper — control words & "look here" */
+  pre .token.keyword, pre .token.tag, pre .token.selector,
+  pre .token.atrule, pre .token.rule, pre .token.important,
+  pre .token.instruction, pre .token.for-or-select, pre .token.coord {
+    color: #d98a44; font-weight: 600;
+  }
+  /* amber-tan — operators & links */
+  pre .token.operator, pre .token.entity, pre .token.combinator,
+  pre .token.url, pre .token.atrule .token.url { color: #c9a06a; }
+  /* gold — numeric & identity literals, function names */
+  pre .token.number, pre .token.boolean, pre .token.constant,
+  pre .token.symbol, pre .token.function, pre .token.function-definition,
+  pre .token.macro { color: #e3b25e; }
+  /* olive — string-like text */
+  pre .token.string, pre .token.char, pre .token.attr-value,
+  pre .token.regex, pre .token.template-string, pre .token.string-property {
+    color: #a9b87f;
+  }
+  /* sand/tan — types, keys, properties, builtins */
+  pre .token.class-name, pre .token.builtin, pre .token.type,
+  pre .token.key, pre .token.property, pre .token.attr-name,
+  pre .token.title, pre .token.namespace { color: #cdb58a; }
+  /* light tan — variables & parameters */
+  pre .token.variable, pre .token.parameter, pre .token.property-access {
+    color: #d9c9a8;
+  }
+  pre .token.bold { font-weight: 600; }
+  pre .token.italic { font-style: italic; }
+  /* diff — warm bands; scoped to the diff language so markdown ins/del stay inline */
+  pre[class*="language-diff"] .token.inserted {
+    color: #a9b87f; background: rgba(169,184,127,0.10); display: block;
+  }
+  pre[class*="language-diff"] .token.deleted {
+    color: #cf8a5a; background: rgba(207,138,90,0.11); display: block;
+  }
+  pre .token.inserted { color: #a9b87f; }
+  pre .token.deleted { color: #cf8a5a; }
+  /* Print: <pre> flips to light paper, so retune tokens to dark-on-light.
+     Keep copper keywords + grey italic comments for light structure; drop
+     the bright screen colors and diff bands that wouldn't read on paper. */
+  @media print {
+    pre .token { color: #1a1a1a; background: none; }
+    pre .token.comment, pre .token.prolog, pre .token.doctype, pre .token.cdata {
+      color: #6b6357; font-style: italic;
+    }
+    pre .token.keyword, pre .token.tag, pre .token.selector, pre .token.atrule,
+    pre .token.rule, pre .token.important, pre .token.instruction,
+    pre .token.for-or-select, pre .token.coord { color: #a85a1a; }
+    /* override the higher-specificity diff rules so paper diffs read as
+       dark text (the leading +/- still marks them); drop the warm bands. */
+    pre .token.inserted, pre .token.deleted,
+    pre[class*="language-diff"] .token.inserted,
+    pre[class*="language-diff"] .token.deleted { color: #1a1a1a; background: none; }
+  }
+  /* SYNTAX-HIGHLIGHT:css:end */
+
+  /* TL;DR */
+  .tldr {
+    border-left: 3px solid var(--copper);
+    padding: 4px 0 4px 24px;
+    margin: 28px 0;
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 32;
+    font-style: italic;
+    font-size: 19px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* Drop cap — apply to first paragraph of opening section only */
+  .lead-para::first-letter {
+    font-family: "Fraunces", serif;
+    font-variation-settings: "opsz" 144, "SOFT" 100;
+    font-weight: 400;
+    font-style: italic;
+    float: left;
+    font-size: 68px;
+    line-height: 0.85;
+    margin: 8px 10px 0 0;
+    color: var(--copper);
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0 32px;
+    font-size: 15px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--copper);
+    border-bottom: 1.5px solid var(--rule-strong);
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+  tbody tr:hover { background: var(--bg-soft); }
+  td code { font-size: 12px; }
+
+  /* Notes */
+  .note {
+    margin: 28px 0;
+    padding: 18px 24px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--rule-strong);
+    font-size: 16px;
+    color: var(--ink-soft);
+  }
+  .note .note-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--copper);
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note p { margin: 0 0 10px; }
+  .note p:last-child { margin-bottom: 0; }
+
+  .note.warn { border-left-color: var(--copper-soft); }
+  .note.warn .note-label { color: var(--copper-soft); }
+  .note.caveat { border-left-color: var(--copper); }
+  .note.caveat .note-label { color: var(--copper); }
+  .note.good {
+    border-left-color: var(--forest);
+    background: rgba(31, 58, 50, 0.06);
+  }
+  .note.good .note-label { color: var(--forest); }
+
+  /* Figure with diagram + caption — for inline SVG, Mermaid, or images. */
+  figure.diagram { margin: 40px 0 44px; }
+  figure.diagram svg { width: 100%; height: auto; display: block; }
+  figure.diagram figcaption {
+    margin: 16px auto 0;
+    max-width: 680px;
+    text-align: center;
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* Ornament */
+  .ornament {
+    text-align: center;
+    margin: 64px 0;
+    color: var(--rule-strong);
+    font-family: "Fraunces", serif;
+    font-size: 24px;
+    letter-spacing: 1em;
+    line-height: 1;
+  }
+
+  /* Lists */
+  ul, ol { margin: 0 0 20px; padding-left: 24px; }
+  li { margin-bottom: 8px; font-family: "Source Serif 4", Georgia, serif; }
+  ul li::marker {
+    color: var(--copper);
+    content: "§  ";
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+  }
+
+  /* Mermaid */
+  .mermaid { margin: 24px 0 32px; text-align: center; background: transparent; }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  /* Zoom lightbox, dark-mode theme, and mobile fixes come from the shared
+     editorial bundle (the EDITORIAL-HEAD and EDITORIAL-BODY blocks below),
+     canonical in the Reading Room repo (assets/editorial/). Don't add
+     figure-zoom or theme CSS here — edit the partials and re-sync. */
+
+  /* Floating mini-map TOC. Shown only at viewport >= 1180px, where the
+     gutter outside the 880px content column is wide enough to hold it.
+     Mirror the main TOC entries — the mini-map is a persistent companion,
+     not an alternate navigation. Delete the <nav class="minimap"> block
+     in the body if you don't want it. */
+  .minimap { display: none; }
+  @media (min-width: 1180px) {
+    .minimap {
+      display: block;
+      position: fixed;
+      top: 96px;
+      left: max(20px, calc(50vw - 580px));
+      width: 140px;
+      z-index: 5;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+    .minimap-label {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding-left: 12px;
+    }
+    .minimap ol { list-style: none; padding: 0; margin: 0; counter-reset: mm; }
+    .minimap li { counter-increment: mm; margin: 0; }
+    .minimap a {
+      display: block;
+      padding: 4px 8px 4px 12px;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border-left: 2px solid var(--rule);
+      transition: color 0.18s, border-color 0.18s;
+      text-transform: uppercase;
+    }
+    .minimap a::before {
+      content: counter(mm, decimal-leading-zero) "  ";
+      color: var(--ink-mute);
+    }
+    .minimap a:hover {
+      color: var(--copper);
+      border-left-color: var(--copper);
+    }
+  }
+  /* Progressive enhancement: on browsers that support scroll-driven
+     animations, the mini-map fades in once the user has scrolled past
+     the masthead. Browsers without support get the always-visible
+     version above. No JavaScript fallback is needed. */
+  @supports (animation-timeline: scroll()) {
+    @media (min-width: 1180px) {
+      .minimap {
+        opacity: 0;
+        animation: minimap-fade-in linear both;
+        animation-timeline: scroll();
+        animation-range: 500px 750px;
+      }
+      @keyframes minimap-fade-in {
+        to { opacity: 1; }
+      }
+    }
+  }
+
+  /* Footer */
+  footer {
+    margin-top: 96px;
+    padding-top: 32px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer a { color: var(--copper); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer a:hover { border-bottom-color: var(--copper); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .container { padding: 56px 28px 80px; }
+    h1 { font-size: 42px; }
+    .lede { font-size: 18px; }
+    section > h2 { font-size: 26px; }
+    h3 { font-size: 19px; }
+    nav.toc ol.toc-list { columns: 1; }
+    .meta { flex-direction: column; gap: 8px; }
+    pre { font-size: 12px; padding: 16px 18px; }
+    th, td { padding: 10px 8px; font-size: 13px; }
+  }
+
+  /* Print. Break hygiene is per-block, not per-section — long-form
+     sections routinely exceed a page, and a section-level avoid rule
+     just shoves them to the next page leaving half-blank sheets. */
+  @media print {
+    body { background: white; background-image: none; }
+    .grain, nav.toc, .minimap, .series-nav { display: none; }
+    pre { background: #f5f5f5; color: #1a1a1a; border-left-color: #888; }
+    section > h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    pre, table, figure, .note, .tldr { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+<!-- TEMPLATE-CSS:end -->
+
+<!-- DOC-CSS:start — per-document style overrides. This region is carried
+     across `doc-tool.py retemplate`, so anything doc-specific belongs
+     HERE, not in TEMPLATE-CSS. Use the existing tokens (--copper,
+     --forest, --ink-*) rather than new colors; if you need more than a
+     handful of rules, the document probably wants a different style. -->
+<style>
+  /* (no per-doc overrides) */
+</style>
+<!-- DOC-CSS:end -->
+
+<!-- EDITORIAL-HEAD:start -->
+<style>
+  /* The hint is a CSS pseudo-element, not a DOM node, so async renderers
+     (Mermaid rewrites its host's innerHTML) can't wipe it. */
+  .edzoom-able{cursor:zoom-in;position:relative;}
+  .edzoom-able::after{
+    content:"Click to zoom";
+    position:absolute;top:8px;right:8px;z-index:2;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:9px;
+    letter-spacing:0.18em;text-transform:uppercase;color:#a85a1a;
+    background:rgba(243,236,221,0.85);border:1px solid #c9bfa3;
+    padding:3px 7px;border-radius:2px;opacity:0;transition:opacity .15s;pointer-events:none;
+  }
+  .edzoom-able:hover::after{opacity:1;}
+  .edzoom-overlay{
+    position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+    background:rgba(243,236,221,0.97);
+    -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);cursor:zoom-out;
+  }
+  .edzoom-overlay.open{display:flex;}
+  .edzoom-stage{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;cursor:grab;touch-action:none;
+  }
+  .edzoom-stage.dragging{cursor:grabbing;}
+  .edzoom-content{
+    transform-origin:center center;will-change:transform;user-select:none;
+    width:min(92vw,1300px);max-height:90vh;display:flex;align-items:center;justify-content:center;
+  }
+  .edzoom-content svg, .edzoom-content img{
+    display:block;width:100% !important;height:auto !important;
+    max-width:100% !important;max-height:90vh !important;
+  }
+  .edzoom-controls{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:1001;display:flex;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;background:#ece4d2;border:1px solid #8a7e5e;border-radius:3px;overflow:hidden;
+  }
+  .edzoom-controls button{
+    appearance:none;background:transparent;border:none;border-left:1px solid #c9bfa3;
+    color:#a85a1a;padding:9px 15px;cursor:pointer;font:inherit;letter-spacing:inherit;text-transform:inherit;
+  }
+  .edzoom-controls button:first-child{border-left:none;}
+  .edzoom-controls button:hover{background:#f3ecdd;color:#c87a2f;}
+  .edzoom-controls .edzoom-pct{
+    color:#6b6357;padding:9px 14px;border-left:1px solid #c9bfa3;min-width:64px;text-align:center;align-self:center;
+  }
+  @media print{.edzoom-overlay,.edzoom-controls,.edzoom-able::after{display:none !important;}}
+
+  :root[data-theme="dark"]{
+    --bg:#181410; --bg-soft:#211b15; --bg-code:#241d16;
+    --ink:#ece4d2; --ink-soft:#c4b8a2; --ink-mute:#a89a82;
+    --forest:#9db8ac; --forest-deep:#efe6d4;
+    --copper:#d98a44; --copper-soft:#e8a766;
+    --rule:#3a332a; --rule-strong:#5b5242;
+  }
+  :root[data-theme="dark"] body{background-image:none;}
+  :root[data-theme="dark"] pre{background:#0f0c09;}
+  :root[data-theme="dark"] [data-library-nav]{background:#181410 !important;border-bottom-color:#3a332a !important;}
+  :root[data-theme="dark"] .edzoom-overlay{background:rgba(18,15,11,0.97) !important;}
+  :root[data-theme="dark"] .edzoom-controls{background:#211b15;border-color:#5b5242;}
+  :root[data-theme="dark"] .edzoom-controls button{border-left-color:#3a332a;}
+  :root[data-theme="dark"] .edzoom-able::after{background:#0f0c09;border-color:#6b5d44;color:#f2b66e;font-weight:600;}
+  :root[data-theme="dark"] figure svg,
+  :root[data-theme="dark"] .mermaid svg,
+  :root[data-theme="dark"] figure img,
+  :root[data-theme="dark"] .edzoom-content svg,
+  :root[data-theme="dark"] .edzoom-content img{
+    background:#f3ecdd;border:1px solid #c9bfa3;border-radius:6px;
+    padding:14px;box-sizing:border-box;
+  }
+  .edtheme{
+    position:fixed;bottom:18px;right:18px;z-index:1100;
+    font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10px;letter-spacing:0.16em;
+    text-transform:uppercase;color:var(--copper);background:var(--bg-soft);
+    border:1px solid var(--rule-strong);border-radius:2px;padding:6px 11px;cursor:pointer;
+  }
+  .edtheme:hover{color:var(--copper-soft);border-color:var(--copper);}
+  @media print{.edtheme{display:none;}}
+  :root.edzoom-open .edtheme{display:none !important;}
+  @media(max-width:720px){
+    pre{overflow-x:auto;}
+    code{overflow-wrap:anywhere;}
+    table{display:block;overflow-x:auto;max-width:100%;}
+  }
+</style>
+<script>
+(function(){
+  var KEY='editorial-theme',s=null;
+  try{s=localStorage.getItem(KEY);}catch(_){}
+  var t=s||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');
+  document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<!-- EDITORIAL-HEAD:end -->
+<!-- PRINT-OVERRIDES:start -->
+<style>
+  /* Print fixes that must sit AFTER the editorial bundle to out-cascade
+     its dark-theme rules: a reader printing from the dark theme (the
+     data-theme attribute persists in localStorage) still gets ink on
+     paper. Keep this block below EDITORIAL-HEAD:end when re-syncing. */
+  @media print{
+    :root[data-theme="dark"]{
+      --bg:#ffffff; --bg-soft:#f5f1e6; --bg-code:#f5f5f5;
+      --ink:#000; --ink-soft:#3a3a36; --ink-mute:#6b6357;
+      --forest:#1f3a32; --forest-deep:#142822;
+      --copper:#a85a1a; --copper-soft:#c87a2f;
+      --rule:#c9bfa3; --rule-strong:#8a7e5e;
+    }
+    :root[data-theme="dark"] body{background:#fff;}
+    :root[data-theme="dark"] pre{background:#f5f5f5;}
+    :root[data-theme="dark"] figure svg,
+    :root[data-theme="dark"] .mermaid svg,
+    :root[data-theme="dark"] figure img{
+      background:none;border:none;border-radius:0;padding:0;}
+    /* Paper cannot scroll: a wrapper that scrolls on screen CLIPS on
+       paper, silently dropping whatever sits past the page edge. Narrow
+       print margins can also push the viewport under the 720px query
+       that turns tables into scroll containers. */
+    table{display:table;overflow:visible;max-width:100%;}
+    pre{overflow:visible;white-space:pre-wrap;}
+    figure.diagram svg{max-width:100%;height:auto;}
+    /* Folded notebook code (collapse-notebook.py): reveal it on paper — a
+       disclosure control the reader can't click is just lost content.
+       ::details-content is what actually works; overriding the children
+       directly does not reveal a closed <details>. */
+    details.nb-code::details-content{content-visibility:visible !important;}
+    details.nb-code>*:not(summary){display:block;}
+    details.nb-code>summary{display:none;}
+    details.nb-code{break-inside:avoid;page-break-inside:avoid;}
+  }
+</style>
+<!-- PRINT-OVERRIDES:end -->
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<div class="container">
+<!-- CONTENT:start — everything the document actually says lives between
+     these two markers, and nothing else does. Keep it that way: it is
+     the only region `doc-tool.py retemplate` carries into a refreshed
+     template. -->
+  <header class="masthead">
+    <div class="eyebrow">Primer · AI/ML Learning Path</div>
+    <h1><a href="#" class="title-link">Statistics for <em>Engineers</em></a></h1>
+    <p class="lede">The statistics an engineering leader actually needs: reading data honestly, and knowing when a difference between two numbers is real. Not proofs, not a catalog of named tests—the handful of ideas that let you challenge a chart in a review meeting and interpret your own eval results without fooling yourself.</p>
+    <div class="meta">
+      <span><strong>Status</strong> · Living reference</span>
+      <span><strong>Pairs with</strong> · Phases 1–2, 4</span>
+      <span><strong>Updated</strong> · 2026·08·31</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol class="toc-list">
+      <li><a href="#distributions">Distributions: the shape of your data</a></li>
+      <li><a href="#center-spread">Center and spread</a></li>
+      <li><a href="#sampling">Sampling and uncertainty</a></li>
+      <li><a href="#correlation">Correlation</a></li>
+      <li><a href="#difference-real">Is the difference real?</a></li>
+      <li><a href="#base-rates">Base rates: why accurate detectors are usually wrong</a></li>
+      <li><a href="#path-map">Where these land in the path</a></li>
+      <li><a href="#resources">Resources &amp; term index</a></li>
+    </ol>
+  </nav>
+
+  <nav class="minimap" aria-label="On this page">
+    <div class="minimap-label">§ On this page</div>
+    <ol>
+      <li><a href="#distributions">Distributions</a></li>
+      <li><a href="#center-spread">Center and spread</a></li>
+      <li><a href="#sampling">Sampling and uncertainty</a></li>
+      <li><a href="#correlation">Correlation</a></li>
+      <li><a href="#difference-real">Is the difference real?</a></li>
+      <li><a href="#base-rates">Base rates</a></li>
+      <li><a href="#path-map">Where these land</a></li>
+      <li><a href="#resources">Resources &amp; index</a></li>
+    </ol>
+  </nav>
+
+  <section id="distributions">
+    <h2><a href="#distributions" class="heading-link"><span class="num">§ 01</span>Distributions: the shape of your data</a></h2>
+    <p class="lead-para">You already have more statistical intuition than you think—you've reasoned about p99 latency, flaky tests, and error budgets for years. This primer mostly attaches proper names and sharper edges to instincts you already carry. It starts where all of it starts: a <strong>distribution</strong> is the answer to "if I looked at every value, what shape would the pile make?" Before any summary number means anything, you need the shape, because the shape determines which summaries lie.</p>
+
+    <p>Three shapes cover most of what you'll meet:</p>
+    <ul>
+      <li><strong>Normal (the bell curve).</strong> Symmetric, concentrated around the middle, tails fading fast. Shows up when a value is the sum of many small independent effects—measurement noise, human heights. The comfortable case: mean and standard deviation describe it fully.</li>
+      <li><strong>Skewed.</strong> Most values on one side, a stretched tail on the other. Incomes, file sizes, home prices.</li>
+      <li><strong>Long-tailed.</strong> Skew's extreme cousin: most values small, a few enormous—and the enormous ones dominate the totals. Request latency, outage durations, viral posts.</li>
+    </ul>
+
+    <p>You already know this distinction as <strong>percentiles</strong>. The reason dashboards show p50 and p99 instead of average latency is exactly that latency is long-tailed: the mean is dragged upward by the tail until it describes no request anyone actually experienced. "Mean latency 80ms" can be true while half of requests finish in 30ms and the worst 1% take 4 seconds. A percentile—"p99 = 1.2s" means 99% of values sit at or below 1.2s—is just a direct reading off the distribution, no shape assumption required.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 880 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-shapes-title fig-shapes-desc">
+        <title id="fig-shapes-title">Symmetric vs. right-skewed distributions</title>
+        <desc id="fig-shapes-desc">Two density curves. Left: a symmetric bell curve where mean and median coincide at one tick. Right: a right-skewed latency-like curve where the median sits in the bulk and the mean is dragged toward the long tail; the gap between them is highlighted.</desc>
+        <text x="220" y="34" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" letter-spacing="2" fill="var(--ink-mute)">SYMMETRIC</text>
+        <text x="660" y="34" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" letter-spacing="2" fill="var(--ink-mute)">RIGHT-SKEWED (LATENCY-LIKE)</text>
+        <!-- left panel -->
+        <line x1="50" y1="200" x2="390" y2="200" stroke="var(--rule)" stroke-width="1"/>
+        <path d="M60,199 C130,196 160,62 220,62 C280,62 310,196 380,199" fill="none" stroke="var(--forest)" stroke-width="2.5"/>
+        <line x1="220" y1="200" x2="220" y2="70" stroke="var(--forest)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="220" y="222" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">mean = median</text>
+        <!-- right panel -->
+        <line x1="470" y1="200" x2="850" y2="200" stroke="var(--rule)" stroke-width="1"/>
+        <path d="M480,199 C500,192 515,68 552,68 C592,68 612,142 655,170 C710,192 790,197 842,199" fill="none" stroke="var(--forest)" stroke-width="2.5"/>
+        <line x1="590" y1="200" x2="590" y2="98" stroke="var(--forest)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <text x="578" y="222" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">median</text>
+        <line x1="662" y1="200" x2="662" y2="160" stroke="var(--copper)" stroke-width="2"/>
+        <text x="674" y="222" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">mean</text>
+        <path d="M594,240 H658 M594,235 V245 M658,235 V245" stroke="var(--copper)" stroke-width="1.5" fill="none"/>
+        <text x="672" y="245" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">the tail drags the mean</text>
+      </svg>
+      <figcaption>Same summary statistics, different honesty. On symmetric data the mean and median agree; on skewed data the mean is pulled into the tail and describes a value few observations resemble—the gap between the two ticks <em>is</em> the skew.</figcaption>
+    </figure>
+
+    <p>The operational habit: <strong>plot before you summarize.</strong> A histogram takes ten seconds and immediately tells you whether the summary numbers you're about to compute are meaningful. Most statistical lies to engineers are a single number quietly standing in for a shape it doesn't resemble.</p>
+  </section>
+
+  <section id="center-spread">
+    <h2><a href="#center-spread" class="heading-link"><span class="num">§ 02</span>Center and spread</a></h2>
+
+    <p><strong>Mean</strong> is the sum divided by the count. It's the right center for symmetric distributions and the wrong one for skewed data, because every value pulls on it—one outlier can drag it anywhere. <strong>Median</strong> is the middle value when sorted: half above, half below. Outliers can't budge it. The classic anchor: when a billionaire walks into a bar, the <em>mean</em> wealth of everyone inside jumps by tens of millions; the <em>median</em> barely moves. If someone reports a mean and the data might be skewed, ask for the median too; a large gap between them <em>is</em> the skew, quantified. (<strong>Mode</strong>—the most common value—rarely earns its keep outside categorical data.)</p>
+
+    <p>Spread is the more neglected half. <strong>Variance</strong> is the average squared distance from the mean; <strong>standard deviation (sd)</strong> is its square root, which puts it back in the original units—milliseconds, dollars—so you can think with it. The intuition worth keeping, for roughly normal data:</p>
+    <ul>
+      <li>~68% of values fall within 1 sd of the mean</li>
+      <li>~95% within 2 sd</li>
+      <li>~99.7% within 3 sd</li>
+    </ul>
+
+    <p>So "2 sd" is a serviceable everyday meaning for "surprisingly far from typical," and it's the spirit behind control-chart alerting and most anomaly thresholds. For skewed data, sd inherits all of the mean's problems—reach for percentiles instead (the interquartile range, p10–p90, whatever fits the question).</p>
+
+    <p>The reflex this section installs: <strong>never accept a center without asking for the spread.</strong> "Average handling time improved to 40s" is uninterpretable until you know whether values cluster at 38–42 or range from 5 to 300.</p>
+  </section>
+
+  <section id="sampling">
+    <h2><a href="#sampling" class="heading-link"><span class="num">§ 03</span>Sampling and uncertainty</a></h2>
+
+    <p>You almost never see the <strong>population</strong> (all requests, all users, all possible eval questions). You see a <strong>sample</strong>, and you're hoping it speaks for the rest. Everything in this section is about how loudly a sample can lie.</p>
+
+    <p>Small samples lie loudly. Flip a fair coin 10 times and getting 7 heads is unremarkable—it happens about 12% of the time. Nobody concludes the coin is biased at 7/10; yet the same evidence, dressed as "70% of the first ten beta users converted," routinely gets extrapolated into a forecast. The instinct to build: for any proportion, mentally attach the sample size. 70% of 10 and 70% of 10,000 are different facts.</p>
+
+    <p>The <strong>standard error</strong> is the standard deviation of the <em>estimate itself</em>—how much the number you computed would wobble if you could rerun the whole sampling process. It shrinks with the square root of sample size, and that √n is the tyranny of the whole field: <strong>to halve your uncertainty you need four times the data.</strong> A hundred times more data buys you one extra decimal place of confidence (√100&nbsp;=&nbsp;10). This is why "just collect a bit more" rarely rescues a marginal result.</p>
+
+    <p>The <strong>central limit theorem (CLT)</strong> is the reason any of this machinery works: <em>averages of samples are approximately normally distributed even when the underlying data isn't.</em> Your latency data can be as long-tailed as it likes; the average of repeated samples of it still behaves like a bell curve. That's what licenses the 68/95/99.7 reasoning about estimates, and it's why the normal distribution is everywhere in statistics despite raw data rarely being normal.</p>
+
+    <p>A <strong>confidence interval</strong> packages this into an honest error bar: instead of "80% correct," you report "80%, and the plausible range given this sample size is roughly 55–93%." That's not an exotic calculation—for a proportion near 80% with n=15, the standard error is about 10 percentage points, and a 95% interval is roughly ±2 of those: 20 points each way. (The exact interval is lopsided because a score can't pass 100%, hence 55–93 rather than a naive 60–100. For intuition, the shortcut is plenty.)</p>
+
+    <div class="note caveat">
+      <span class="note-label">Caveat · Sit with this one</span>
+      <p>A 15-question eval doesn't measure "80%." It measures "somewhere in the 60s to the 90s." Numbers reported without their interval aren't wrong, exactly—they're claiming a precision they don't have.</p>
+    </div>
+  </section>
+
+  <section id="correlation">
+    <h2><a href="#correlation" class="heading-link"><span class="num">§ 04</span>Correlation</a></h2>
+
+    <p><strong>Correlation</strong> (the coefficient <em>r</em>, from −1 to 1) measures how tightly two variables move together <em>linearly</em>. r&nbsp;=&nbsp;0.9: knowing one tells you a lot about the other. r&nbsp;=&nbsp;0: no linear relationship—though possibly a strong nonlinear one (a perfect U-shape scores near zero), which is one more reason to plot before you summarize.</p>
+
+    <p>The famous trap has a mechanism worth naming, not just a slogan. Ice cream sales correlate with drowning deaths—not because either causes the other, but because summer drives both. A <strong>confounder</strong> is a third variable that moves the two you're looking at, manufacturing a relationship between them. Correlation ≠ causation isn't skepticism for its own sake; it's the specific question <em>"what else could be moving both of these?"</em> asked before believing any observational chart. (Confounders are everywhere in product data: cohort age, seasonality, and "power users do everything more" account for a remarkable fraction of exciting dashboard findings.)</p>
+
+    <p>Two working notes for later phases. First, with enough variable pairs, strong correlations appear by pure chance—mine 1,000 metrics against each other and dazzling <strong>spurious correlations</strong> are guaranteed. Second, correlated <em>features</em> are why regression coefficients resist casual reading: when two inputs move together, the model can shift credit between them freely, so "the coefficient on X is small" doesn't mean X doesn't matter. That lands in Phase 2's regression unit.</p>
+  </section>
+
+  <div class="ornament">§ § §</div>
+
+  <section id="difference-real">
+    <h2><a href="#difference-real" class="heading-link"><span class="num">§ 05</span>Is the difference real?</a></h2>
+
+    <p>The section this primer exists for. You will constantly compare two numbers from noisy processes—prompt A vs. prompt B, this week vs. last week, vendor claim vs. your test—and the default failure mode is treating any gap as signal.</p>
+
+    <p>The worked example, from unit 1.6 of the path: your RAG pipeline scores <strong>12/15</strong> on your eval set. You tweak the prompt; it scores <strong>13/15</strong>. Ship the tweak?</p>
+
+    <p>Run the reasoning from § 03. If the pipeline's true accuracy were exactly 80% and unchanged, rerunning a 15-question eval produces 12 sometimes, 11 sometimes, 13 or 14 sometimes—the standard error at n=15 is about one and a half questions. A one-question improvement is comfortably inside the band that pure noise produces. The honest reading of 12/15 → 13/15 is: <em>no detectable difference.</em> And the noise stacks: the model's own sampling varies run to run, retrieval can tie-break differently, and if an <strong>LLM-as-judge</strong> does the grading, the judge is a stochastic process too—the same answer can grade differently on two passes. Every layer widens the band.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-diff-title fig-diff-desc">
+        <title id="fig-diff-title">Two eval scores with their 95% intervals, at n = 15 and n = 600</title>
+        <desc id="fig-diff-desc">Dot-and-whisker plot of 95 percent intervals. At fifteen questions, prompt A at 80 percent spans roughly 55 to 93 percent and prompt B at 86.7 percent spans roughly 62 to 96 percent—the bands overlap almost entirely, and the overlap is shaded and labeled as noise swallowing the gap. At six hundred questions the same accuracies produce narrow bands that no longer overlap.</desc>
+        <!-- overlap shading, n=15 (95% Wilson intervals) -->
+        <rect x="247.7" y="52" width="466.6" height="88" fill="var(--copper)" opacity="0.13"/>
+        <text x="481" y="44" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">overlap — noise swallows the gap</text>
+        <!-- n=15 rows -->
+        <text x="60" y="80" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">n = 15</text>
+        <line x1="137.5" y1="76" x2="714.3" y2="76" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="518.0" cy="76" r="4.5" fill="var(--forest)"/>
+        <text x="724.3" y="80" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 12/15</text>
+        <line x1="247.7" y1="122" x2="764.1" y2="122" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="618.7" cy="122" r="4.5" fill="var(--forest)"/>
+        <text x="774.1" y="126" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 13/15</text>
+        <!-- n=600 rows -->
+        <text x="60" y="204" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">n = 600</text>
+        <line x1="466.7" y1="200" x2="563.3" y2="200" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="518.0" cy="200" r="4.5" fill="var(--forest)"/>
+        <text x="456.7" y="204" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 80%</text>
+        <line x1="573.9" y1="246" x2="656.9" y2="246" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="618.7" cy="246" r="4.5" fill="var(--forest)"/>
+        <text x="666.9" y="250" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 86.7%</text>
+        <!-- axis -->
+        <line x1="130" y1="284" x2="820" y2="284" stroke="var(--rule)" stroke-width="1"/>
+        <g font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)" text-anchor="middle">
+          <text x="216" y="306">60%</text><text x="367" y="306">70%</text><text x="518" y="306">80%</text><text x="669" y="306">90%</text><text x="820" y="306">100%</text>
+        </g>
+        <g stroke="var(--rule)" stroke-width="1">
+          <line x1="216" y1="281" x2="216" y2="287"/><line x1="367" y1="281" x2="367" y2="287"/><line x1="518" y1="281" x2="518" y2="287"/><line x1="669" y1="281" x2="669" y2="287"/><line x1="820" y1="281" x2="820" y2="287"/>
+        </g>
+      </svg>
+      <figcaption>The same one-question gap, twice, drawn as 95% intervals. At n&nbsp;=&nbsp;15 the intervals for 12/15 and 13/15 overlap almost entirely—the honest reading is "no detectable difference." It takes around n&nbsp;=&nbsp;600 for the same underlying accuracies to separate. (Overlap is a visual rule of thumb, not the formal test; the paired comparison below is sharper.)</figcaption>
+    </figure>
+
+    <p>What actually helps, in rough order of cost-effectiveness:</p>
+    <ul>
+      <li><strong>Pair the comparison.</strong> Run both configurations on the <em>same</em> questions and look at the flips. This removes question-difficulty variance—the largest noise source—for free. If B beats A because two questions flipped up and one flipped down, you're looking at a coin-flip pattern, not an improvement. Want a 2-point win to be persuasive at small n? Something like five-up-zero-down is the shape of real signal.</li>
+      <li><strong>Read the flipped items.</strong> Fifteen questions is small enough to read. <em>Which</em> answers changed, and is the change the kind your edit should cause? At small n, a mechanism you can articulate is worth more than the arithmetic.</li>
+      <li><strong>Repeat the runs.</strong> Run each configuration 3–5 times. If the run-to-run ranges overlap heavily, you don't have a result—you have two samples from the same puddle. The spread you observe is also your first real measurement of the pipeline's own variance, which is worth knowing regardless.</li>
+      <li><strong>Grow the eval set.</strong> Noise shrinks with √n: 15 → 100 questions cuts the band by ~2.5×. Detecting a genuine 5-point improvement <em>reliably</em> takes a few hundred items. This is the real argument that the eval set is an asset to invest in, not ceremony to satisfy.</li>
+    </ul>
+
+    <p class="tldr">The transferable habit is a review-meeting question: "How many items, how many runs, and what's the run-to-run spread?" If nobody knows the spread, the headline number isn't a measurement yet—it's an anecdote with a decimal point.</p>
+
+    <p>This applies verbatim to A/B test readouts, benchmark deltas in vendor decks, and "the new model is better" claims of every kind.</p>
+  </section>
+
+  <section id="base-rates">
+    <h2><a href="#base-rates" class="heading-link"><span class="num">§ 06</span>Base rates: why accurate detectors are usually wrong</a></h2>
+
+    <p><strong>Conditional probability</strong>—P(A given B)—is the last core idea, and the place engineer intuition most reliably faceplants: when the thing you're detecting is rare, the base rate dominates everything.</p>
+
+    <p>Concrete version. An anomaly detector catches 99% of true anomalies and false-alarms on only 1% of normal readings—a genuinely excellent detector. Anomalies occur in 1 of every 10,000 readings. Now push a million readings through it:</p>
+    <ul>
+      <li>100 are true anomalies → it flags <strong>99</strong> of them.</li>
+      <li>999,900 are normal → it false-alarms on <strong>~10,000</strong> of them.</li>
+    </ul>
+
+    <p>So of ~10,100 alerts, 99 are real: <strong>an alert is right about 1% of the time.</strong> Nothing is wrong with the detector; the base rate simply means false positives outnumber true positives a hundred to one. This is Bayes' theorem operating as intuition—no formula needed, just the two counts—and it's the entire reason "accuracy" is a near-useless metric on imbalanced problems and <strong>precision</strong> and <strong>recall</strong> exist as separate numbers (defined properly in the Classical ML Vocabulary primer). It's also the correct frame for every "AI-powered detection" vendor pitch: the question is never the headline accuracy, it's the base rate of the thing being detected, which sets the alert-to-noise ratio your team will actually live with.</p>
+
+    <p>Phase 4 extends the same probability language inward: a language model's raw output <em>is</em> a probability distribution over tokens (<strong>softmax</strong> turns scores into probabilities; sampling draws from them), and log-probabilities are how those distributions get compared. Same vocabulary, one level down the stack.</p>
+  </section>
+
+  <section id="path-map">
+    <h2><a href="#path-map" class="heading-link"><span class="num">§ 07</span>Where these land in the path</a></h2>
+
+    <table>
+      <thead><tr><th>Concept</th><th>Exercised in</th></tr></thead>
+      <tbody>
+        <tr><td>Is-the-difference-real, run variance, paired comparison</td><td>Phase 1, unit 1.6 (first contact); Phase 4 evals (in depth)</td></tr>
+        <tr><td>Distributions, center/spread, plotting habits</td><td>Phase 2, regression and data-exploration units</td></tr>
+        <tr><td>Sampling, confidence, leakage-adjacent honesty</td><td>Phase 2, the discipline unit</td></tr>
+        <tr><td>Correlation, confounders, coefficient reading</td><td>Phase 2, regression</td></tr>
+        <tr><td>Base rates, precision/recall</td><td>Phase 2, classification and anomaly detection</td></tr>
+        <tr><td>Conditional probability, softmax, log-likelihood</td><td>Phase 4, sampling and internals units</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="resources">
+    <h2><a href="#resources" class="heading-link"><span class="num">§ 08</span>Resources &amp; term index</a></h2>
+
+    <h3>Standing resources</h3>
+    <ul>
+      <li><strong>StatQuest — "Statistics Fundamentals" playlist.</strong> Histograms, distributions, mean/variance, sampling, the CLT, confidence intervals—short, unpretentious, and in the same just-in-time spirit as this path. The primary resource whenever a section above needs more than intuition.</li>
+      <li><strong>3Blue1Brown — "Bayes theorem" and "Binomial distributions."</strong> Visual grounding for §§ 05–06; the binomial video is exactly the machinery behind the 12/15-vs-13/15 reasoning.</li>
+      <li>Everything else on demand. Resist the prerequisite-course reflex—this primer plus targeted videos covers the path's needs.</li>
+    </ul>
+
+    <h3>Term index</h3>
+    <p>distribution <a href="#distributions">§ 01</a> · long tail <a href="#distributions">§ 01</a> · percentile / p50 / p99 <a href="#distributions">§ 01</a> · histogram <a href="#distributions">§ 01</a> · mean / median <a href="#center-spread">§ 02</a> · variance / standard deviation <a href="#center-spread">§ 02</a> · 68–95–99.7 <a href="#center-spread">§ 02</a> · sample / population <a href="#sampling">§ 03</a> · standard error <a href="#sampling">§ 03</a> · √n scaling <a href="#sampling">§ 03</a> · central limit theorem <a href="#sampling">§ 03</a> · confidence interval <a href="#sampling">§ 03</a> · correlation <a href="#correlation">§ 04</a> · confounder <a href="#correlation">§ 04</a> · spurious correlation <a href="#correlation">§ 04</a> · run-to-run variance <a href="#difference-real">§ 05</a> · paired comparison <a href="#difference-real">§ 05</a> · LLM-as-judge noise <a href="#difference-real">§ 05</a> · eval-set size <a href="#difference-real">§ 05</a> · base rate <a href="#base-rates">§ 06</a> · conditional probability <a href="#base-rates">§ 06</a> · precision / recall <a href="#base-rates">§ 06</a> · softmax <a href="#base-rates">§ 06</a></p>
+  </section>
+
+  <footer>
+    <span>statistics-for-engineers</span>
+    <span>AI/ML Learning Path · Primer</span>
+    <span>2026·08·31</span>
+  </footer>
+<!-- CONTENT:end -->
+</div>
+
+
+<!-- EDITORIAL-BODY:start -->
+<script>
+(function(){
+  if(window.__edzoom)return; window.__edzoom=true;
+  var overlay,stage,content,pct,scale=1,tx=0,ty=0,drag=null,pointers=new Map(),pinch=null;
+  function apply(){content.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';pct.textContent=Math.round(scale*100)+'%';}
+  function clamp(s){return Math.max(0.4,Math.min(12,s));}
+  function reset(){scale=1;tx=0;ty=0;apply();}
+  function zoomBy(f){scale=clamp(scale*f);apply();}
+  function build(){
+    overlay=document.createElement('div');overlay.className='edzoom-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-label','Zoomed figure');
+    stage=document.createElement('div');stage.className='edzoom-stage';
+    content=document.createElement('div');content.className='edzoom-content';
+    stage.appendChild(content);overlay.appendChild(stage);
+    var ctr=document.createElement('div');ctr.className='edzoom-controls';
+    ctr.innerHTML='<button data-z="out" aria-label="Zoom out">&#8722;</button><span class="edzoom-pct">100%</span><button data-z="in" aria-label="Zoom in">+</button><button data-z="reset">Reset</button><button data-z="close">Close</button>';
+    overlay.appendChild(ctr);pct=ctr.querySelector('.edzoom-pct');
+    document.body.appendChild(overlay);
+    ctr.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;e.stopPropagation();var z=b.getAttribute('data-z');if(z==='in')zoomBy(1.3);else if(z==='out')zoomBy(1/1.3);else if(z==='reset')reset();else if(z==='close')close();});
+    overlay.addEventListener('click',function(e){if(e.target===overlay||e.target===stage)close();});
+    stage.addEventListener('wheel',function(e){e.preventDefault();var f;if(e.ctrlKey){f=Math.exp(-e.deltaY*0.01);f=Math.max(0.7,Math.min(1.4,f));}else{f=Math.exp(-e.deltaY*0.0015);f=Math.max(0.85,Math.min(1.18,f));}zoomBy(f);},{passive:false});
+    var ptDist=function(a,b){var dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);};
+    var ptList=function(){return Array.from(pointers.values());};
+    stage.addEventListener('pointerdown',function(e){
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      try{stage.setPointerCapture(e.pointerId);}catch(_){}
+      if(pointers.size===1){drag={x:e.clientX,y:e.clientY,tx:tx,ty:ty};stage.classList.add('dragging');}
+      else{drag=null;var p=ptList();pinch={d:ptDist(p[0],p[1]),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2};}
+    });
+    stage.addEventListener('pointermove',function(e){
+      if(!pointers.has(e.pointerId))return;
+      pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pointers.size>=2&&pinch){
+        var p=ptList(),nd=ptDist(p[0],p[1]),ncx=(p[0].x+p[1].x)/2,ncy=(p[0].y+p[1].y)/2;
+        if(pinch.d>0)scale=clamp(scale*(nd/pinch.d));
+        tx+=ncx-pinch.cx;ty+=ncy-pinch.cy;pinch={d:nd,cx:ncx,cy:ncy};apply();
+      }else if(drag){tx=drag.tx+(e.clientX-drag.x);ty=drag.ty+(e.clientY-drag.y);apply();}
+    });
+    var endPt=function(e){
+      pointers.delete(e.pointerId);
+      if(pointers.size<2)pinch=null;
+      if(pointers.size===0){drag=null;stage.classList.remove('dragging');}
+      else if(pointers.size===1){var q=ptList()[0];drag={x:q.x,y:q.y,tx:tx,ty:ty};}
+    };
+    stage.addEventListener('pointerup',endPt);
+    stage.addEventListener('pointercancel',endPt);
+    stage.addEventListener('dblclick',function(e){e.preventDefault();if(scale>1.05)reset();else zoomBy(2.4);});
+    document.addEventListener('keydown',function(e){if(!overlay.classList.contains('open'))return;if(e.key==='Escape')close();else if(e.key==='+'||e.key==='=')zoomBy(1.3);else if(e.key==='-')zoomBy(1/1.3);else if(e.key==='0')reset();});
+  }
+  function open(vis){content.innerHTML='';content.appendChild(vis.cloneNode(true));reset();overlay.classList.add('open');document.documentElement.classList.add('edzoom-open');document.documentElement.style.overflow='hidden';}
+  function close(){overlay.classList.remove('open');document.documentElement.classList.remove('edzoom-open');document.documentElement.style.overflow='';content.innerHTML='';pointers.clear();pinch=null;drag=null;}
+  function visIn(el){return el.querySelector('svg, img, canvas');}
+  function targetVisual(t){
+    if(t.closest && t.closest('.edzoom-overlay'))return null;
+    var host=t.closest && t.closest('figure, pre.mermaid, div.mermaid');
+    if(host){var v=visIn(host);if(v)return v;}
+    if(t.tagName==='IMG')return t;
+    return null;
+  }
+  function mark(){
+    document.querySelectorAll('figure, pre.mermaid, div.mermaid').forEach(function(el){
+      if(el.classList.contains('edzoom-marked'))return;
+      if(!visIn(el))return;
+      el.classList.add('edzoom-marked','edzoom-able'); /* hint is CSS ::after */
+    });
+  }
+  function init(){
+    build();mark();
+    document.addEventListener('click',function(e){var v=targetVisual(e.target);if(v){e.preventDefault();open(v);}});
+    try{new MutationObserver(mark).observe(document.body,{childList:true,subtree:true});}catch(_){}
+  }
+  if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);
+})();
+</script>
+<button class="edtheme" type="button" aria-label="Toggle dark mode">Dark</button>
+<script>
+(function(){
+  if(window.__edtheme)return;window.__edtheme=true;
+  var KEY='editorial-theme',root=document.documentElement;
+  function label(){var b=document.querySelector('.edtheme');if(b)b.textContent=(root.getAttribute('data-theme')==='dark')?'Light':'Dark';}
+  label();
+  var b=document.querySelector('.edtheme');
+  if(b)b.addEventListener('click',function(){var n=(root.getAttribute('data-theme')==='dark')?'light':'dark';root.setAttribute('data-theme',n);label();try{localStorage.setItem(KEY,n);}catch(_){}});
+})();
+</script>
+<!-- EDITORIAL-BODY:end -->
+
+</body>
+</html>
