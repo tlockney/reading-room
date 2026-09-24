@@ -980,28 +980,28 @@
     <figure class="diagram">
       <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-overfit-title fig-overfit-desc">
         <title id="fig-overfit-title">Training vs. validation error as model complexity grows</title>
-        <desc id="fig-overfit-desc">Two curves over model complexity. Training error falls continuously. Validation error falls, reaches a minimum marked in copper with the label stop here, then rises again. The left region is labeled underfit, the right overfit, and the widening gap between the curves on the right is bracketed and labeled.</desc>
+        <desc id="fig-overfit-desc">Two curves over model complexity. Training error falls continuously. Validation error starts just above it, falls to a minimum marked in copper with the label stop here, then rises again while training error keeps falling; validation error stays above training error everywhere. The region left of the minimum is labeled underfit, the region right of it overfit, and a bracket at the right edge marks the gap between the curves as overfitting.</desc>
         <!-- axes -->
         <line x1="90" y1="250" x2="830" y2="250" stroke="var(--rule)" stroke-width="1"/>
-        <line x1="90" y1="250" x2="90" y2="40" stroke="var(--rule)" stroke-width="1"/>
-        <text x="830" y="272" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">model complexity →</text>
-        <text x="84" y="52" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">error</text>
-        <!-- curves -->
-        <path d="M110,95 C260,168 350,160 445,152 C580,146 700,92 810,52" fill="none" stroke="var(--forest)" stroke-width="2.5"/>
-        <path d="M110,82 C300,185 520,222 810,238" fill="none" stroke="var(--ink-soft)" stroke-width="1.8"/>
-        <text x="655" y="76" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--forest)">validation error</text>
-        <text x="640" y="216" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">training error</text>
-        <!-- stop-here marker -->
-        <line x1="445" y1="250" x2="445" y2="152" stroke="var(--copper)" stroke-width="1.5" stroke-dasharray="4 4"/>
-        <circle cx="445" cy="152" r="5" fill="var(--copper)"/>
-        <text x="445" y="132" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">stop here — validation minimum</text>
+        <line x1="90" y1="250" x2="90" y2="30" stroke="var(--rule)" stroke-width="1"/>
+        <text x="830" y="294" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">model complexity →</text>
+        <text x="84" y="42" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">error</text>
+        <!-- curves: validation = training + a gap that grows with complexity, so it never dips below training -->
+        <path d="M110.0,60.0 L117.0,65.3 L124.0,70.5 L131.0,75.5 L138.0,80.3 L145.0,84.9 L152.0,89.3 L159.0,93.6 L166.0,97.7 L173.0,101.7 L180.0,105.5 L187.0,109.1 L194.0,112.7 L201.0,116.0 L208.0,119.3 L215.0,122.3 L222.0,125.3 L229.0,128.1 L236.0,130.8 L243.0,133.4 L250.0,135.9 L257.0,138.2 L264.0,140.5 L271.0,142.6 L278.0,144.6 L285.0,146.5 L292.0,148.3 L299.0,150.0 L306.0,151.6 L313.0,153.1 L320.0,154.5 L327.0,155.8 L334.0,157.1 L341.0,158.2 L348.0,159.3 L355.0,160.2 L362.0,161.1 L369.0,161.9 L376.0,162.7 L383.0,163.3 L390.0,163.9 L397.0,164.4 L404.0,164.8 L411.0,165.1 L418.0,165.4 L425.0,165.6 L432.0,165.7 L439.0,165.8 L446.0,165.8 L453.0,165.7 L460.0,165.6 L467.0,165.4 L474.0,165.1 L481.0,164.8 L488.0,164.4 L495.0,164.0 L502.0,163.5 L509.0,162.9 L516.0,162.3 L523.0,161.6 L530.0,160.9 L537.0,160.1 L544.0,159.3 L551.0,158.4 L558.0,157.4 L565.0,156.4 L572.0,155.4 L579.0,154.2 L586.0,153.1 L593.0,151.9 L600.0,150.6 L607.0,149.3 L614.0,147.9 L621.0,146.5 L628.0,145.0 L635.0,143.5 L642.0,142.0 L649.0,140.4 L656.0,138.7 L663.0,137.0 L670.0,135.2 L677.0,133.4 L684.0,131.6 L691.0,129.7 L698.0,127.8 L705.0,125.8 L712.0,123.8 L719.0,121.7 L726.0,119.6 L733.0,117.4 L740.0,115.2 L747.0,112.9 L754.0,110.6 L761.0,108.3 L768.0,105.9 L775.0,103.5 L782.0,101.0 L789.0,98.5 L796.0,95.9 L803.0,93.3 L810.0,90.7" fill="none" stroke="var(--forest)" stroke-width="2.5"/>
+        <path d="M110.0,70.0 L117.0,75.3 L124.0,80.5 L131.0,85.5 L138.0,90.3 L145.0,95.0 L152.0,99.5 L159.0,103.9 L166.0,108.1 L173.0,112.2 L180.0,116.1 L187.0,119.9 L194.0,123.6 L201.0,127.2 L208.0,130.6 L215.0,133.9 L222.0,137.1 L229.0,140.2 L236.0,143.2 L243.0,146.1 L250.0,148.9 L257.0,151.7 L264.0,154.3 L271.0,156.8 L278.0,159.2 L285.0,161.6 L292.0,163.9 L299.0,166.1 L306.0,168.2 L313.0,170.3 L320.0,172.3 L327.0,174.2 L334.0,176.1 L341.0,177.9 L348.0,179.6 L355.0,181.3 L362.0,183.0 L369.0,184.5 L376.0,186.0 L383.0,187.5 L390.0,188.9 L397.0,190.3 L404.0,191.6 L411.0,192.9 L418.0,194.2 L425.0,195.4 L432.0,196.5 L439.0,197.6 L446.0,198.7 L453.0,199.8 L460.0,200.8 L467.0,201.7 L474.0,202.7 L481.0,203.6 L488.0,204.5 L495.0,205.3 L502.0,206.2 L509.0,207.0 L516.0,207.7 L523.0,208.5 L530.0,209.2 L537.0,209.9 L544.0,210.6 L551.0,211.2 L558.0,211.8 L565.0,212.4 L572.0,213.0 L579.0,213.6 L586.0,214.1 L593.0,214.7 L600.0,215.2 L607.0,215.7 L614.0,216.2 L621.0,216.6 L628.0,217.1 L635.0,217.5 L642.0,217.9 L649.0,218.3 L656.0,218.7 L663.0,219.1 L670.0,219.5 L677.0,219.8 L684.0,220.2 L691.0,220.5 L698.0,220.8 L705.0,221.1 L712.0,221.4 L719.0,221.7 L726.0,222.0 L733.0,222.2 L740.0,222.5 L747.0,222.7 L754.0,223.0 L761.0,223.2 L768.0,223.5 L775.0,223.7 L782.0,223.9 L789.0,224.1 L796.0,224.3 L803.0,224.5 L810.0,224.7" fill="none" stroke="var(--ink-soft)" stroke-width="1.8"/>
+        <text x="695" y="114" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--forest)">validation error</text>
+        <text x="628" y="239" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">training error</text>
+        <!-- stop-here marker at the computed validation minimum -->
+        <line x1="439.0" y1="250" x2="439.0" y2="165.8" stroke="var(--copper)" stroke-width="1.5" stroke-dasharray="4 4"/>
+        <circle cx="439.0" cy="165.8" r="5" fill="var(--copper)"/>
+        <text x="439.0" y="149.8" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">stop here — validation minimum</text>
         <!-- gap bracket -->
-        <path d="M778,62 h12 v166 h-12" fill="none" stroke="var(--ink-soft)" stroke-width="1.2"/>
-        <text x="800" y="150" font-family="'JetBrains Mono', monospace" font-size="11" fill="var(--ink-soft)" transform="rotate(90 800 150)" text-anchor="middle">the gap = overfit</text>
-        <!-- zones -->
+        <path d="M814.0,90.7 h10 v134.0 h-10" fill="none" stroke="var(--ink-soft)" stroke-width="1.2"/>
+        <text x="838.0" y="157.7" font-family="'JetBrains Mono', monospace" font-size="11" fill="var(--ink-soft)" transform="rotate(90 838.0 157.7)" text-anchor="middle">the gap = overfit</text>
+        <!-- zones, split at the minimum -->
         <g font-family="'JetBrains Mono', monospace" font-size="12" letter-spacing="2" fill="var(--ink-mute)" text-anchor="middle">
-          <text x="205" y="286">UNDERFIT</text>
-          <text x="690" y="286">OVERFIT</text>
+          <text x="274" y="272">UNDERFIT</text>
+          <text x="624" y="272">OVERFIT</text>
         </g>
       </svg>
       <figcaption>The diagnostic in one picture: training error always improves with complexity, so it can't tell you when to stop—validation error can. Left of the minimum both scores are poor (too rigid); right of it the widening gap between the curves is the model memorizing noise.</figcaption>
@@ -1015,7 +1015,7 @@
     </div>
 
     <h3>Regularization and hyperparameters</h3>
-    <p><strong>Regularization</strong> penalizes complexity during training to curb overfitting—<strong>L2/ridge</strong> shrinks all weights smoothly; <strong>L1/lasso</strong> drives some to exactly zero, doubling as feature selection. The knob that turns the bias–variance dial directly; the <code>C</code> or <code>alpha</code> parameter you'll see everywhere in scikit-learn is this.</p>
+    <p><strong>Regularization</strong> penalizes complexity during training to curb overfitting—<strong>L2/ridge</strong> shrinks all weights smoothly; <strong>L1/lasso</strong> drives some to exactly zero, doubling as feature selection. The knob that turns the bias–variance dial directly; the <code>C</code> or <code>alpha</code> parameter you'll see everywhere in scikit-learn is this. Mind the direction: <code>alpha</code> is regularization <em>strength</em>, but <code>C</code> is its <em>inverse</em>—a bigger <code>C</code> means <em>less</em> regularization.</p>
     <p>Parameters the model <em>learns</em> (weights, splits); <strong>hyperparameters</strong> <em>you choose</em> (tree depth, k, regularization strength). Tuning is a search—grid or random—scored by cross-validation, and the validation set exists precisely so this search doesn't burn the test set.</p>
 
     <h3>Baselines</h3>
@@ -1046,7 +1046,7 @@
     <p><strong>Regression metrics:</strong> <strong>MAE</strong> (mean absolute error)—average miss, in the target's own units, robust to outliers. <strong>RMSE</strong> (root mean squared error)—similar but squares errors first, so large misses dominate; the one to watch when big errors are disproportionately costly. RMSE ≥ MAE always; a wide gap means the errors include some whoppers.</p>
     <div class="note">
       <span class="note-label">The base-rate connection</span>
-      <p>Precision and recall are conditional probabilities, and their behavior under rare events is the base-rate math in <a href="statistics-for-engineers">Statistics for Engineers</a>—a 99%-accurate detector of a 1-in-1000 event is mostly wrong when it fires. That single idea, transplanted into metric form, is most of what goes wrong in anomaly-detection products.</p>
+      <p>Precision and recall are conditional probabilities, and their behavior under rare events is the base-rate math in <a href="statistics-for-engineers">Statistics for Engineers</a>—a detector that catches 99% of anomalies and false-alarms on 1% of normal readings, watching for a 1-in-10,000 event, is right about 1% of the times it fires. That single idea, transplanted into metric form, is most of what goes wrong in anomaly-detection products.</p>
     </div>
   </section>
 

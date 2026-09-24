@@ -954,7 +954,7 @@
     <p>The uncomfortable fact about a 15-case eval: <strong>a one-or-two case delta is noise.</strong> Flip one borderline judgment and 12/15 becomes 13/15; run the same system twice at nonzero temperature and it can produce that swing with no change at all. The mechanics—variance, sample size, paired comparison—live in the Statistics for Engineers primer; the rules of thumb that fall out:</p>
     <ul>
       <li><strong>Never trust a 1–2 case difference on a small eval.</strong> It's within run-to-run wobble.</li>
-      <li><strong>Compare per-case, not aggregate-to-aggregate.</strong> "A won 6 cases, B won 1, tied 8" (a paired comparison) is far more informative than 12/15 vs. 13/15, from the identical run.</li>
+      <li><strong>Compare per-case, not aggregate-to-aggregate.</strong> "B won 3 cases, A won 2, the other 10 tied" is exactly what 13/15 vs. 12/15 can look like case by case—and seen that way it reads as the coin flip it is. "B won 5, A won 0" is the shape of a real improvement. Same aggregate arithmetic, completely different evidence.</li>
       <li><strong>Run repeats</strong> when the system is nondeterministic; report the spread, not the best run.</li>
       <li><strong>To detect small improvements, grow n.</strong> Distinguishing an 80% system from a 90% system takes on the order of a hundred cases, not fifteen. If a decision hangs on a small difference, the eval set is the thing to invest in first.</li>
     </ul>
@@ -974,7 +974,7 @@
 
   <section id="benchmarks">
     <h2><a href="#benchmarks" class="heading-link"><span class="num">§ 08</span>Public benchmarks vs. your evals</a></h2>
-    <p>Benchmark tables (MMLU and successors, coding and math suites) answer "how capable is this model in general?"—already a signal with known failure modes: <strong>contamination</strong> (test data leaking into training corpora) and <strong>teaching-to-the-test</strong> (labs optimizing for the numbers everyone reports). The LLM Discourse Primer § 7 stands: treat announcement-day tables as marketing until third parties weigh in.</p>
+    <p>Benchmark tables (MMLU and successors, coding and math suites) answer "how capable is this model in general?"—already a signal with known failure modes: <strong>contamination</strong> (test data leaking into training corpora) and <strong>teaching-to-the-test</strong> (labs optimizing for the numbers everyone reports). The LLM Discourse Primer § 9 stands: treat announcement-day tables as marketing until third parties weigh in.</p>
     <p>But the deeper limitation is that benchmarks answer the wrong question. Yours is "does this model work for <em>my</em> feature, on <em>my</em> data, at <em>my</em> cost?"—and no public number answers it, because your cases aren't in the benchmark. The practical move when a new model ships is to run <em>your</em> eval against it: an afternoon's work once the harness exists, and the difference between evaluating a vendor claim and repeating one.</p>
     <p class="tldr">A team with its own evals makes model choices from evidence; a team without them makes model choices from launch blogs.</p>
   </section>

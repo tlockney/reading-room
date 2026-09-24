@@ -943,11 +943,11 @@
 
     <p>Small samples lie loudly. Flip a fair coin 10 times and getting 7 heads is unremarkable—it happens about 12% of the time. Nobody concludes the coin is biased at 7/10; yet the same evidence, dressed as "70% of the first ten beta users converted," routinely gets extrapolated into a forecast. The instinct to build: for any proportion, mentally attach the sample size. 70% of 10 and 70% of 10,000 are different facts.</p>
 
-    <p>The <strong>standard error</strong> is the standard deviation of the <em>estimate itself</em>—how much the number you computed would wobble if you could rerun the whole sampling process. It shrinks with the square root of sample size, and that √n is the tyranny of the whole field: <strong>to halve your uncertainty you need four times the data.</strong> Ten times more data buys you one extra decimal place of confidence, roughly. This is why "just collect a bit more" rarely rescues a marginal result.</p>
+    <p>The <strong>standard error</strong> is the standard deviation of the <em>estimate itself</em>—how much the number you computed would wobble if you could rerun the whole sampling process. It shrinks with the square root of sample size, and that √n is the tyranny of the whole field: <strong>to halve your uncertainty you need four times the data.</strong> A hundred times more data buys you one extra decimal place of confidence (√100&nbsp;=&nbsp;10). This is why "just collect a bit more" rarely rescues a marginal result.</p>
 
     <p>The <strong>central limit theorem (CLT)</strong> is the reason any of this machinery works: <em>averages of samples are approximately normally distributed even when the underlying data isn't.</em> Your latency data can be as long-tailed as it likes; the average of repeated samples of it still behaves like a bell curve. That's what licenses the 68/95/99.7 reasoning about estimates, and it's why the normal distribution is everywhere in statistics despite raw data rarely being normal.</p>
 
-    <p>A <strong>confidence interval</strong> packages this into an honest error bar: instead of "80% correct," you report "80%, and the plausible range given this sample size is roughly 55–95%." That's not an exotic calculation—for a proportion near 80% with n=15, the standard error is about 10 percentage points, and ±2 of those spans 20 points each way.</p>
+    <p>A <strong>confidence interval</strong> packages this into an honest error bar: instead of "80% correct," you report "80%, and the plausible range given this sample size is roughly 55–93%." That's not an exotic calculation—for a proportion near 80% with n=15, the standard error is about 10 percentage points, and a 95% interval is roughly ±2 of those: 20 points each way. (The exact interval is lopsided because a score can't pass 100%, hence 55–93 rather than a naive 60–100. For intuition, the shortcut is plenty.)</p>
 
     <div class="note caveat">
       <span class="note-label">Caveat · Sit with this one</span>
@@ -978,29 +978,29 @@
 
     <figure class="diagram">
       <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="fig-diff-title fig-diff-desc">
-        <title id="fig-diff-title">Two eval scores with their uncertainty, at n = 15 and n = 300</title>
-        <desc id="fig-diff-desc">Dot-and-whisker plot. At fifteen questions, prompt A at 80 percent and prompt B at 86.7 percent have wide, heavily overlapping uncertainty bands—the overlap is shaded and labeled as noise swallowing the gap. At three hundred questions the same accuracies produce narrow, cleanly separated bands.</desc>
-        <!-- overlap shading, n=15 -->
-        <rect x="486" y="52" width="183" height="88" fill="var(--copper)" opacity="0.13"/>
-        <text x="578" y="44" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">overlap — noise swallows the gap</text>
+        <title id="fig-diff-title">Two eval scores with their 95% intervals, at n = 15 and n = 600</title>
+        <desc id="fig-diff-desc">Dot-and-whisker plot of 95 percent intervals. At fifteen questions, prompt A at 80 percent spans roughly 55 to 93 percent and prompt B at 86.7 percent spans roughly 62 to 96 percent—the bands overlap almost entirely, and the overlap is shaded and labeled as noise swallowing the gap. At six hundred questions the same accuracies produce narrow bands that no longer overlap.</desc>
+        <!-- overlap shading, n=15 (95% Wilson intervals) -->
+        <rect x="247.7" y="52" width="466.6" height="88" fill="var(--copper)" opacity="0.13"/>
+        <text x="481" y="44" text-anchor="middle" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--copper)">overlap — noise swallows the gap</text>
         <!-- n=15 rows -->
         <text x="60" y="80" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">n = 15</text>
-        <line x1="367" y1="76" x2="669" y2="76" stroke="var(--forest)" stroke-width="2"/>
-        <circle cx="518" cy="76" r="4.5" fill="var(--forest)"/>
-        <text x="357" y="80" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 12/15</text>
-        <line x1="486" y1="122" x2="752" y2="122" stroke="var(--forest)" stroke-width="2"/>
-        <circle cx="619" cy="122" r="4.5" fill="var(--forest)"/>
-        <text x="762" y="126" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 13/15</text>
-        <!-- n=300 rows -->
-        <text x="60" y="204" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">n = 300</text>
-        <line x1="483" y1="200" x2="553" y2="200" stroke="var(--forest)" stroke-width="2"/>
-        <circle cx="518" cy="200" r="4.5" fill="var(--forest)"/>
-        <text x="473" y="204" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 80%</text>
-        <line x1="589" y1="246" x2="649" y2="246" stroke="var(--forest)" stroke-width="2"/>
-        <circle cx="619" cy="246" r="4.5" fill="var(--forest)"/>
-        <text x="659" y="250" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 86.7%</text>
+        <line x1="137.5" y1="76" x2="714.3" y2="76" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="518.0" cy="76" r="4.5" fill="var(--forest)"/>
+        <text x="724.3" y="80" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 12/15</text>
+        <line x1="247.7" y1="122" x2="764.1" y2="122" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="618.7" cy="122" r="4.5" fill="var(--forest)"/>
+        <text x="774.1" y="126" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 13/15</text>
+        <!-- n=600 rows -->
+        <text x="60" y="204" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)">n = 600</text>
+        <line x1="466.7" y1="200" x2="563.3" y2="200" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="518.0" cy="200" r="4.5" fill="var(--forest)"/>
+        <text x="456.7" y="204" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">A · 80%</text>
+        <line x1="573.9" y1="246" x2="656.9" y2="246" stroke="var(--forest)" stroke-width="2"/>
+        <circle cx="618.7" cy="246" r="4.5" fill="var(--forest)"/>
+        <text x="666.9" y="250" text-anchor="start" font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-soft)">B · 86.7%</text>
         <!-- axis -->
-        <line x1="140" y1="284" x2="820" y2="284" stroke="var(--rule)" stroke-width="1"/>
+        <line x1="130" y1="284" x2="820" y2="284" stroke="var(--rule)" stroke-width="1"/>
         <g font-family="'JetBrains Mono', monospace" font-size="12" fill="var(--ink-mute)" text-anchor="middle">
           <text x="216" y="306">60%</text><text x="367" y="306">70%</text><text x="518" y="306">80%</text><text x="669" y="306">90%</text><text x="820" y="306">100%</text>
         </g>
@@ -1008,7 +1008,7 @@
           <line x1="216" y1="281" x2="216" y2="287"/><line x1="367" y1="281" x2="367" y2="287"/><line x1="518" y1="281" x2="518" y2="287"/><line x1="669" y1="281" x2="669" y2="287"/><line x1="820" y1="281" x2="820" y2="287"/>
         </g>
       </svg>
-      <figcaption>The same one-question gap, twice. At n&nbsp;=&nbsp;15 the ±1-standard-error bands of 12/15 and 13/15 mostly overlap—the honest reading is "no detectable difference." At n&nbsp;=&nbsp;300 the same underlying accuracies produce bands that separate cleanly. Bands are illustrative ±1&nbsp;SE.</figcaption>
+      <figcaption>The same one-question gap, twice, drawn as 95% intervals. At n&nbsp;=&nbsp;15 the intervals for 12/15 and 13/15 overlap almost entirely—the honest reading is "no detectable difference." It takes around n&nbsp;=&nbsp;600 for the same underlying accuracies to separate. (Overlap is a visual rule of thumb, not the formal test; the paired comparison below is sharper.)</figcaption>
     </figure>
 
     <p>What actually helps, in rough order of cost-effectiveness:</p>

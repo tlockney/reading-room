@@ -976,7 +976,7 @@ ollama ps                         # what's loaded, and its actual memory use</co
     <p><strong>llama.cpp — the layer underneath.</strong> Drop down when you want the knobs Ollama hides: exact GGUF file choice, context size, how many layers offload to GPU, sampling internals. <code>llama-server</code> gives you the same OpenAI-compatible API. Worth touching at least once in Phase 4 territory, if only to see what Ollama was doing for you.</p>
     <p><strong>LM Studio</strong> — a GUI over the same GGUF ecosystem; fine if you want a chat window and a model browser, nothing you can't live without.</p>
     <h3>GGUF, and reading a filename</h3>
-    <p>GGUF is the llama.cpp ecosystem's model file format — weights, tokenizer, and metadata in one file. The naming convention is dense but decodable: <code>Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf</code> = family and generation, parameter count, post-trained variant (primer §7), quantization scheme. In quant codes: the digit is bits per weight, <code>K</code> marks the modern "K-quant" family, <code>S/M/L</code> is a small/medium/large quality tier within that bit level. Ollama tags mirror this: <code>llama3.1:8b-instruct-q8_0</code>.</p>
+    <p>GGUF is the llama.cpp ecosystem's model file format — weights, tokenizer, and metadata in one file. The naming convention is dense but decodable: <code>Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf</code> = family and generation, parameter count, post-trained variant (primer §9), quantization scheme. In quant codes: the digit is bits per weight, <code>K</code> marks the modern "K-quant" family, <code>S/M/L</code> is a small/medium/large quality tier within that bit level. Ollama tags mirror this: <code>llama3.1:8b-instruct-q8_0</code>.</p>
     <p><strong>Where models come from:</strong> the Ollama library for curated defaults; Hugging Face for everything (search "&lt;model&gt; GGUF" — community quantizers publish every level of most notable releases).</p>
     <div class="note warn">
       <span class="note-label">Warn · Default context length</span>
@@ -987,8 +987,22 @@ ollama ps                         # what's loaded, and its actual memory use</co
   <section id="own-code">
     <h2><a href="#own-code" class="heading-link"><span class="num">§ 04</span>Using it from your own code</a></h2>
     <p>Ollama speaks two dialects on <code>localhost:11434</code>: its native API and an OpenAI-compatible one at <code>/v1</code>. The latter means anything built for OpenAI's API — including most of the ecosystem's tooling — points at a local model by changing a base URL.</p>
-<pre><code class="language-ts">// deno run --allow-net local-ask.ts "why is the sky blue?"
-const res = await fetch("http://localhost:11434/v1/chat/completions", {
+<pre><code class="language-ts">// deno run --allow-net --allow-env local-ask.ts "why is the sky blue?"
+const BASE = Deno.env.get("OLLAMA_URL") ?? "http://localhost:11434";
+
+// Pull the streamed text out of one OpenAI-style chunk, narrowing each level.
+function deltaText(v: unknown): string | undefined {
+  if (typeof v !== "object" || v === null || !("choices" in v)) return;
+  const { choices } = v;
+  if (!Array.isArray(choices)) return;
+  const first: unknown = choices[0];
+  if (typeof first !== "object" || first === null || !("delta" in first)) return;
+  const { delta } = first;
+  if (typeof delta !== "object" || delta === null || !("content" in delta)) return;
+  return typeof delta.content === "string" ? delta.content : undefined;
+}
+
+const res = await fetch(`${BASE}/v1/chat/completions`, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -997,13 +1011,21 @@ const res = await fetch("http://localhost:11434/v1/chat/completions", {
     messages: [{ role: "user", content: Deno.args[0] ?? "Say hello." }],
   }),
 });
-for await (const chunk of res.body!.pipeThrough(new TextDecoderStream())) {
-  for (const line of chunk.split("\n")) {
-    if (!line.startsWith("data: ") || line.includes("[DONE]")) continue;
-    const delta = JSON.parse(line.slice(6)).choices?.[0]?.delta?.content;
-    if (delta) Deno.stdout.writeSync(new TextEncoder().encode(delta));
+if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+const encoder = new TextEncoder();
+let buffer = "";
+for await (const chunk of res.body.pipeThrough(new TextDecoderStream())) {
+  buffer += chunk;
+  const lines = buffer.split("\n");
+  buffer = lines.pop() ?? ""; // an event can straddle chunks: keep the partial line
+  for (const line of lines) {
+    if (!line.startsWith("data: ") || line === "data: [DONE]") continue;
+    const text = deltaText(JSON.parse(line.slice(6)));
+    if (text) Deno.stdout.writeSync(encoder.encode(text));
   }
-}</code></pre>
+}
+Deno.stdout.writeSync(encoder.encode("\n"));</code></pre>
     <p>This plugs straight into Phase 1: <code>ask.ts</code> pointed at a local model iterates for free, and the difference in answer quality between an 8B local model and a frontier API model is itself a lesson worth having.</p>
     <p>The rest of the Phase 1 toolkit works locally too, unevenly: Ollama supports <strong>structured output</strong> (pass a JSON schema in the <code>format</code> field and the model is constrained to it — unit 1.1's validation exercise, with the guarantee moved server-side) and <strong>tool calling</strong> for models trained for it (most modern instruct models; the loop from unit 1.2 is identical). Expect smaller models to be noticeably clumsier tool users — which is itself informative about what that capability costs.</p>
     <div class="note">
@@ -1021,7 +1043,7 @@ for await (const chunk of res.body!.pipeThrough(new TextDecoderStream())) {
       <li><strong>Frontier hosted models still win</strong> — hard reasoning, long agentic sequences, subtle judgment. The point of local isn't parity; it's understanding, iteration speed, and privacy.</li>
     </ul>
     <p>The family names to recognize when browsing (all ship GGUF-quantized variants at multiple sizes): <strong>Llama</strong> (Meta), <strong>Qwen</strong> (Alibaba — unusually strong small models and the default many locals reach for), <strong>Gemma</strong> (Google), <strong>Mistral</strong>, and the <strong>DeepSeek</strong> distillations that brought reasoning-style output to local sizes (primer §3's RL-on-verifiable-rewards lineage, §5's distillation). Which specific release is best moves too fast to write down; the size-class expectations above move slowly.</p>
-    <p>Prefer <code>-instruct</code> variants for everything interactive (primer §7; a base model will happily continue your question instead of answering it). And treat context-length claims skeptically: an advertised 128k window is real, but §2's KV-cache math and slow prefill make long context the first thing to sacrifice locally. Staying in the 8–16k habit keeps everything snappy.</p>
+    <p>Prefer <code>-instruct</code> variants for everything interactive (primer §9; a base model will happily continue your question instead of answering it). And treat context-length claims skeptically: an advertised 128k window is real, but §2's KV-cache math and slow prefill make long context the first thing to sacrifice locally. Staying in the 8–16k habit keeps everything snappy.</p>
   </section>
 
   <div class="ornament">§ § §</div>
