@@ -269,10 +269,10 @@ Upgrading the running agent after a CLI upgrade is an explicit `reading-room age
 
 ## Repo-specific notes
 
-- The dev library lives in `example/` (a content home: `registry.jsonc`, `site.jsonc`,
-  `_migrated/`, `assets/`, and `comments/` once annotated). The root dev tasks (`build`, `serve`,
-  `add-doc`, `publish`) pass `--root example`, and `example_test.ts` builds it as the integration
-  test. The repo root holds no content.
+- The dev library lives in `example/` (a content home: `registry.jsonc`, `site.jsonc`, `_migrated/`,
+  `assets/`, and `comments/` once annotated). The root dev tasks (`build`, `serve`, `add-doc`,
+  `publish`) pass `--root example`, and `example_test.ts` builds it as the integration test. The
+  repo root holds no content.
 - `example/docs/`, `example/index.html`, and the other files `deno task build` writes into
   `example/` (manifest, service worker, icon copies) are **build artifacts** (gitignored, wiped each
   build). Never hand-edit them. Durable docs (specs, plans, this file) live at the root or in
