@@ -32,6 +32,7 @@ import type { Doc, Topic } from "./render.ts";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { makeContext, resolveHome, resolveInstanceName } from "./config.ts";
 import type { RoomContext } from "./config.ts";
+import { fullDiskAccessHint, watchSlow } from "./privacy.ts";
 import { removeDoc, setDocField, slugExists, UnknownSlugError } from "./registry-edit.ts";
 import type { DocPatch } from "./registry-edit.ts";
 import {
@@ -530,6 +531,25 @@ export function makeHandler(opts: ServeOptions): (req: Request) => Promise<Respo
 
 // --- startup (only when run directly) ----------------------------------------
 
+const ACCESS_WARN_MS = 10_000;
+
+/** makeContext plus a read of the registry, so a blocked or denied content
+ * home shows up at startup rather than as hung requests. */
+async function openHome(home: string, hint: () => string): Promise<RoomContext> {
+  const ctx = await makeContext(home);
+  try {
+    await Deno.readTextFile(ctx.registryPath);
+  } catch (err) {
+    if (!(err instanceof Deno.errors.NotFound)) {
+      console.error(
+        `  Can't read ${ctx.registryPath}: ${err instanceof Error ? err.message : err}`,
+      );
+      console.error(hint());
+    }
+  }
+  return ctx;
+}
+
 /**
  * `reading-room serve` entry: resolve the content home, wire real tailscale
  * discovery, and serve on 127.0.0.1 until interrupted. Returns the exit code.
@@ -543,7 +563,15 @@ export async function serveMain(args: string[]): Promise<number> {
     return 1;
   }
   const readonly = Deno.env.get("READONLY") === "1";
-  const ctx = await makeContext(resolveHome(a.root));
+  const home = resolveHome(a.root);
+  console.log(`reading-room serve: content home ${home}`);
+  // Under launchd, a read gated by macOS privacy controls (external volume,
+  // Documents, iCloud…) can stall silently; say why in the log if it does.
+  const hint = () => fullDiskAccessHint(home, Deno.execPath());
+  const ctx = await watchSlow(openHome(home, hint), ACCESS_WARN_MS, () => {
+    console.error(`  Still waiting to read ${home} after ${ACCESS_WARN_MS / 1000}s.`);
+    console.error(hint());
+  });
   const discover = makeCachedDiscover({
     listPeers: () => listTailscalePeers(),
     probe: (url) => probePeer(url),

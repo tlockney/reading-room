@@ -88,6 +88,16 @@ launchd agent running `reading-room serve` (a version-pinned, absolute-path invo
 `reading-room agent install` after upgrading the CLI — the plist pins a version and doesn't float on
 its own. macOS-only for now.
 
+**Content home on an external volume.** macOS privacy controls gate reads under `/Volumes/…`, the
+Desktop, Documents and Downloads folders, and iCloud Drive behind a consent prompt, and a launchd
+agent can't show that prompt. Its reads can stall, so the server never answers and `tailscale serve`
+returns 502. Keep the content home on a local path (the default `~/.local/share/reading-room` is
+fine), or grant **Full Disk Access** to the deno binary the plist runs (System Settings → Privacy &
+Security → Full Disk Access; add the real file behind any symlink, and re-grant after upgrading
+deno), then `launchctl kickstart -k gui/$(id -u)/local.reading-room`. `agent install` warns when the
+content home is in one of these places, and `serve` logs the same hint if reading the content home
+takes more than 10 seconds.
+
 ## Discover other instances
 
 Each served instance advertises its identity at `GET /.well-known/reading-room.json`. When

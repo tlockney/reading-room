@@ -11,6 +11,7 @@ import { dirname, join } from "jsr:@std/path@1";
 import { parseArgs } from "jsr:@std/cli@1/parse-args";
 import { resolveHome } from "./config.ts";
 import { TAILSCALE_BINS } from "./discovery.ts";
+import { fullDiskAccessHint, protectedArea } from "./privacy.ts";
 import { VERSION } from "./version.ts";
 
 /** Resolve an absolute tailscale binary the agent can invoke under launchd (and
@@ -279,6 +280,11 @@ async function install(
   }
   console.log(`reading-room agent installed (${LABEL}), serving ${home} on :${port}.`);
   console.log(`Logs: ${out}`);
+  const area = protectedArea(home, homeDir);
+  if (area) {
+    console.error(`reading-room agent: warning — the content home is in ${area}.`);
+    console.error(fullDiskAccessHint(home, denoPath));
+  }
   return 0;
 }
 
