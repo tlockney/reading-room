@@ -5,12 +5,14 @@ import { build } from "./build.ts";
 
 const EXAMPLE = join(dirname(dirname(fromFileUrl(import.meta.url))), "example");
 
-Deno.test("example consumer builds with site config and slots applied", async () => {
+Deno.test("example content home builds with site config and slots applied", async () => {
   const out = await Deno.makeTempDir();
   try {
     const ctx = await makeContext(EXAMPLE);
     const res = await build(ctx, { outDir: out });
-    assertEquals(res.docs, 1);
+    // every registered doc builds (the dev library grows; don't pin a count)
+    const registry = await Deno.readTextFile(join(EXAMPLE, "registry.jsonc"));
+    assertEquals(res.docs, registry.match(/"slug":/g)?.length);
     const index = await Deno.readTextFile(join(out, "index.html"));
     assert(index.includes("Example Reading Room")); // site.jsonc applied
     assert(index.includes("RR-LOCAL-HEAD")); // slot applied
