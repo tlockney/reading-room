@@ -353,3 +353,33 @@ Deno.test("agent install resolves an absolute tailscale path when tailscale isn'
   const serve = f.calls.find((c) => c.args[0] === "serve" && c.args[1] === "--bg");
   assertEquals(serve?.cmd, "/usr/local/bin/tailscale"); // not bare "tailscale"
 });
+
+Deno.test("agent install warns about Full Disk Access when the home is on an external volume", async () => {
+  const f = fakeDeps();
+  const errs: string[] = [];
+  const [log, err] = [console.log, console.error];
+  console.log = () => {};
+  console.error = (m?: unknown) => void errs.push(String(m));
+  try {
+    assertEquals(await agentMain(["install", "--root", "/Volumes/Secondary/rr"], f.deps), 0);
+  } finally {
+    [console.log, console.error] = [log, err];
+  }
+  const out = errs.join("\n");
+  assertStringIncludes(out, "external or network volume");
+  assertStringIncludes(out, "Full Disk Access to /opt/homebrew/bin/deno");
+});
+
+Deno.test("agent install prints no privacy warning for a local content home", async () => {
+  const f = fakeDeps();
+  const errs: string[] = [];
+  const [log, err] = [console.log, console.error];
+  console.log = () => {};
+  console.error = (m?: unknown) => void errs.push(String(m));
+  try {
+    assertEquals(await agentMain(["install", "--root", "/Users/t/.local/share/rr"], f.deps), 0);
+  } finally {
+    [console.log, console.error] = [log, err];
+  }
+  assertEquals(errs.filter((e) => e.includes("Full Disk Access")), []);
+});

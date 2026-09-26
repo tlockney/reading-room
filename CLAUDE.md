@@ -117,6 +117,13 @@ rejected in design.
    reuses that same `tailscale` shell-out (via `selfDnsName`) to build artifact URLs — it adds no
    new external calls or permissions.
 
+8. **A content home under `/Volumes/…` (or Desktop/Documents/Downloads/iCloud) can hang the launchd
+   agent.** macOS privacy controls (TCC) gate those reads behind a consent prompt that a launchd job
+   can't show, so reads stall and `tailscale serve` returns 502. `src/privacy.ts` detects these
+   paths: `agent install` warns, and `serve` logs a Full Disk Access hint if opening the content
+   home takes over 10s. Fix on a machine: grant Full Disk Access to the plist's deno binary, or move
+   the content home to a local path.
+
 ## Annotations & management (serve-only)
 
 The live server injects an admin layer: browser "manage mode" (toggle review / visibility / remove a
