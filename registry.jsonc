@@ -59,10 +59,6 @@
     "num": "§ 05", "id": "ai-ml-learning",
     "name": "AI/ML Learning", "short": "AI/ML",
     "docs": [
-      { "slug": "ai-ml-learning-path", "title": "The AI/ML Learning Path",
-        "kind": "Guide · Learning Path", "desc": "Six phases from orientation to production judgment—the reading copy of the path.",
-        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
-        "src": "reading-room/_migrated/ai-ml-learning-path.html", "visibility": "private" },
       { "slug": "llm-discourse-primer", "title": "LLM Discourse Primer",
         "kind": "Primer · Learning Path", "desc": "The vocabulary of current LLM discussion, organized around the model lifecycle.",
         "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
