@@ -1,21 +1,96 @@
-// Example corpus — one topic, one doc.
+// Reading Room — document registry for the engine repo's dev library (example/).
+//
+// The structure of the site lives here, NOT in code. serve.ts renders from
+// this file (via jsr:@std/jsonc) on every request; build.ts writes the same
+// output to static files. Edit this to add/remove/reorder topics and
+// documents, then refresh (or run `deno task build` to publish).
+//
+// Topic fields:
+//   num    — section marker shown on the index/breadcrumb (e.g. "§ 01")
+//   id     — URL-fragment id (anchor target); keep kebab-case
+//   name   — full topic title
+//   short  — compact label for the side rail + breadcrumb
+//   docs[] — documents in the topic
+//
+// Doc fields:
+//   slug       — output filename stem -> docs/<slug> (must be unique)
+//   title      — display title
+//   kind       — small eyebrow label on the card (e.g. "Guide · Engineering Ref")
+//   desc       — one-line italic description on the card
+//   footLeft   — card footer, left (e.g. a date or doc kind)
+//   footRight  — card footer, right (e.g. repo/source)
+//   src        — source HTML, relative to this repo's parent directory (so
+//                docs can live in sibling repos). Overridden when
+//                _migrated/<slug>.html exists (editorial-restyled copy).
+//   visibility — "private" (local only) | "shared" (eligible for a remote).
+//                Reserved for a future shared remote; the local build ignores
+//                it and includes everything. Default: "private".
+//   review     — true pins the doc to a "For Review" section at the top.
 [
   {
-    "num": "§ 01",
-    "id": "getting-started",
-    "name": "Getting Started",
-    "short": "Start",
+    "num": "§ 01", "id": "library-tooling",
+    "name": "Library & Tooling", "short": "Tooling",
     "docs": [
-      {
-        "slug": "welcome",
-        "title": "Welcome",
-        "kind": "Guide",
-        "desc": "What this example shows.",
-        "footLeft": "Guide",
-        "footRight": "Example",
-        "src": "example/_migrated/welcome.html",
-        "visibility": "shared"
-      }
+      { "slug": "about-this-library", "title": "About This Library",
+        "kind": "Guide · Reading Room", "desc": "What the Reading Room is, how documents get in, and the style they share.",
+        "footLeft": "Guide", "footRight": "Reading Room",
+        "src": "example/_migrated/about-this-library.html", "visibility": "private" },
+      { "slug": "welcome", "title": "Welcome",
+        "kind": "Guide", "desc": "What this example shows.",
+        "footLeft": "Guide", "footRight": "Example",
+        "src": "example/_migrated/welcome.html", "visibility": "shared" }
+    ]
+  },
+  {
+    "num": "§ 02", "id": "agentic-loops",
+    "name": "Agentic Loops & Harnesses", "short": "Loops",
+    "docs": [
+      { "slug": "loop-engineering", "title": "Loop Engineering",
+        "kind": "Essay · Agentic Loops", "desc": "Designing the system that prompts your agents — the five primitives Claude Code and Codex now both ship.",
+        "footLeft": "2026·06·10", "footRight": "addyo.substack.com",
+        "src": "example/_migrated/loop-engineering.html", "visibility": "private" },
+      { "slug": "fable5-loops", "title": "Designing Loops with Fable 5",
+        "kind": "Thread · Agentic Loops", "desc": "Let the model self-correct against a goal or rubric, and manage its own memory across sessions — with worked examples.",
+        "footLeft": "2026·06·09", "footRight": "x.com",
+        "src": "example/_migrated/fable5-loops.html", "visibility": "private" },
+      { "slug": "wtf-is-a-loop", "title": "WTF Is a Loop? Steinberger vs. Cherny",
+        "kind": "Essay · Agentic Loops", "desc": "A six-word phrase, a five-year lineage, and the punchline: the loop — not the model — is now the expensive part.",
+        "footLeft": "2026·06·08", "footRight": "x.com",
+        "src": "example/_migrated/wtf-is-a-loop.html", "visibility": "private" }
+    ]
+  },
+  {
+    "num": "§ 05", "id": "ai-ml-learning",
+    "name": "AI/ML Learning", "short": "AI/ML",
+    "docs": [
+      { "slug": "llm-discourse-primer", "title": "LLM Discourse Primer",
+        "kind": "Primer · Learning Path", "desc": "The vocabulary of current LLM discussion, organized around the model lifecycle.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/llm-discourse-primer.html", "visibility": "private" },
+      { "slug": "statistics-for-engineers", "title": "Statistics for Engineers",
+        "kind": "Primer · Learning Path", "desc": "Distributions, sampling, correlation, and when a difference is real.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/statistics-for-engineers.html", "visibility": "private" },
+      { "slug": "classical-ml-vocabulary", "title": "Classical ML Vocabulary",
+        "kind": "Primer · Learning Path", "desc": "Model families, the discipline terms, and the metric zoo of pre-deep-learning ML.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/classical-ml-vocabulary.html", "visibility": "private" },
+      { "slug": "python-env-polyglots", "title": "Python Environment for Polyglots",
+        "kind": "Guide · Learning Path", "desc": "uv, notebooks, and pandas idioms for someone who already knows how programming works.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/python-env-polyglots.html", "visibility": "private" },
+      { "slug": "local-models-hardware", "title": "Local Models & Hardware",
+        "kind": "Guide · Learning Path", "desc": "The memory math, the tool ladder, and running models on your own machines.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/local-models-hardware.html", "visibility": "private" },
+      { "slug": "embeddings-retrieval", "title": "Embeddings & Retrieval",
+        "kind": "Primer · Learning Path", "desc": "What embeddings capture, chunking, and the RAG loop with its knobs and failure modes.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/embeddings-retrieval.html", "visibility": "private" },
+      { "slug": "evals-primer", "title": "Evals",
+        "kind": "Primer · Learning Path", "desc": "Eval sets as product specs, the scoring ladder, and LLM-as-judge pitfalls.",
+        "footLeft": "2026·08·31", "footRight": "AI-ML Learning Path (vault)",
+        "src": "example/_migrated/evals-primer.html", "visibility": "private" }
     ]
   }
 ]

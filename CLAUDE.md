@@ -269,11 +269,13 @@ Upgrading the running agent after a CLI upgrade is an explicit `reading-room age
 
 ## Repo-specific notes
 
-- This repo carries content (`registry.jsonc`, `_migrated/`, `comments/`) at the root so
-  `deno task serve` works here for development (via `--root .`). A future change will move that
-  content out and point dev tasks at `example/`.
-- `docs/` and `index.html` at the root are **build artifacts** (`deno task build` output, gitignored
-  and wiped each build). Never hand-edit them, and never put durable docs under `docs/`. Durable
-  docs (specs, plans, this file) live at the root or in `_specs/` / `_plans/`.
-- Site icons (`favicon.svg`, `apple-touch-icon.png`) are embedded via codegen; the build writes
-  copies to the output root as artifacts.
+- The dev library lives in `example/` (a content home: `registry.jsonc`, `site.jsonc`, `_migrated/`,
+  `assets/`, and `comments/` once annotated). The root dev tasks (`build`, `serve`, `add-doc`,
+  `publish`) pass `--root example`, and `example_test.ts` builds it as the integration test. The
+  repo root holds no content.
+- `example/docs/`, `example/index.html`, and the other files `deno task build` writes into
+  `example/` (manifest, service worker, icon copies) are **build artifacts** (gitignored, wiped each
+  build). Never hand-edit them. Durable docs (specs, plans, this file) live at the root or in
+  `_specs/` / `_plans/`.
+- Site icons (`favicon.svg`, `apple-touch-icon.png`, `icon-*.png`) at the repo root are codegen
+  sources, not content; the build writes copies to the output root as artifacts.
