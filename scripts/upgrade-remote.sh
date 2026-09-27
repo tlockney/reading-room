@@ -20,10 +20,12 @@
 set -u
 
 V="${1:-}"
-if [ -z "$V" ]; then
-  echo "usage: $0 <version> [host ...]" >&2
-  exit 64
-fi
+case "$V" in
+  "" | *[!0-9A-Za-z.+-]*)
+    echo "usage: $0 <version> [host ...]" >&2
+    exit 64
+    ;;
+esac
 shift
 
 if [ "$#" -eq 0 ]; then
@@ -40,43 +42,55 @@ fi
 
 fail=0
 for H in "$@"; do
-  ssh -o BatchMode=yes -o ConnectTimeout=8 -- "$H" "V='$V'; "'
-    set -e
-    DENO=$(command -v deno || true); [ -n "$DENO" ] || DENO=/opt/homebrew/bin/deno
-    P="$HOME/Library/LaunchAgents/local.reading-room.plist"
-    CLI="$HOME/.deno/bin/reading-room"
-    echo "== $(hostname -s): upgrading to $V"
+  # Run the per-host script under sh, not the remote login shell: macOS logs in
+  # with zsh, which does not word-split unquoted variables.
+  ssh -o BatchMode=yes -o ConnectTimeout=8 -- "$H" "V='$V' sh -s" <<'REMOTE' || fail=$((fail + 1))
+set -e
+DENO=$(command -v deno || true); [ -n "$DENO" ] || DENO=/opt/homebrew/bin/deno
+P="$HOME/Library/LaunchAgents/local.reading-room.plist"
+CLI="$HOME/.deno/bin/reading-room"
+echo "== $(hostname -s): upgrading to $V"
 
-    # Carry the current agent settings over the reinstall.
-    ARGS=""; PORT=8413
-    if [ -f "$P" ]; then
-      val() { grep -A1 -- "<string>$1</string>" "$P" | tail -1 | sed "s/<[^>]*>//g;s/^ *//;s/ *$//"; }
-      R=$(val --root); [ -n "$R" ] && ARGS="$ARGS --root $R"
-      N=$(val --port); [ -n "$N" ] && { PORT=$N; ARGS="$ARGS --port $N"; }
-      grep -q "<key>READONLY</key>" "$P" && ARGS="$ARGS --readonly"
-      echo "was: $(grep -o "reading-room@[0-9.]*" "$P" | head -1)  keeping:$ARGS"
-    fi
+# Carry the current agent settings over the reinstall, as positional args so a
+# root containing spaces stays one argument.
+set --; PORT=8413
+if [ -f "$P" ]; then
+  val() { grep -A1 -- "<string>$1</string>" "$P" | tail -1 | sed "s/<[^>]*>//g;s/^ *//;s/ *$//;s/&lt;/</g;s/&gt;/>/g;s/&amp;/\&/g"; }
+  R=$(val --root); [ -n "$R" ] && set -- "$@" --root "$R"
+  N=$(val --port); [ -n "$N" ] && { PORT=$N; set -- "$@" --port "$N"; }
+  grep -q "<key>READONLY</key>" "$P" && set -- "$@" --readonly
+  echo "was: $(grep -o "reading-room@[0-9.]*" "$P" | head -1)  keeping: $*"
+fi
 
-    "$DENO" install -g -f --root "$HOME/.deno" -n reading-room \
-      --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
-      --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
-      --minimum-dependency-age=0 "jsr:@tlockney/reading-room@$V/cli" >/dev/null 2>&1
-    "$CLI" --help 2>&1 | head -1
-    "$CLI" agent install $ARGS 2>&1 | head -1
+if ! out=$("$DENO" install -g -f --root "$HOME/.deno" -n reading-room \
+  --allow-read --allow-write --allow-net --allow-run --allow-sys=hostname \
+  --allow-env=PORT,READONLY,READING_ROOM_HOME,XDG_DATA_HOME,XDG_STATE_HOME,HOME \
+  --minimum-dependency-age=0 "jsr:@tlockney/reading-room@$V/cli" 2>&1); then
+  echo "$out" | tail -5
+  echo "FAILED: CLI install of $V (is it published on JSR yet?)"
+  exit 1
+fi
+"$CLI" --help 2>&1 | head -1
+if ! out=$("$CLI" agent install "$@" 2>&1); then
+  echo "$out"
+  echo "FAILED: reading-room agent install"
+  exit 1
+fi
+echo "$out" | head -1
 
-    up() { curl -s -m 3 "http://127.0.0.1:$PORT/.well-known/reading-room.json" | grep -q "\"version\":\"$V\""; }
-    n=0; until up || [ $n -ge 15 ]; do sleep 3; n=$((n+1)); done
-    if ! up; then
-      echo "first launch stalled; kickstarting the agent"
-      launchctl kickstart -k "gui/$(id -u)/local.reading-room"
-      n=0; until up || [ $n -ge 40 ]; do sleep 3; n=$((n+1)); done
-    fi
-    if up; then
-      echo "ok: $(curl -s -m 3 "http://127.0.0.1:$PORT/.well-known/reading-room.json")"
-    else
-      echo "FAILED: agent not serving $V on :$PORT; see: reading-room agent logs"
-      exit 1
-    fi
-  ' || fail=$((fail + 1))
+up() { curl -s -m 3 "http://127.0.0.1:$PORT/.well-known/reading-room.json" | grep -q "\"version\":\"$V\""; }
+n=0; until up || [ $n -ge 15 ]; do sleep 3; n=$((n+1)); done
+if ! up; then
+  echo "first launch stalled; kickstarting the agent"
+  launchctl kickstart -k "gui/$(id -u)/local.reading-room"
+  n=0; until up || [ $n -ge 40 ]; do sleep 3; n=$((n+1)); done
+fi
+if up; then
+  echo "ok: $(curl -s -m 3 "http://127.0.0.1:$PORT/.well-known/reading-room.json")"
+else
+  echo "FAILED: agent not serving $V on :$PORT; see: reading-room agent logs"
+  exit 1
+fi
+REMOTE
 done
 exit "$fail"
